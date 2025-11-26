@@ -1,0 +1,9 @@
+{
+  "name": "Diva Spa Wise",
+  "description": "Sistema de Gestão Completo para Diva Spa - Estética Avançada, Depilação a Laser e Telemedicina.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
