@@ -10,6 +10,7 @@ interface ServiceModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSave: (record: any) => void;
+    onEdit?: () => void;
 }
 
 interface BodyMarker {
@@ -20,7 +21,7 @@ interface BodyMarker {
     note: string;
 }
 
-const ServiceModal: React.FC<ServiceModalProps> = ({ appointment, client, isOpen, onClose, onSave }) => {
+const ServiceModal: React.FC<ServiceModalProps> = ({ appointment, client, isOpen, onClose, onSave, onEdit }) => {
     const { updateAppointmentStatus } = useData();
     const [currentStatus, setCurrentStatus] = useState<AppointmentStatus>(appointment.status);
     const [activeTab, setActiveTab] = useState<'safety' | 'protocol' | 'body_map' | 'evolution'>('safety');
@@ -103,7 +104,6 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ appointment, client, isOpen
             }, 2000);
         }
     };
-
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -125,6 +125,15 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ appointment, client, isOpen
                                 <option value={AppointmentStatus.CANCELLED}>Cancelado</option>
                             </select>
                             <span className="text-diva-light text-xs font-mono">{appointment.startTime.split('T')[1].substring(0, 5)}</span>
+
+                            {onEdit && (
+                                <button
+                                    onClick={onEdit}
+                                    className="ml-2 px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-xs text-white font-medium transition-colors"
+                                >
+                                    Editar Detalhes
+                                </button>
+                            )}
                         </div>
                         <h2 className="text-xl font-bold">{client.name}</h2>
                         <p className="text-diva-light text-sm">{appointment.serviceName}</p>
@@ -439,8 +448,8 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ appointment, client, isOpen
                         Salvar e Finalizar
                     </button>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 

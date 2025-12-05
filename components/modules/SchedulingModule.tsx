@@ -1,24 +1,38 @@
 
 import React, { useState } from 'react';
-import { ServiceAppointment, AppointmentStatus, Client, Invoice, Transaction, WaitlistItem } from '../../types';
-import { Clock, MapPin, User, CheckCircle, PlayCircle, DollarSign, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Grid, List, Plus, AlertCircle, Search, Video, LayoutGrid, XCircle, FileText, ArrowRightLeft } from 'lucide-react';
+import { ServiceAppointment, AppointmentStatus, Client, Invoice, Transaction, WaitlistItem, User as UserType, UserRole } from '../../types';
+import { Clock, MapPin, User, CheckCircle, PlayCircle, DollarSign, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Grid, List, Plus, AlertCircle, Search, Video, LayoutGrid, XCircle, FileText, ArrowRightLeft, Filter } from 'lucide-react';
 import ServiceModal from '../modals/ServiceModal';
 import CheckoutModal from '../modals/CheckoutModal';
 import TelemedicineModal from '../modals/TelemedicineModal';
 import NewAppointmentModal from '../modals/NewAppointmentModal';
 import ClientProfileModal from '../modals/ClientProfileModal';
-import { useData } from '../context/DataContext';
+import { useUnitData } from '../hooks/useUnitData';
 import { useToast } from '../ui/ToastContext';
+import { useDataIsolation } from '../../hooks/useDataIsolation';
 
 // --- MOCK RESOURCES ---
-const RESOURCES = ['Sala 01 - Laser', 'Sala 02 - Facial', 'Sala 03 - Corporal', 'Consultório A', 'Online (Tele)'];
+// --- MOCK RESOURCES (Fallback) ---
+// const RESOURCES = ['Sala 01 - Laser', 'Sala 02 - Facial', 'Sala 03 - Corporal', 'Consultório A', 'Online (Tele)'];
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 8); // 8:00 to 20:00
 
-const SchedulingModule: React.FC = () => {
-    const { appointments, addTransaction, updateAppointmentStatus, deleteAppointment, clients, waitlist, addToWaitlist, removeFromWaitlist } = useData();
+interface SchedulingModuleProps {
+    user: UserType;
+}
+
+const SchedulingModule: React.FC<SchedulingModuleProps> = ({ user }) => {
+    const { appointments, addTransaction, updateAppointmentStatus, deleteAppointment, clients, waitlist, addToWaitlist, removeFromWaitlist, staff, updateStaff, updateClient, products, rooms } = useUnitData();
+    const { filterAppointments, canViewAllData } = useDataIsolation(user);
+
+    // Combine real rooms with virtual/online room
+    const activeResources = [...rooms.map(r => r.name), 'Online (Tele)'];
+
+    // Filtrar agendamentos baseado no perfil do usuário
+    const visibleAppointments = filterAppointments(appointments);
     const { addToast } = useToast();
     const [viewMode, setViewMode] = useState<'grid' | 'list' | 'week'>('grid');
     const [selectedDate, setSelectedDate] = useState(new Date());
+    const [selectedRoomFilter, setSelectedRoomFilter] = useState<string>('all');
     const [selectedAppointment, setSelectedAppointment] = useState<ServiceAppointment | null>(null);
 
     // Modals State
@@ -30,6 +44,7 @@ const SchedulingModule: React.FC = () => {
     // Client Profile State
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [profileClient, setProfileClient] = useState<Client | null>(null);
+    const [appointmentToEdit, setAppointmentToEdit] = useState<ServiceAppointment | null>(null);
 
     // --- Handlers ---
     const handleAppointmentClick = (appt: ServiceAppointment, e?: React.MouseEvent) => {
@@ -97,6 +112,16 @@ const SchedulingModule: React.FC = () => {
 
     const handleSaveRecord = (record: any) => {
         console.log("Record saved:", record);
+        // In real app, call addAppointmentRecord(record);
+        addToast('Prontuário salvo com sucesso!', 'success');
+    };
+
+    const handleEditAppointment = () => {
+        if (selectedAppointment) {
+            setAppointmentToEdit(selectedAppointment);
+            setIsServiceModalOpen(false);
+            setIsNewAppointmentModalOpen(true);
+        }
     };
 
     const handlePaymentComplete = (invoice: Invoice) => {
@@ -104,20 +129,95 @@ const SchedulingModule: React.FC = () => {
         const today = new Date();
         const localDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-        const transaction: Transaction = {
-            id: `t_${Date.now()}`,
-            description: `Pagamento: ${invoice.clientName} - ${invoice.items[0].description}`,
-            amount: invoice.total,
-            type: 'income',
-            category: 'Serviços',
-            status: 'paid',
-            date: localDate // Use local date instead of UTC
-        };
-        addTransaction(transaction);
+        if (invoice.paymentMethod === 'split' && invoice.splitDetails) {
+            // Create multiple transactions for split payment
+            invoice.splitDetails.forEach((split, index) => {
+                const transaction: Transaction = {
+                    id: `t_${Date.now()}_${index}`,
+                    description: `Pagamento (Parcial): ${invoice.clientName} - ${invoice.items[0].description}`,
+                    amount: split.amount,
+                    type: 'income',
+                    category: 'Serviços',
+                    status: 'paid',
+                    date: localDate,
+                    paymentMethod: split.method
+                };
+                addTransaction(transaction);
+            });
+        } else {
+            const transaction: Transaction = {
+                id: `t_${Date.now()}`,
+                description: `Pagamento: ${invoice.clientName} - ${invoice.items[0].description}`,
+                amount: invoice.total,
+                type: 'income',
+                category: 'Serviços',
+                status: 'paid',
+                date: localDate,
+                paymentMethod: invoice.paymentMethod as any
+            };
+            addTransaction(transaction);
+        }
 
         // Update Appointment Status
         if (invoice.appointmentId) {
             updateAppointmentStatus(invoice.appointmentId, AppointmentStatus.COMPLETED);
+
+            // --- COMMISSION & STAFF METRICS LOGIC ---
+            const appointment = appointments.find(a => a.appointmentId === invoice.appointmentId);
+            if (appointment) {
+                const staffMember = staff.find(s => s.id === appointment.staffId);
+                if (staffMember) {
+                    // 1. Calculate Commission
+                    const commissionAmount = invoice.total * staffMember.commissionRate;
+
+                    if (commissionAmount > 0) {
+                        const commissionTransaction: Transaction = {
+                            id: `comm_${Date.now()}`,
+                            description: `Comissão: ${staffMember.name} - ${invoice.clientName}`,
+                            amount: commissionAmount,
+                            type: 'expense',
+                            category: 'Comissão',
+                            status: 'pending', // Pending payout
+                            date: localDate
+                        };
+                        addTransaction(commissionTransaction);
+                        addToast(`Comissão de ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(commissionAmount)} registrada.`, 'info');
+                    }
+
+                    // 2. Update Staff Metrics
+                    const newRevenue = staffMember.performanceMetrics.monthlyRevenue + invoice.total;
+                    const newCount = staffMember.performanceMetrics.appointmentsCount + 1;
+                    const newAvgTicket = newRevenue / newCount;
+
+                    updateStaff(staffMember.id, {
+                        performanceMetrics: {
+                            ...staffMember.performanceMetrics,
+                            monthlyRevenue: newRevenue,
+                            appointmentsCount: newCount,
+                            averageTicket: newAvgTicket
+                        }
+                    });
+                }
+            }
+
+            // --- LOYALTY POINTS (PRODUCTS) ---
+            let pointsEarned = 0;
+            invoice.items.forEach(item => {
+                if (item.type === 'product' && item.productId) {
+                    const product = products.find(p => p.id === item.productId);
+                    if (product && product.loyaltyPoints) {
+                        pointsEarned += product.loyaltyPoints * item.quantity;
+                    }
+                }
+            });
+
+            if (pointsEarned > 0) {
+                const client = clients.find(c => c.clientId === invoice.clientId);
+                if (client) {
+                    updateClient(client.clientId, { loyaltyPoints: (client.loyaltyPoints || 0) + pointsEarned });
+                    addToast(`+${pointsEarned} pontos de fidelidade (Produtos)!`, 'success');
+                }
+            }
         }
     };
 
@@ -200,7 +300,7 @@ const SchedulingModule: React.FC = () => {
     const weekDays = getWeekDays(selectedDate);
 
     // Filter appointments based on current view
-    const filteredAppointments = appointments.filter(appt => {
+    const filteredAppointments = visibleAppointments.filter(appt => {
         const apptDate = new Date(appt.startTime);
         if (viewMode === 'week') {
             const startOfWeek = weekDays[0];
@@ -209,7 +309,7 @@ const SchedulingModule: React.FC = () => {
             startOfWeek.setHours(0, 0, 0, 0);
             return apptDate >= startOfWeek && apptDate <= endOfWeek;
         } else {
-            return isSameDay(apptDate, selectedDate);
+            return apptDate.toDateString() === selectedDate.toDateString();
         }
     });
 
@@ -260,6 +360,22 @@ const SchedulingModule: React.FC = () => {
                             <LayoutGrid size={16} /> Semana
                         </button>
                     </div>
+
+                    {viewMode === 'week' && (
+                        <div className="flex items-center bg-gray-100 rounded-lg px-3 border border-gray-200 h-[38px]">
+                            <Filter size={14} className="text-gray-500 mr-2" />
+                            <select
+                                value={selectedRoomFilter}
+                                onChange={(e) => setSelectedRoomFilter(e.target.value)}
+                                className="bg-transparent text-xs font-bold text-diva-dark outline-none cursor-pointer min-w-[140px]"
+                            >
+                                <option value="all">Todas as Salas</option>
+                                {activeResources.map(room => (
+                                    <option key={room} value={room}>{room}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
 
                     <button
                         onClick={() => setIsNewAppointmentModalOpen(true)}
@@ -356,7 +472,7 @@ const SchedulingModule: React.FC = () => {
                             {/* Grid Header (Rooms) */}
                             <div className="flex border-b border-gray-200 sticky top-0 bg-white z-20">
                                 <div className="w-16 shrink-0 border-r border-gray-100 bg-gray-50"></div> {/* Time Gutter */}
-                                {RESOURCES.map(room => (
+                                {activeResources.map(room => (
                                     <div key={room} className={`flex-1 min-w-[180px] p-3 text-center border-r border-gray-100 font-bold text-sm bg-gray-50 ${room.includes('Online') ? 'text-blue-600 bg-blue-50/50' : 'text-diva-dark'}`}>
                                         {room.includes('Online') ? <span className="flex items-center justify-center gap-1"><Video size={14} /> {room}</span> : room}
                                     </div>
@@ -376,10 +492,10 @@ const SchedulingModule: React.FC = () => {
                                 </div>
 
                                 {/* Room Columns */}
-                                {RESOURCES.map(room => (
+                                {activeResources.map(room => (
                                     <div key={room} className="flex-1 min-w-[180px] border-r border-gray-100 relative bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwJSIgaGVpZ2h0PSI2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMCA2MGgxMDAlIiBzdHJva2U9IiNmMyIgc3Ryb2tlLXdpZHRoPSIxIiBmaWxsPSJub25lIiAvPjwvc3ZnPg==')]">
                                         {/* Render Appointments for this Room */}
-                                        {appointments
+                                        {visibleAppointments
                                             .filter(appt => isSameDay(new Date(appt.startTime), selectedDate) && appt.roomId === room)
                                             .map(appt => (
                                                 <div
@@ -446,29 +562,66 @@ const SchedulingModule: React.FC = () => {
                                 {/* Day Columns */}
                                 {weekDays.map(day => (
                                     <div key={day.toString()} className="flex-1 min-w-[150px] border-r border-gray-100 relative bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwJSIgaGVpZ2h0PSI2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMCA2MGgxMDAlIiBzdHJva2U9IiNmMyIgc3Ryb2tlLXdpZHRoPSIxIiBmaWxsPSJub25lIiAvPjwvc3ZnPg==')]">
-                                        {appointments
-                                            .filter(appt => isSameDay(new Date(appt.startTime), day))
-                                            .map(appt => (
-                                                <div
-                                                    key={appt.appointmentId}
-                                                    onClick={(e) => handleAppointmentClick(appt, e)}
-                                                    className={`absolute left-1 right-1 rounded-lg border-l-4 p-1.5 shadow-sm cursor-pointer hover:shadow-md hover:z-10 transition-all flex flex-col overflow-hidden group
+                                        {(() => {
+                                            const dayAppointments = visibleAppointments.filter(appt =>
+                                                isSameDay(new Date(appt.startTime), day) &&
+                                                (selectedRoomFilter === 'all' || appt.roomId === selectedRoomFilter)
+                                            );
+
+                                            return dayAppointments.map(appt => {
+                                                // Calculate overlaps for this specific appointment
+                                                const start = new Date(appt.startTime).getTime();
+                                                const end = new Date(appt.endTime).getTime();
+
+                                                const conflicts = dayAppointments
+                                                    .filter(a => {
+                                                        const aStart = new Date(a.startTime).getTime();
+                                                        const aEnd = new Date(a.endTime).getTime();
+                                                        return start < aEnd && end > aStart;
+                                                    })
+                                                    .sort((a, b) => {
+                                                        const diff = new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+                                                        if (diff !== 0) return diff;
+                                                        return a.appointmentId.localeCompare(b.appointmentId);
+                                                    });
+
+                                                const index = conflicts.findIndex(a => a.appointmentId === appt.appointmentId);
+                                                const total = conflicts.length;
+
+                                                const widthPct = total > 1 ? 95 / total : 98; // Slightly less than 100% for gap
+                                                const leftPct = total > 1 ? (index * (100 / total)) : 1;
+
+                                                const baseStyle = getAppointmentStyle(appt.startTime, appt.endTime);
+                                                const style = {
+                                                    ...baseStyle,
+                                                    left: `${leftPct}%`,
+                                                    width: `${widthPct}%`,
+                                                    zIndex: total > 1 ? 10 + index : 1
+                                                };
+
+                                                return (
+                                                    <div
+                                                        key={appt.appointmentId}
+                                                        onClick={(e) => handleAppointmentClick(appt, e)}
+                                                        className={`absolute rounded-lg border-l-4 p-1.5 shadow-sm cursor-pointer hover:shadow-md hover:z-50 transition-all flex flex-col overflow-hidden group
                                               ${getStatusColorClass(appt.status)}`}
-                                                    style={getAppointmentStyle(appt.startTime, appt.endTime)}
-                                                >
-                                                    <div className="flex justify-between items-start">
-                                                        <span className="font-bold text-[10px] truncate">{appt.clientName}</span>
+                                                        style={style}
+                                                    >
+                                                        <div className="flex justify-between items-start">
+                                                            <span className="font-bold text-[10px] truncate">{appt.clientName}</span>
+                                                        </div>
+                                                        <div className="flex items-center text-[9px] opacity-90 truncate mt-0.5">
+                                                            <MapPin size={8} className="mr-0.5" /> {appt.roomId.split('-')[0].trim()}
+                                                        </div>
+                                                        {/* Only show more detail on taller blocks or hover */}
+                                                        <div className="mt-auto hidden group-hover:flex justify-between items-end pt-1">
+                                                            <span className="text-[9px]">{appt.staffName.split(' ')[0]}</span>
+                                                            <DollarSign size={10} />
+                                                        </div>
                                                     </div>
-                                                    <div className="flex items-center text-[9px] opacity-90 truncate mt-0.5">
-                                                        <MapPin size={8} className="mr-0.5" /> {appt.roomId.split('-')[0].trim()}
-                                                    </div>
-                                                    {/* Only show more detail on taller blocks or hover */}
-                                                    <div className="mt-auto hidden group-hover:flex justify-between items-end pt-1">
-                                                        <span className="text-[9px]">{appt.staffName.split(' ')[0]}</span>
-                                                        <DollarSign size={10} />
-                                                    </div>
-                                                </div>
-                                            ))}
+                                                );
+                                            });
+                                        })()}
                                     </div>
                                 ))}
                             </div>
@@ -476,60 +629,62 @@ const SchedulingModule: React.FC = () => {
                     )}
                 </div>
 
-                {/* SIDEBAR: WAITLIST & ALERTS */}
-                <div className="w-80 bg-white rounded-xl border border-diva-light/30 shadow-sm flex flex-col overflow-hidden shrink-0 hidden xl:flex">
-                    <div className="p-4 border-b border-diva-light/20 bg-gray-50">
-                        <h3 className="font-bold text-diva-dark flex items-center">
-                            <Clock size={18} className="mr-2 text-diva-primary" /> Lista de Espera
-                            <span className="ml-auto bg-diva-primary text-white text-xs px-2 py-0.5 rounded-full">{waitlist.length}</span>
-                        </h3>
-                    </div>
+                {/* SIDEBAR: WAITLIST & ALERTS - Hidden for CLIENTS */}
+                {user.role !== UserRole.CLIENT && (
+                    <div className="w-80 bg-white rounded-xl border border-diva-light/30 shadow-sm flex flex-col overflow-hidden shrink-0 hidden xl:flex">
+                        <div className="p-4 border-b border-diva-light/20 bg-gray-50">
+                            <h3 className="font-bold text-diva-dark flex items-center">
+                                <Clock size={18} className="mr-2 text-diva-primary" /> Lista de Espera
+                                <span className="ml-auto bg-diva-primary text-white text-xs px-2 py-0.5 rounded-full">{waitlist.length}</span>
+                            </h3>
+                        </div>
 
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                        {waitlist.map(wait => (
-                            <div key={wait.id} className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:border-diva-primary cursor-pointer group relative">
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); handleRemoveFromWaitlist(wait.id); }}
-                                    className="absolute top-2 right-2 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                    <XCircle size={14} />
-                                </button>
-                                <div className="flex justify-between items-start mb-1">
-                                    <h4 className="font-bold text-sm text-diva-dark">{wait.clientName}</h4>
-                                    {wait.priority === 'high' && <AlertCircle size={14} className="text-diva-alert" />}
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                            {waitlist.map(wait => (
+                                <div key={wait.id} className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:border-diva-primary cursor-pointer group relative">
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleRemoveFromWaitlist(wait.id); }}
+                                        className="absolute top-2 right-2 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                        <XCircle size={14} />
+                                    </button>
+                                    <div className="flex justify-between items-start mb-1">
+                                        <h4 className="font-bold text-sm text-diva-dark">{wait.clientName}</h4>
+                                        {wait.priority === 'high' && <AlertCircle size={14} className="text-diva-alert" />}
+                                    </div>
+                                    <p className="text-xs text-gray-500 font-medium">{wait.service}</p>
+                                    <p className="text-xs text-gray-400 mt-2 bg-gray-50 p-1.5 rounded flex items-center">
+                                        <Clock size={10} className="mr-1" /> {wait.preference}
+                                    </p>
+                                    <button
+                                        onClick={() => setIsNewAppointmentModalOpen(true)}
+                                        className="w-full mt-2 text-xs font-bold text-diva-primary border border-diva-primary rounded py-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-diva-primary hover:text-white"
+                                    >
+                                        Encaixar na Agenda
+                                    </button>
                                 </div>
-                                <p className="text-xs text-gray-500 font-medium">{wait.service}</p>
-                                <p className="text-xs text-gray-400 mt-2 bg-gray-50 p-1.5 rounded flex items-center">
-                                    <Clock size={10} className="mr-1" /> {wait.preference}
-                                </p>
-                                <button
-                                    onClick={() => setIsNewAppointmentModalOpen(true)}
-                                    className="w-full mt-2 text-xs font-bold text-diva-primary border border-diva-primary rounded py-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-diva-primary hover:text-white"
-                                >
-                                    Encaixar na Agenda
-                                </button>
-                            </div>
-                        ))}
+                            ))}
 
-                        {waitlist.length === 0 && (
-                            <div className="text-center text-gray-400 text-xs py-4">Lista vazia.</div>
-                        )}
+                            {waitlist.length === 0 && (
+                                <div className="text-center text-gray-400 text-xs py-4">Lista vazia.</div>
+                            )}
 
-                        <button className="w-full py-3 border-2 border-dashed border-gray-200 rounded-lg text-gray-400 text-sm font-bold hover:border-diva-primary hover:text-diva-primary transition-colors flex items-center justify-center">
-                            <Plus size={16} className="mr-2" /> Adicionar à Espera
-                        </button>
+                            <button className="w-full py-3 border-2 border-dashed border-gray-200 rounded-lg text-gray-400 text-sm font-bold hover:border-diva-primary hover:text-diva-primary transition-colors flex items-center justify-center">
+                                <Plus size={16} className="mr-2" /> Adicionar à Espera
+                            </button>
+                        </div>
+
+                        <div className="p-4 bg-yellow-50 border-t border-yellow-100">
+                            <h4 className="text-xs font-bold text-yellow-800 uppercase mb-2 flex items-center">
+                                <AlertCircle size={12} className="mr-1" /> Lembretes do Dia
+                            </h4>
+                            <ul className="text-xs text-yellow-700 space-y-1 list-disc pl-4">
+                                <li>Dra. Julia sai às 16:00.</li>
+                                <li>Sala 03 precisa de higienização extra.</li>
+                            </ul>
+                        </div>
                     </div>
-
-                    <div className="p-4 bg-yellow-50 border-t border-yellow-100">
-                        <h4 className="text-xs font-bold text-yellow-800 uppercase mb-2 flex items-center">
-                            <AlertCircle size={12} className="mr-1" /> Lembretes do Dia
-                        </h4>
-                        <ul className="text-xs text-yellow-700 space-y-1 list-disc pl-4">
-                            <li>Dra. Julia sai às 16:00.</li>
-                            <li>Sala 03 precisa de higienização extra.</li>
-                        </ul>
-                    </div>
-                </div>
+                )}
             </div>
 
             {/* MODALS */}
@@ -538,6 +693,7 @@ const SchedulingModule: React.FC = () => {
                     isOpen={isServiceModalOpen}
                     onClose={() => setIsServiceModalOpen(false)}
                     onSave={handleSaveRecord}
+                    onEdit={handleEditAppointment}
                     appointment={selectedAppointment}
                     client={selectedClient || mockFallbackClient}
                 />
@@ -571,7 +727,11 @@ const SchedulingModule: React.FC = () => {
 
             <NewAppointmentModal
                 isOpen={isNewAppointmentModalOpen}
-                onClose={() => setIsNewAppointmentModalOpen(false)}
+                onClose={() => {
+                    setIsNewAppointmentModalOpen(false);
+                    setAppointmentToEdit(null);
+                }}
+                appointmentToEdit={appointmentToEdit}
             />
         </div>
     );

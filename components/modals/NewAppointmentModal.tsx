@@ -2,13 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, Calendar, Clock, User, MapPin, Sparkles, Activity, Megaphone, Plus, AlertTriangle } from 'lucide-react';
 import { ServiceAppointment, AppointmentStatus } from '../../types';
-import { useData } from '../context/DataContext';
+import { useUnitData } from '../hooks/useUnitData';
 import { useToast } from '../ui/ToastContext';
 import NewClientModal from './NewClientModal';
 
 interface NewAppointmentModalProps {
   isOpen: boolean;
   onClose: () => void;
+  appointmentToEdit?: ServiceAppointment | null;
 }
 
 // Mock Service Options (In real app, fetch from Settings/Services)
@@ -19,8 +20,8 @@ const services = [
   { name: 'Drenagem Linfática', price: 180, duration: 60 },
 ];
 
-const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClose }) => {
-  const { addAppointment, appointments, clients, staff, rooms } = useData();
+const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClose, appointmentToEdit }) => {
+  const { addAppointment, updateAppointment, appointments, clients, staff, rooms, selectedUnitId } = useUnitData();
   const { addToast } = useToast();
   const [isNewClientModalOpen, setIsNewClientModalOpen] = useState(false);
   const [conflictWarning, setConflictWarning] = useState<string | null>(null);
@@ -38,16 +39,30 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClo
 
   const [formData, setFormData] = useState(initialFormState);
 
-  // Reset form when modal opens to ensure clean state
+  // Reset or Populate form when modal opens
   useEffect(() => {
     if (isOpen) {
-      setFormData(prev => ({
-        ...initialFormState,
-        date: new Date().toISOString().split('T')[0]
-      }));
+      if (appointmentToEdit) {
+        const [date, time] = appointmentToEdit.startTime.split('T');
+        setFormData({
+          clientId: appointmentToEdit.clientId,
+          serviceName: appointmentToEdit.serviceName,
+          date: date,
+          time: time.substring(0, 5),
+          staffName: appointmentToEdit.staffName,
+          roomId: appointmentToEdit.roomId,
+          status: appointmentToEdit.status,
+          referralSource: appointmentToEdit.referralSource || 'instagram'
+        });
+      } else {
+        setFormData(prev => ({
+          ...initialFormState,
+          date: new Date().toISOString().split('T')[0]
+        }));
+      }
       setConflictWarning(null);
     }
-  }, [isOpen]);
+  }, [isOpen, appointmentToEdit]);
 
   // Check for conflicts whenever relevant fields change
   useEffect(() => {
@@ -65,6 +80,9 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClo
 
     // Check for room conflicts
     const roomConflict = appointments.find(appt => {
+      // Ignore self if editing
+      if (appointmentToEdit && appt.appointmentId === appointmentToEdit.appointmentId) return false;
+
       if (appt.roomId !== formData.roomId) return false;
       if (appt.status === AppointmentStatus.CANCELLED) return false;
 
@@ -80,7 +98,7 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClo
     } else {
       setConflictWarning(null);
     }
-  }, [formData.roomId, formData.date, formData.time, formData.serviceName, appointments]);
+  }, [formData.roomId, formData.date, formData.time, formData.serviceName, appointments, appointmentToEdit]);
 
   if (!isOpen) return null;
 
@@ -107,23 +125,28 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClo
     const startDate = new Date(startDateTime);
     const endDate = new Date(startDate.getTime() + service.duration * 60000);
 
-    const newAppointment: ServiceAppointment = {
-      appointmentId: `apt_${Date.now()}`,
+    const appointmentData: ServiceAppointment = {
+      appointmentId: appointmentToEdit ? appointmentToEdit.appointmentId : `apt_${Date.now()}`,
       clientId: client.clientId,
       clientName: client.name,
       staffId: selectedStaff.id,
       staffName: selectedStaff.name,
-      roomId: selectedRoom.name, // Currently app uses room name as ID in some places, sticking to name for display
+      roomId: selectedRoom.name,
       startTime: startDateTime,
       endTime: endDate.toISOString(),
       status: formData.status,
       serviceName: service.name,
-      price: service.price
+      price: service.price,
+      unitId: appointmentToEdit?.unitId || (selectedUnitId === 'all' ? undefined : selectedUnitId)
     };
 
-    // In a real app, we would update the Client's acquisition source here using formData.referralSource
-    addAppointment(newAppointment);
-    addToast(`Agendamento criado com sucesso para ${client.name}!`, 'success');
+    if (appointmentToEdit) {
+      updateAppointment(appointmentData);
+      addToast(`Agendamento de ${client.name} atualizado!`, 'success');
+    } else {
+      addAppointment(appointmentData);
+      addToast(`Agendamento criado com sucesso para ${client.name}!`, 'success');
+    }
     onClose();
   };
 
@@ -132,7 +155,7 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClo
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
         <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-diva-primary text-white">
           <h3 className="font-bold text-lg flex items-center">
-            <Calendar size={20} className="mr-2" /> Novo Agendamento
+            <Calendar size={20} className="mr-2" /> {appointmentToEdit ? 'Editar Agendamento' : 'Novo Agendamento'}
           </h3>
           <button onClick={onClose} className="text-white/70 hover:text-white transition-colors">
             <X size={20} />

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { X, Save, DollarSign, ArrowUpCircle, ArrowDownCircle, Calendar, FileText, Tag } from 'lucide-react';
 import { Transaction, TransactionType, TransactionStatus } from '../../types';
-import { useData } from '../context/DataContext';
+import { useUnitData } from '../hooks/useUnitData';
 
 interface NewTransactionModalProps {
   isOpen: boolean;
@@ -10,13 +10,18 @@ interface NewTransactionModalProps {
 }
 
 const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClose }) => {
-  const { addTransaction } = useData();
+  const { addTransaction, selectedUnitId } = useUnitData();
   const [type, setType] = useState<TransactionType>('expense');
+  const getLocalDate = () => {
+    const today = new Date();
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  };
+
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
     category: 'Outros',
-    date: new Date().toISOString().split('T')[0],
+    date: getLocalDate(),
     status: 'paid' as TransactionStatus
   });
 
@@ -24,7 +29,7 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClo
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const newTransaction: Transaction = {
       id: `t_${Date.now()}`,
       description: formData.description,
@@ -32,11 +37,12 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClo
       type: type,
       category: formData.category,
       status: formData.status,
-      date: formData.date
+      date: formData.date,
+      unitId: selectedUnitId === 'all' ? undefined : selectedUnitId
     };
 
     addTransaction(newTransaction);
-    setFormData({ description: '', amount: '', category: 'Outros', date: new Date().toISOString().split('T')[0], status: 'paid' });
+    setFormData({ description: '', amount: '', category: 'Outros', date: getLocalDate(), status: 'paid' });
     onClose();
   };
 
@@ -56,7 +62,7 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClo
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          
+
           {/* Type Switcher */}
           <div className="flex p-1 bg-gray-100 rounded-lg">
             <button
@@ -78,41 +84,41 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClo
           <div>
             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Descrição *</label>
             <div className="relative">
-                <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-                <input 
+              <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+              <input
                 type="text"
                 required
                 className="w-full pl-9 pr-3 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all bg-white text-gray-900"
                 placeholder="Ex: Compra de Luvas"
                 value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                />
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Valor (R$) *</label>
-              <input 
+              <input
                 type="number"
                 step="0.01"
                 required
                 className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all font-mono bg-white text-gray-900"
                 placeholder="0.00"
                 value={formData.amount}
-                onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
               />
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Data</label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-                <input 
-                    type="date"
-                    required
-                    className="w-full pl-9 pr-3 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all text-sm bg-white text-gray-900"
-                    value={formData.date}
-                    onChange={(e) => setFormData({...formData, date: e.target.value})}
+                <input
+                  type="date"
+                  required
+                  className="w-full pl-9 pr-3 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all text-sm bg-white text-gray-900"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                 />
               </div>
             </div>
@@ -120,43 +126,43 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClo
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Categoria</label>
-                <div className="relative">
-                    <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-                    <select 
-                        className="w-full pl-9 pr-3 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all bg-white text-gray-900 text-sm appearance-none"
-                        value={formData.category}
-                        onChange={(e) => setFormData({...formData, category: e.target.value})}
-                    >
-                        {(type === 'income' ? incomeCategories : expenseCategories).map(cat => (
-                            <option key={cat} value={cat}>{cat}</option>
-                        ))}
-                    </select>
-                </div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Categoria</label>
+              <div className="relative">
+                <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                <select
+                  className="w-full pl-9 pr-3 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all bg-white text-gray-900 text-sm appearance-none"
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                >
+                  {(type === 'income' ? incomeCategories : expenseCategories).map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Status</label>
-                <select 
-                    className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all bg-white text-gray-900 text-sm"
-                    value={formData.status}
-                    onChange={(e) => setFormData({...formData, status: e.target.value as TransactionStatus})}
-                >
-                    <option value="paid">Pago / Recebido</option>
-                    <option value="pending">Pendente</option>
-                    <option value="overdue">Atrasado</option>
-                </select>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Status</label>
+              <select
+                className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all bg-white text-gray-900 text-sm"
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as TransactionStatus })}
+              >
+                <option value="paid">Pago / Recebido</option>
+                <option value="pending">Pendente</option>
+                <option value="overdue">Atrasado</option>
+              </select>
             </div>
           </div>
 
           <div className="pt-4 flex justify-end gap-3">
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={onClose}
               className="px-4 py-2 text-sm font-bold text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
             >
               Cancelar
             </button>
-            <button 
+            <button
               type="submit"
               className={`px-6 py-2 text-white rounded-lg text-sm font-bold shadow-md transition-all flex items-center ${type === 'income' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
             >

@@ -1,20 +1,22 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { ServiceRoom, AppointmentStatus } from '../../types';
-import { MapPin, Thermometer, Sun, Wrench, Sparkles, Clock, AlertTriangle, PlayCircle, Grid, List, Plus, Settings, Filter, Trash2, Save, X } from 'lucide-react';
+import { MapPin, Thermometer, Sun, Wrench, Sparkles, Clock, AlertTriangle, PlayCircle, Grid, List, Plus, Settings, Filter, Trash2, Save, X, Video, Cog } from 'lucide-react';
 import { useData } from '../context/DataContext';
+import EquipmentManagementModal from '../modals/EquipmentManagementModal';
 
 const RoomsModule: React.FC = () => {
     // Use Global Data instead of Local State
-    const { rooms, appointments, updateRoomStatus, addRoom, removeRoom } = useData();
+    const { rooms, appointments, updateRoomStatus, updateRoomEquipments, addRoom, removeRoom } = useData();
 
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [filterStatus, setFilterStatus] = useState<string>('all');
     const [isEditing, setIsEditing] = useState(false);
+    const [selectedRoomForEquipment, setSelectedRoomForEquipment] = useState<ServiceRoom | null>(null);
 
     // State for new room form
     const [newRoomName, setNewRoomName] = useState('');
-    const [newRoomType, setNewRoomType] = useState<'treatment' | 'spa' | 'consultation'>('treatment');
+    const [newRoomType, setNewRoomType] = useState<'treatment' | 'spa' | 'consultation' | 'virtual'>('treatment');
 
     // --- AUTOMATIC ROOM STATUS SYNC ---
     // This updates room status based on current appointments
@@ -209,6 +211,7 @@ const RoomsModule: React.FC = () => {
                             <option value="treatment">Tratamento</option>
                             <option value="spa">Spa / Relax</option>
                             <option value="consultation">Consultório</option>
+                            <option value="virtual">Virtual / Telemedicina</option>
                         </select>
                     </div>
                     <button
@@ -248,9 +251,12 @@ const RoomsModule: React.FC = () => {
                                     <div className="flex justify-between items-start mb-4">
                                         <div>
                                             <h3 className="text-lg font-bold text-diva-dark flex items-center">
+                                                {room.type === 'virtual' && <Video size={18} className="mr-2 text-blue-600" />}
                                                 {room.name}
                                             </h3>
-                                            <span className="text-xs text-gray-400 uppercase font-medium tracking-wider">{room.type}</span>
+                                            <span className="text-xs text-gray-400 uppercase font-medium tracking-wider">
+                                                {room.type === 'virtual' ? 'Virtual / Telemedicina' : room.type}
+                                            </span>
                                         </div>
                                         <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(room.status)}`}>
                                             {getStatusLabel(room.status).toUpperCase()}
@@ -322,9 +328,18 @@ const RoomsModule: React.FC = () => {
                                     <div className="mt-4 pt-4 border-t border-diva-light/20">
                                         <div className="flex justify-between items-center mb-2">
                                             <p className="text-xs font-bold text-gray-400 uppercase">Equipamentos</p>
-                                            {room.equipments.length > 0 && (
-                                                <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 rounded">{room.equipments.length}</span>
-                                            )}
+                                            <div className="flex items-center gap-2">
+                                                {room.equipments.length > 0 && (
+                                                    <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 rounded">{room.equipments.length}</span>
+                                                )}
+                                                <button
+                                                    onClick={() => setSelectedRoomForEquipment(room)}
+                                                    className="text-xs bg-diva-primary/10 hover:bg-diva-primary/20 text-diva-primary px-2 py-0.5 rounded flex items-center transition-colors"
+                                                    title="Gerenciar equipamentos"
+                                                >
+                                                    <Cog size={12} className="mr-1" /> Gerenciar
+                                                </button>
+                                            </div>
                                         </div>
                                         <div className="space-y-1">
                                             {room.equipments.length > 0 ? room.equipments.map(eq => (
@@ -437,6 +452,16 @@ const RoomsModule: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            {/* Equipment Management Modal */}
+            {selectedRoomForEquipment && (
+                <EquipmentManagementModal
+                    room={selectedRoomForEquipment}
+                    isOpen={!!selectedRoomForEquipment}
+                    onClose={() => setSelectedRoomForEquipment(null)}
+                    onSave={updateRoomEquipments}
+                />
+            )}
         </div>
     );
 };

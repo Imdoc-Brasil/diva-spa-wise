@@ -12,6 +12,8 @@ import {
 import CommandPalette from './CommandPalette';
 import DivaAI from './DivaAI';
 import NotificationCenter from './NotificationCenter';
+import UnitSelector from './ui/UnitSelector';
+import { useData } from './context/DataContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -32,6 +34,14 @@ interface NavSection {
   items: NavItem[];
 }
 
+const roleTranslations: Record<UserRole, string> = {
+  [UserRole.ADMIN]: 'Administrador',
+  [UserRole.MANAGER]: 'Gerente',
+  [UserRole.STAFF]: 'Profissional',
+  [UserRole.FINANCE]: 'Financeiro',
+  [UserRole.CLIENT]: 'Cliente'
+};
+
 const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
@@ -41,6 +51,8 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
   const mainRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
+  const { notifications } = useData();
+  const unreadCount = notifications ? notifications.filter(n => !n.read).length : 0;
 
   // Handle Resize & Initial Mobile Check
   useEffect(() => {
@@ -95,7 +107,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
         { label: 'Concierge', path: '/concierge', icon: <Move size={20} />, allowedRoles: [UserRole.STAFF, UserRole.ADMIN, UserRole.MANAGER] },
         { label: 'Mapa de Salas', path: '/rooms', icon: <Map size={20} />, allowedRoles: [UserRole.STAFF, UserRole.ADMIN] },
         { label: 'Farmácia', path: '/pharmacy', icon: <Beaker size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF] },
-        { label: 'Estoque & Loja', path: '/marketplace', icon: <ShoppingBag size={20} />, allowedRoles: [UserRole.CLIENT, UserRole.ADMIN, UserRole.STAFF] },
+        { label: 'Boutique Diva', path: '/marketplace', icon: <ShoppingBag size={20} />, allowedRoles: [UserRole.CLIENT, UserRole.ADMIN, UserRole.STAFF] },
         { label: 'Enxoval', path: '/laundry', icon: <Shirt size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF] },
         { label: 'Ativos & Manut.', path: '/assets', icon: <Wrench size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER] },
       ]
@@ -103,7 +115,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
     {
       title: 'Crescimento & CRM',
       items: [
-        { label: 'CRM Clientes', path: '/crm', icon: <Users size={20} />, allowedRoles: [UserRole.STAFF, UserRole.ADMIN, UserRole.MANAGER] },
+        { label: 'CRM Pacientes', path: '/crm', icon: <Users size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF] },
         { label: 'Funil de Vendas', path: '/funnel', icon: <FileBarChart size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER] },
         { label: 'Marketing', path: '/marketing', icon: <Megaphone size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER] },
         { label: 'Promoções (Smart)', path: '/promotions', icon: <Tag size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER] },
@@ -246,7 +258,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
             {(isSidebarOpen || isMobile) && (
               <div className="ml-3 overflow-hidden">
                 <p className="text-sm font-bold text-white truncate">{user.displayName}</p>
-                <p className="text-[10px] text-diva-light capitalize truncate opacity-80">{user.role}</p>
+                <p className="text-[10px] text-diva-light capitalize truncate opacity-80">{roleTranslations[user.role]}</p>
               </div>
             )}
           </div>
@@ -284,7 +296,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
                   }}
                 >
                   {Object.values(UserRole).map(role => (
-                    <option key={role} value={role}>{role.toUpperCase()}</option>
+                    <option key={role} value={role}>{roleTranslations[role]}</option>
                   ))}
                 </select>
               </div>
@@ -321,6 +333,11 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
           </div>
 
           <div className="flex items-center space-x-3 md:space-x-4">
+            {/* Unit Selector */}
+            <div className="hidden md:block">
+              <UnitSelector />
+            </div>
+
             {/* Command Palette Trigger (Adaptive) */}
             <button
               onClick={() => setIsCommandOpen(true)}
@@ -347,7 +364,9 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
                 className={`p-2 rounded-full hover:bg-gray-100 transition-colors relative ${isNotificationsOpen ? 'bg-gray-100 text-diva-primary' : 'text-gray-500'}`}
               >
                 <Bell size={20} />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-diva-alert rounded-full border border-white"></span>
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-diva-alert rounded-full border border-white"></span>
+                )}
               </button>
               <NotificationCenter isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} />
             </div>
