@@ -3,6 +3,7 @@ import { Client, SalesLead, ServiceAppointment, AppointmentStatus, LeadStage, Tr
 import { MOCK_TREATMENT_PLANS, MOCK_TREATMENT_TEMPLATES } from '../../utils/mockTreatmentPlans';
 import { useToast } from '../ui/ToastContext';
 import { useOrganization } from './OrganizationContext';
+import { supabase } from '../../services/supabase';
 
 const initialSuppliers: Supplier[] = [
   { id: 'sup1', organizationId: 'org_demo', name: 'DermoTech Labs', contact: '(11) 4444-5555', email: 'pedidos@dermotech.com', rating: 4.8, categories: ['Dermocosméticos'], active: true },
@@ -812,6 +813,20 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => localStorage.setItem('products', JSON.stringify(products)), [products]);
   useEffect(() => localStorage.setItem('yieldRules', JSON.stringify(yieldRules)), [yieldRules]);
   useEffect(() => localStorage.setItem('formTemplates', JSON.stringify(formTemplates)), [formTemplates]);
+
+  // --- SUPABASE HYDRATION ---
+  useEffect(() => {
+    if (!supabase) return;
+
+    // Load SaaS Config (Casting as any because we lack generated types)
+    (supabase.from('app_configs') as any).select('value').eq('key', 'saas_landing_config').single()
+      .then(({ data }: any) => {
+        if (data?.value) {
+          setSaaSAppConfig(data.value);
+          console.log('✅ Config carregada do Supabase');
+        }
+      });
+  }, []);
   useEffect(() => localStorage.setItem('formResponses', JSON.stringify(formResponses)), [formResponses]);
   useEffect(() => localStorage.setItem('appointmentRecords', JSON.stringify(appointmentRecords)), [appointmentRecords]);
   useEffect(() => localStorage.setItem('units', JSON.stringify(units)), [units]);
@@ -1131,8 +1146,18 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     addToast('Site publicado com sucesso!', 'success');
   };
 
-  const updateSaaSAppConfig = (newConfig: SaaSAppConfig) => {
+  const updateSaaSAppConfig = async (newConfig: SaaSAppConfig) => {
     setSaaSAppConfig(newConfig);
+    if (supabase) {
+      await (supabase.from('app_configs') as any).upsert({
+        key: 'saas_landing_config',
+        value: newConfig,
+        updated_at: new Date().toISOString()
+      });
+      addToast('Configuração salva na Nuvem! ☁️', 'success');
+    } else {
+      addToast('Configuração salva (Local)', 'success');
+    }
   };
 
   const login = (role: UserRole) => {
@@ -1442,9 +1467,27 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.setItem('diva_saas_subscribers', JSON.stringify(saasSubscribers));
   }, [saasSubscribers]);
 
-  const addSaaSLead = (lead: SaaSLead) => {
+  const addSaaSLead = async (lead: SaaSLead) => {
     setSaaSLeads(prev => [...prev, lead]);
-    addToast('Lead SaaS registrado com sucesso!', 'success');
+
+    if (supabase) {
+      const { error } = await (supabase.from('saas_leads') as any).insert({
+        name: lead.name,
+        email: lead.email,
+        phone: lead.phone,
+        clinic_name: lead.clinicName,
+        plan_interest: lead.planInterest,
+        status: 'new'
+      });
+      if (error) {
+        console.error('Supabase Error:', error);
+        addToast('Erro ao salvar lead no banco.', 'error');
+      } else {
+        addToast('Solicitação enviada! (Salvo no Banco)', 'success');
+      }
+    } else {
+      addToast('Lead SaaS registrado com sucesso!', 'success');
+    }
   };
 
   const updateSaaSLead = (id: string, data: Partial<SaaSLead>) => {
