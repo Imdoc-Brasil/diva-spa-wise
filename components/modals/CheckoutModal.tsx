@@ -231,13 +231,18 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpen, onCl
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-diva-dark/80 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col md:flex-row h-[85vh]">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-diva-dark/80 backdrop-blur-sm p-0 md:p-4">
+            <div className="bg-white rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-[85vh] md:max-w-5xl overflow-hidden flex flex-col">
 
-                {/* LEFT COLUMN: Summary & Upsell */}
-                <div className="flex-1 p-6 bg-gray-50 flex flex-col border-r border-gray-200 overflow-y-auto custom-scrollbar">
-                    <h2 className="text-xl font-serif font-bold text-diva-dark mb-1">Checkout</h2>
-                    <p className="text-sm text-gray-500 mb-6">Pedido #1024 • {appointment.clientName}</p>
+                {/* LEFT COLUMN: Summary & Upsell - Scrollable on mobile */}
+                <div className="flex-1 p-4 md:p-6 bg-gray-50 flex flex-col border-r border-gray-200 overflow-y-auto custom-scrollbar">
+                    <div className="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 className="text-lg md:text-xl font-serif font-bold text-diva-dark">Checkout</h2>
+                            <p className="text-xs md:text-sm text-gray-500">Pedido #1024 • {appointment.clientName}</p>
+                        </div>
+                        <button onClick={onClose} className="md:hidden text-gray-400 hover:text-diva-dark"><X size={24} /></button>
+                    </div>
 
                     {/* Package Alert */}
                     {matchingPackage && !usePackage && (
@@ -292,57 +297,58 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpen, onCl
                     )}
 
                     {/* Items List */}
-                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6 flex-1">
-                        <table className="w-full text-left">
-                            <thead className="bg-gray-50 text-xs text-gray-400 uppercase font-medium">
-                                <tr>
-                                    <th className="px-4 py-3">Item</th>
-                                    <th className="px-4 py-3 text-right">Valor</th>
-                                    <th className="px-4 py-3 w-10"></th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100 text-sm">
-                                {items.map(item => (
-                                    <tr key={item.id}>
-                                        <td className="px-4 py-3">
-                                            <p className="font-medium text-diva-dark">{item.description}</p>
-                                            {item.type === 'service' && usePackage && item.total === 0 && (
-                                                <span className="text-[10px] text-green-600 font-bold flex items-center">
-                                                    <Ticket size={10} className="mr-1" /> Pacote Aplicado
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3 text-right font-mono">
-                                            {item.total === 0 && usePackage && item.type === 'service' ? (
-                                                <span className="text-gray-400 line-through mr-2 text-xs">{formatCurrency(item.unitPrice)}</span>
-                                            ) : null}
-                                            <span className={item.total === 0 ? 'text-green-600 font-bold' : 'text-gray-600'}>
-                                                {formatCurrency(item.total)}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                            {item.type === 'product' && (
-                                                <button onClick={() => handleRemoveItem(item.id)} className="text-gray-300 hover:text-red-500">
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            )}
-                                        </td>
+                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-4 md:mb-6 flex-1">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead className="bg-gray-50 text-xs text-gray-400 uppercase font-medium">
+                                    <tr>
+                                        <th className="px-3 md:px-4 py-3">Item</th>
+                                        <th className="px-3 md:px-4 py-3 text-right">Valor</th>
+                                        <th className="px-3 md:px-4 py-3 w-10"></th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100 text-sm">
+                                    {items.map(item => (
+                                        <tr key={item.id}>
+                                            <td className="px-3 md:px-4 py-3">
+                                                <p className="font-medium text-diva-dark text-xs md:text-sm">{item.description}</p>
+                                                {item.type === 'service' && usePackage && item.total === 0 && (
+                                                    <span className="text-[10px] text-green-600 font-bold flex items-center">
+                                                        <Ticket size={10} className="mr-1" /> Pacote Aplicado
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="px-3 md:px-4 py-3 text-right font-mono text-xs md:text-sm">
+                                                {item.total === 0 && usePackage && item.type === 'service' ? (
+                                                    <span className="text-gray-400 line-through mr-2 text-xs">{formatCurrency(item.unitPrice)}</span>
+                                                ) : null}
+                                                <span className={item.total === 0 ? 'text-green-600 font-bold' : 'text-gray-600'}>
+                                                    {formatCurrency(item.total)}
+                                                </span>
+                                            </td>
+                                            <td className="px-3 md:px-4 py-3 text-center">
+                                                {item.type === 'product' && (
+                                                    <button onClick={() => handleRemoveItem(item.id)} className="text-gray-300 hover:text-red-500 active:scale-95">
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
-                    {/* Upsell Area */}
-                    <div className="mt-auto">
+                    {/* Upsell Area - Hidden on mobile */}
+                    <div className="mt-auto hidden md:block">
                         <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Levar Também (Upsell)</h3>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                             {upsellProducts.map(prod => (
                                 <button
                                     key={prod.id}
                                     onClick={() => handleAddProduct(prod)}
-                                    className="flex flex-col items-center justify-center p-3 border border-dashed border-gray-300 rounded-lg hover:border-diva-primary hover:bg-diva-primary/5 transition-all group"
-                                >
+                                    className="flex flex-col items-center justify-center p-3 border border-dashed border-gray-300 rounded-lg hover:border-diva-primary hover:bg-diva-primary/5 transition-all group active:scale-95">
                                     <ShoppingBag size={20} className="text-gray-400 group-hover:text-diva-primary mb-1" />
                                     <span className="text-xs font-medium text-diva-dark text-center leading-tight line-clamp-1">{prod.name}</span>
                                     <span className="text-[10px] font-bold text-diva-accent mt-1">+ {formatCurrency(prod.price)}</span>
@@ -353,10 +359,10 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpen, onCl
                 </div>
 
                 {/* RIGHT COLUMN: Payment */}
-                <div className="w-full md:w-96 p-6 flex flex-col bg-white border-l border-gray-100 shadow-xl z-10 relative">
-                    <div className="flex justify-between items-start mb-6">
-                        <h2 className="text-xl font-serif font-bold text-diva-dark">Pagamento</h2>
-                        <button onClick={onClose} className="text-gray-400 hover:text-diva-dark"><X size={24} /></button>
+                <div className="w-full md:w-96 p-4 md:p-6 flex flex-col bg-white border-t md:border-t-0 md:border-l border-gray-100 shadow-xl z-10 relative">
+                    <div className="flex justify-between items-start mb-4 md:mb-6">
+                        <h2 className="text-lg md:text-xl font-serif font-bold text-diva-dark">Pagamento</h2>
+                        <button onClick={onClose} className="hidden md:block text-gray-400 hover:text-diva-dark"><X size={24} /></button>
                     </div>
 
                     {isSuccess ? (
@@ -460,7 +466,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpen, onCl
                                             <div className="text-xs text-right text-red-500 font-bold">Faltam: {formatCurrency(total)}</div>
                                         </div>
                                     ) : (
-                                        <div className="grid grid-cols-2 gap-3">
+                                        <div className="grid grid-cols-2 gap-2 md:gap-3">
                                             {renderPaymentButton('credit_card', 'Crédito', <CreditCard size={24} />)}
                                             {renderPaymentButton('debit_card', 'Débito', <CreditCard size={24} />)}
                                             {renderPaymentButton('pix', 'PIX', <Smartphone size={24} />)}
@@ -498,7 +504,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpen, onCl
                     )}
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 

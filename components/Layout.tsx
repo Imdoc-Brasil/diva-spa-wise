@@ -168,7 +168,6 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
         className={`
             fixed lg:relative inset-y-0 left-0 z-50
             ${isSidebarOpen ? 'w-72 translate-x-0' : isMobile ? '-translate-x-full w-72' : 'w-20 translate-x-0'} 
-            ${isSidebarOpen ? 'w-72 translate-x-0' : isMobile ? '-translate-x-full w-72' : 'w-20 translate-x-0'} 
             bg-gradient-to-b from-diva-dark to-slate-900 text-white transition-transform duration-300 ease-in-out flex flex-col shadow-2xl lg:shadow-xl border-r border-white/5
         `}
       >
@@ -378,7 +377,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
           </div>
         </div>
 
-        <div className="p-4 md:p-8 max-w-7xl mx-auto w-full min-h-[calc(100vh-64px)] animate-in fade-in duration-300" onClick={() => setIsNotificationsOpen(false)}>
+        <div className="p-3 sm:p-4 md:p-8 max-w-7xl mx-auto w-full min-h-[calc(100vh-64px)] pb-20 md:pb-8 animate-in fade-in duration-300" onClick={() => setIsNotificationsOpen(false)}>
           {children}
         </div>
       </main>
@@ -387,10 +386,10 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
       {user.role !== UserRole.CLIENT && (
         <button
           onClick={() => setIsAIOpen(!isAIOpen)}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-diva-accent to-yellow-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-105 transition-all z-40 border-2 border-white/20 shadow-diva-accent/30"
+          className="fixed bottom-4 right-4 md:bottom-6 md:right-6 w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-diva-accent to-yellow-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-40 border-2 border-white/20 shadow-diva-accent/30"
           title="Diva AI Assistant"
         >
-          {isAIOpen ? <X size={24} /> : <Sparkles size={24} />}
+          {isAIOpen ? <X size={20} className="md:w-6 md:h-6" /> : <Sparkles size={20} className="md:w-6 md:h-6" />}
         </button>
       )}
 

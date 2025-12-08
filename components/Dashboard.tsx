@@ -138,19 +138,19 @@ const Dashboard: React.FC = () => {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header & Welcome */}
-            <div className="flex flex-col md:flex-row justify-between items-end gap-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-3 md:gap-4">
                 <div>
-                    <h1 className="text-2xl font-serif font-bold text-diva-dark">Cockpit Executivo</h1>
-                    <p className="text-gray-500 text-sm">Visão geral em tempo real da operação Diva Spa.</p>
+                    <h1 className="text-xl md:text-2xl font-serif font-bold text-diva-dark">Cockpit Executivo</h1>
+                    <p className="text-gray-500 text-xs md:text-sm">Visão geral em tempo real da operação Diva Spa.</p>
                 </div>
-                <div className="flex space-x-3">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
                     <button
                         onClick={() => setIsBriefingOpen(true)}
-                        className="bg-gradient-to-r from-diva-accent to-yellow-600 text-white px-4 py-2 rounded-full text-xs font-bold flex items-center shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5"
+                        className="bg-gradient-to-r from-diva-accent to-yellow-600 text-white px-4 py-2 rounded-full text-xs font-bold flex items-center justify-center shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 active:scale-95"
                     >
                         <Sun size={14} className="mr-2" /> Briefing Matinal
                     </button>
-                    <span className="bg-white border border-diva-light/30 text-gray-500 px-3 py-2 rounded-full text-xs font-medium flex items-center">
+                    <span className="bg-white border border-diva-light/30 text-gray-500 px-3 py-2 rounded-full text-xs font-medium flex items-center justify-center">
                         <Clock size={12} className="mr-1" /> Atualizado: {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                 </div>
@@ -261,7 +261,7 @@ const Dashboard: React.FC = () => {
                             <p className="text-xs text-gray-500">Comparativo de Faturamento e Volume de Agendamentos</p>
                         </div>
                     </div>
-                    <div className="h-72">
+                    <div className="h-56 md:h-72">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={comparativeData} barGap={8}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -295,7 +295,7 @@ const Dashboard: React.FC = () => {
                             Total Semana: {formatCurrency(revenueChartData.reduce((a, b) => a + b.real, 0))}
                         </div>
                     </div>
-                    <div className="h-64">
+                    <div className="h-48 md:h-64">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={revenueChartData} barGap={0}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />

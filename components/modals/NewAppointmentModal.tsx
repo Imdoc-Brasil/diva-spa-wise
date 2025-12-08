@@ -151,27 +151,27 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClo
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
-        <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-diva-primary text-white">
-          <h3 className="font-bold text-lg flex items-center">
-            <Calendar size={20} className="mr-2" /> {appointmentToEdit ? 'Editar Agendamento' : 'Novo Agendamento'}
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-0 md:p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-none md:rounded-xl shadow-2xl w-full h-full md:h-auto md:max-w-lg overflow-hidden flex flex-col">
+        <div className="p-4 md:p-5 border-b border-gray-100 flex justify-between items-center bg-diva-primary text-white shrink-0">
+          <h3 className="font-bold text-base md:text-lg flex items-center">
+            <Calendar size={18} className="mr-2" /> {appointmentToEdit ? 'Editar Agendamento' : 'Novo Agendamento'}
           </h3>
-          <button onClick={onClose} className="text-white/70 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-white/70 hover:text-white transition-colors active:scale-95">
             <X size={20} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-4 md:p-6 space-y-4 md:space-y-5 overflow-y-auto flex-1">
 
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Cliente *</label>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Cliente *</label>
             <div className="flex gap-2 items-center">
               <div className="relative flex-1">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                 <select
                   required
-                  className="w-full pl-9 pr-3 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all bg-white text-gray-900 text-sm"
+                  className="w-full pl-9 pr-3 py-2.5 md:py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all bg-white text-gray-900 text-sm"
                   value={formData.clientId}
                   onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
                 >
@@ -186,7 +186,7 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClo
               <button
                 type="button"
                 onClick={() => setIsNewClientModalOpen(true)}
-                className="bg-diva-light/20 text-diva-primary p-3 rounded-lg hover:bg-diva-primary hover:text-white transition-colors border border-diva-light/50"
+                className="bg-diva-light/20 text-diva-primary p-2.5 md:p-3 rounded-lg hover:bg-diva-primary hover:text-white transition-colors border border-diva-light/50 active:scale-95 shrink-0"
                 title="Novo Cliente"
               >
                 <Plus size={20} />
@@ -194,14 +194,14 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClo
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Procedimento *</label>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Procedimento *</label>
               <div className="relative">
                 <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                 <select
                   required
-                  className="w-full pl-9 pr-3 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all bg-white text-gray-900 text-sm"
+                  className="w-full pl-9 pr-3 py-2.5 md:py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all bg-white text-gray-900 text-sm"
                   value={formData.serviceName}
                   onChange={(e) => setFormData({ ...formData, serviceName: e.target.value })}
                 >
@@ -212,11 +212,11 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClo
               </div>
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Origem</label>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Origem</label>
               <div className="relative">
                 <Megaphone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                 <select
-                  className="w-full pl-9 pr-3 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all bg-white text-gray-900 text-sm"
+                  className="w-full pl-9 pr-3 py-2.5 md:py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all bg-white text-gray-900 text-sm"
                   value={formData.referralSource}
                   onChange={(e) => setFormData({ ...formData, referralSource: e.target.value })}
                 >
@@ -313,17 +313,17 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClo
             </div>
           )}
 
-          <div className="pt-4 flex justify-end gap-3">
+          <div className="pt-4 flex flex-col sm:flex-row justify-end gap-2 md:gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-bold text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+              className="px-4 py-2.5 text-sm font-bold text-gray-500 hover:bg-gray-100 rounded-lg transition-colors active:scale-95 order-2 sm:order-1"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-6 py-2 bg-diva-primary text-white rounded-lg text-sm font-bold shadow-md hover:bg-diva-dark transition-all flex items-center"
+              className="px-6 py-2.5 bg-diva-primary text-white rounded-lg text-sm font-bold shadow-md hover:bg-diva-dark transition-all flex items-center justify-center active:scale-95 order-1 sm:order-2"
             >
               <Save size={16} className="mr-2" /> Confirmar Agendamento
             </button>

@@ -105,18 +105,18 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ appointment, client, isOpen
         }
     };
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-0 md:p-4">
+            <div className="bg-white rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-4xl overflow-hidden flex flex-col md:max-h-[90vh]">
 
                 {/* Header */}
-                <div className="bg-diva-dark text-white p-6 flex justify-between items-start">
-                    <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
+                <div className="bg-diva-dark text-white p-4 md:p-6 flex justify-between items-start shrink-0">
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 md:gap-3 mb-2 flex-wrap">
                             {/* Status Dropdown */}
                             <select
                                 value={currentStatus}
                                 onChange={(e) => handleStatusChange(e.target.value as AppointmentStatus)}
-                                className="bg-diva-accent text-white text-xs font-bold px-3 py-1.5 rounded uppercase tracking-wider cursor-pointer border-2 border-white/20 hover:border-white/40 transition-colors outline-none"
+                                className="bg-diva-accent text-white text-[10px] md:text-xs font-bold px-2 md:px-3 py-1 md:py-1.5 rounded uppercase tracking-wider cursor-pointer border-2 border-white/20 hover:border-white/40 transition-colors outline-none"
                             >
                                 <option value={AppointmentStatus.SCHEDULED}>Agendado</option>
                                 <option value={AppointmentStatus.CONFIRMED}>Confirmado</option>
@@ -129,50 +129,51 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ appointment, client, isOpen
                             {onEdit && (
                                 <button
                                     onClick={onEdit}
-                                    className="ml-2 px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-xs text-white font-medium transition-colors"
+                                    className="px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-xs text-white font-medium transition-colors active:scale-95"
                                 >
-                                    Editar Detalhes
+                                    Editar
                                 </button>
                             )}
                         </div>
-                        <h2 className="text-xl font-bold">{client.name}</h2>
-                        <p className="text-diva-light text-sm">{appointment.serviceName}</p>
+                        <h2 className="text-lg md:text-xl font-bold truncate">{client.name}</h2>
+                        <p className="text-diva-light text-xs md:text-sm truncate">{appointment.serviceName}</p>
                     </div>
-                    <button onClick={onClose} className="text-white/70 hover:text-white transition-colors">
-                        <X size={24} />
+                    <button onClick={onClose} className="text-white/70 hover:text-white transition-colors active:scale-95 shrink-0">
+                        <X size={20} className="md:hidden" />
+                        <X size={24} className="hidden md:block" />
                     </button>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex border-b border-gray-100 overflow-x-auto">
+                {/* Tabs - Scrollable on mobile */}
+                <div className="flex border-b border-gray-100 overflow-x-auto scrollbar-hide shrink-0">
                     <button
                         onClick={() => setActiveTab('safety')}
-                        className={`flex-1 py-4 min-w-[120px] text-sm font-bold flex items-center justify-center transition-colors ${activeTab === 'safety' ? 'text-diva-primary border-b-2 border-diva-primary bg-diva-light/10' : 'text-gray-400 hover:text-diva-dark'}`}
+                        className={`flex-1 min-w-[100px] py-3 md:py-4 text-xs md:text-sm font-bold flex items-center justify-center transition-colors whitespace-nowrap ${activeTab === 'safety' ? 'text-diva-primary border-b-2 border-diva-primary bg-diva-light/10' : 'text-gray-400 hover:text-diva-dark'}`}
                     >
-                        <Shield size={16} className="mr-2" /> Segurança
+                        <Shield size={14} className="mr-1 md:mr-2" /> Segurança
                     </button>
                     <button
                         onClick={() => setActiveTab('protocol')}
-                        className={`flex-1 py-4 min-w-[120px] text-sm font-bold flex items-center justify-center transition-colors ${activeTab === 'protocol' ? 'text-diva-primary border-b-2 border-diva-primary bg-diva-light/10' : 'text-gray-400 hover:text-diva-dark'}`}
+                        className={`flex-1 min-w-[100px] py-3 md:py-4 text-xs md:text-sm font-bold flex items-center justify-center transition-colors whitespace-nowrap ${activeTab === 'protocol' ? 'text-diva-primary border-b-2 border-diva-primary bg-diva-light/10' : 'text-gray-400 hover:text-diva-dark'}`}
                     >
-                        <Zap size={16} className="mr-2" /> Parâmetros
+                        <Zap size={14} className="mr-1 md:mr-2" /> Parâmetros
                     </button>
                     <button
                         onClick={() => setActiveTab('body_map')}
-                        className={`flex-1 py-4 min-w-[120px] text-sm font-bold flex items-center justify-center transition-colors ${activeTab === 'body_map' ? 'text-diva-primary border-b-2 border-diva-primary bg-diva-light/10' : 'text-gray-400 hover:text-diva-dark'}`}
+                        className={`flex-1 min-w-[100px] py-3 md:py-4 text-xs md:text-sm font-bold flex items-center justify-center transition-colors whitespace-nowrap ${activeTab === 'body_map' ? 'text-diva-primary border-b-2 border-diva-primary bg-diva-light/10' : 'text-gray-400 hover:text-diva-dark'}`}
                     >
-                        <Map size={16} className="mr-2" /> Mapeamento
+                        <Map size={14} className="mr-1 md:mr-2" /> <span className="hidden sm:inline">Mapeamento</span><span className="sm:hidden">Mapa</span>
                     </button>
                     <button
                         onClick={() => setActiveTab('evolution')}
-                        className={`flex-1 py-4 min-w-[120px] text-sm font-bold flex items-center justify-center transition-colors ${activeTab === 'evolution' ? 'text-diva-primary border-b-2 border-diva-primary bg-diva-light/10' : 'text-gray-400 hover:text-diva-dark'}`}
+                        className={`flex-1 min-w-[100px] py-3 md:py-4 text-xs md:text-sm font-bold flex items-center justify-center transition-colors whitespace-nowrap ${activeTab === 'evolution' ? 'text-diva-primary border-b-2 border-diva-primary bg-diva-light/10' : 'text-gray-400 hover:text-diva-dark'}`}
                     >
-                        <FileText size={16} className="mr-2" /> Evolução
+                        <FileText size={14} className="mr-1 md:mr-2" /> Evolução
                     </button>
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+                <div className="flex-1 overflow-y-auto p-3 md:p-6 bg-gray-50">
 
                     {activeTab === 'safety' && (
                         <div className="space-y-6 max-w-2xl mx-auto">
@@ -434,15 +435,15 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ appointment, client, isOpen
                 </div>
 
                 {/* Footer Actions */}
-                <div className="p-4 bg-white border-t border-gray-200 flex justify-end gap-3">
-                    <button onClick={onClose} className="px-6 py-3 rounded-lg border border-gray-300 text-gray-600 font-medium hover:bg-gray-50 transition-colors">
+                <div className="p-3 md:p-4 bg-white border-t border-gray-200 flex flex-col sm:flex-row justify-end gap-2 md:gap-3 shrink-0">
+                    <button onClick={onClose} className="px-6 py-2.5 md:py-3 rounded-lg border border-gray-300 text-gray-600 font-medium hover:bg-gray-50 transition-colors active:scale-95 order-2 sm:order-1">
                         Cancelar
                     </button>
                     <button
                         onClick={handleSave}
                         disabled={!isSafetyClear && activeTab === 'safety'}
-                        className={`px-6 py-3 rounded-lg text-white font-bold flex items-center shadow-lg transition-all
-                    ${!isSafetyClear && activeTab === 'safety' ? 'bg-gray-300 cursor-not-allowed' : 'bg-diva-primary hover:bg-diva-dark transform hover:-translate-y-0.5'}`}
+                        className={`px-6 py-2.5 md:py-3 rounded-lg text-white font-bold flex items-center justify-center shadow-lg transition-all order-1 sm:order-2
+                    ${!isSafetyClear && activeTab === 'safety' ? 'bg-gray-300 cursor-not-allowed' : 'bg-diva-primary hover:bg-diva-dark active:scale-95'}`}
                     >
                         <Save size={18} className="mr-2" />
                         Salvar e Finalizar

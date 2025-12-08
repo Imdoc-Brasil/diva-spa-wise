@@ -233,11 +233,11 @@ const ClientProfileModal: React.FC<ClientProfileModalProps> = ({ client, isOpen,
     };
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-diva-dark/90 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex overflow-hidden">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-diva-dark/90 backdrop-blur-sm p-0 md:p-4">
+            <div className="bg-white rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-[90vh] md:max-w-5xl flex flex-col md:flex-row overflow-hidden">
 
-                {/* LEFT COLUMN: Static Profile Info */}
-                <div className="w-80 bg-gray-50 border-r border-diva-light/30 flex flex-col p-6 overflow-y-auto">
+                {/* LEFT COLUMN: Static Profile Info - Hidden on mobile */}
+                <div className="hidden lg:flex w-80 bg-gray-50 border-r border-diva-light/30 flex-col p-6 overflow-y-auto">
                     <div className="flex flex-col items-center text-center mb-6">
                         <div className="w-24 h-24 rounded-full bg-diva-primary text-white flex items-center justify-center text-3xl font-serif font-bold shadow-md mb-3 border-4 border-white">
                             {client.name.charAt(0)}
@@ -308,59 +308,80 @@ const ClientProfileModal: React.FC<ClientProfileModalProps> = ({ client, isOpen,
                 {/* RIGHT COLUMN: Dynamic Content */}
                 <div className="flex-1 flex flex-col min-w-0 bg-white">
                     {/* Header / Tabs */}
-                    <div className="h-16 border-b border-diva-light/20 flex items-center justify-between px-6 bg-white sticky top-0 z-10">
-                        <div className="flex h-full space-x-1">
+                    <div className="h-auto md:h-16 border-b border-diva-light/20 flex flex-col md:flex-row items-stretch md:items-center justify-between px-3 md:px-6 bg-white sticky top-0 z-10 py-2 md:py-0">
+                        {/* Mobile: Client Info Header */}
+                        <div className="lg:hidden mb-2 md:mb-0 flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-diva-primary text-white flex items-center justify-center text-sm font-bold">
+                                {client.name.charAt(0)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h3 className="font-bold text-diva-dark truncate">{client.name}</h3>
+                                <p className="text-xs text-gray-500">{totalVisits} visitas</p>
+                            </div>
+                            <button onClick={onClose} className="p-2 text-gray-400 hover:text-diva-dark hover:bg-gray-100 rounded-full transition-colors shrink-0">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Tabs - Scrollable on mobile */}
+                        <div className="flex h-12 md:h-full overflow-x-auto scrollbar-hide -mx-3 px-3 md:mx-0 md:px-0">
                             <button
                                 onClick={() => setActiveTab('timeline')}
-                                className={`px-4 h-full border-b-2 font-medium text-sm transition-colors ${activeTab === 'timeline' ? 'border-diva-primary text-diva-primary' : 'border-transparent text-gray-500 hover:text-diva-dark'}`}
+                                className={`px-3 md:px-4 h-full border-b-2 font-medium text-xs md:text-sm transition-colors whitespace-nowrap shrink-0 ${activeTab === 'timeline' ? 'border-diva-primary text-diva-primary' : 'border-transparent text-gray-500 hover:text-diva-dark'}`}
                             >
-                                Linha do Tempo
+                                <span className="hidden sm:inline">Linha do Tempo</span>
+                                <span className="sm:hidden">Timeline</span>
                             </button>
                             <button
                                 onClick={() => setActiveTab('medical_record')}
-                                className={`px-4 h-full border-b-2 font-medium text-sm transition-colors ${activeTab === 'medical_record' ? 'border-diva-primary text-diva-primary' : 'border-transparent text-gray-500 hover:text-diva-dark'}`}
+                                className={`px-3 md:px-4 h-full border-b-2 font-medium text-xs md:text-sm transition-colors whitespace-nowrap shrink-0 ${activeTab === 'medical_record' ? 'border-diva-primary text-diva-primary' : 'border-transparent text-gray-500 hover:text-diva-dark'}`}
                             >
                                 Prontuário
                             </button>
                             <button
                                 onClick={() => setActiveTab('gallery')}
-                                className={`px-4 h-full border-b-2 font-medium text-sm transition-colors ${activeTab === 'gallery' ? 'border-diva-primary text-diva-primary' : 'border-transparent text-gray-500 hover:text-diva-dark'}`}
+                                className={`px-3 md:px-4 h-full border-b-2 font-medium text-xs md:text-sm transition-colors whitespace-nowrap shrink-0 ${activeTab === 'gallery' ? 'border-diva-primary text-diva-primary' : 'border-transparent text-gray-500 hover:text-diva-dark'}`}
                             >
-                                Galeria & Análise IA
+                                <span className="hidden sm:inline">Galeria & Análise IA</span>
+                                <span className="sm:hidden">Galeria</span>
                             </button>
                             <button
                                 onClick={() => setActiveTab('docs')}
-                                className={`px-4 h-full border-b-2 font-medium text-sm transition-colors ${activeTab === 'docs' ? 'border-diva-primary text-diva-primary' : 'border-transparent text-gray-500 hover:text-diva-dark'}`}
+                                className={`px-3 md:px-4 h-full border-b-2 font-medium text-xs md:text-sm transition-colors whitespace-nowrap shrink-0 ${activeTab === 'docs' ? 'border-diva-primary text-diva-primary' : 'border-transparent text-gray-500 hover:text-diva-dark'}`}
                             >
-                                Documentos & Consentimento
+                                <span className="hidden sm:inline">Documentos & Consentimento</span>
+                                <span className="sm:hidden">Docs</span>
                             </button>
                             <button
                                 onClick={() => setActiveTab('financial')}
-                                className={`px-4 h-full border-b-2 font-medium text-sm transition-colors ${activeTab === 'financial' ? 'border-diva-primary text-diva-primary' : 'border-transparent text-gray-500 hover:text-diva-dark'}`}
+                                className={`px-3 md:px-4 h-full border-b-2 font-medium text-xs md:text-sm transition-colors whitespace-nowrap shrink-0 ${activeTab === 'financial' ? 'border-diva-primary text-diva-primary' : 'border-transparent text-gray-500 hover:text-diva-dark'}`}
                             >
-                                Carteira & Pacotes
+                                <span className="hidden sm:inline">Carteira & Pacotes</span>
+                                <span className="sm:hidden">Carteira</span>
                             </button>
                             <button
                                 onClick={() => setActiveTab('forms')}
-                                className={`px-4 h-full border-b-2 font-medium text-sm transition-colors ${activeTab === 'forms' ? 'border-diva-primary text-diva-primary' : 'border-transparent text-gray-500 hover:text-diva-dark'}`}
+                                className={`px-3 md:px-4 h-full border-b-2 font-medium text-xs md:text-sm transition-colors whitespace-nowrap shrink-0 ${activeTab === 'forms' ? 'border-diva-primary text-diva-primary' : 'border-transparent text-gray-500 hover:text-diva-dark'}`}
                             >
-                                Formulários Clínicos
+                                <span className="hidden sm:inline">Formulários Clínicos</span>
+                                <span className="sm:hidden">Formulários</span>
                             </button>
                             <button
                                 onClick={() => setIsSmartConsultationOpen(true)}
-                                className="ml-4 px-4 py-1.5 bg-gradient-to-r from-diva-primary to-diva-accent text-white rounded-full text-xs font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2 animate-pulse"
+                                className="ml-2 md:ml-4 px-3 md:px-4 py-1.5 bg-gradient-to-r from-diva-primary to-diva-accent text-white rounded-full text-xs font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2 animate-pulse shrink-0"
                             >
                                 <Sparkles size={14} />
-                                Consulta IA
+                                <span className="hidden sm:inline">Consulta IA</span>
+                                <span className="sm:hidden">IA</span>
                             </button>
                         </div>
-                        <button onClick={onClose} className="p-2 text-gray-400 hover:text-diva-dark hover:bg-gray-100 rounded-full transition-colors">
+                        <button onClick={onClose} className="hidden lg:block p-2 text-gray-400 hover:text-diva-dark hover:bg-gray-100 rounded-full transition-colors">
                             <X size={20} />
                         </button>
                     </div>
 
                     {/* Content Body */}
-                    <div className="flex-1 overflow-y-auto p-8 bg-gray-50/50">
+                    <div className="flex-1 overflow-y-auto p-3 md:p-8 bg-gray-50/50">
 
                         {activeTab === 'timeline' && (
                             <div className="max-w-3xl mx-auto space-y-6">
