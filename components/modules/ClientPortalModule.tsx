@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { User } from '../../types';
-import { Calendar, Star, Tag, Clock, Package, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, Star, Tag, Clock, Package, CheckCircle, ChevronDown, ChevronUp, Sparkles, Camera, Image, Lock, FileText } from 'lucide-react';
 import BookingWizard from '../modals/BookingWizard';
 import { useData } from '../context/DataContext';
 import { useDataIsolation } from '../../hooks/useDataIsolation';
@@ -11,7 +11,7 @@ interface ClientPortalProps {
 }
 
 const ClientPortalModule: React.FC<ClientPortalProps> = ({ user }) => {
-    const { clients, appointments, treatmentPlans } = useData();
+    const { clients, appointments, treatmentPlans, appointmentRecords } = useData();
     const { filterClients, filterAppointments } = useDataIsolation(user);
     const [isBookingOpen, setIsBookingOpen] = useState(false);
     const [expandedPlanId, setExpandedPlanId] = useState<string | null>(null);
@@ -30,6 +30,17 @@ const ClientPortalModule: React.FC<ClientPortalProps> = ({ user }) => {
             (p.status === 'closed' || p.status === 'partially_paid' || p.status === 'completed' || p.status === 'prescribed')
         ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }, [treatmentPlans, user.clientId]);
+
+    // Get My Records (Skincare & Photos)
+    const myRecords = useMemo(() => {
+        if (!user.clientId) return [];
+        return appointmentRecords
+            .filter(r => r.clientId === user.clientId)
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [appointmentRecords, user.clientId]);
+
+    const latestSkincare = myRecords.find(r => r.skincarePlan);
+    const latestPhotos = myRecords.find(r => r.beforePhotos?.length || r.afterPhotos?.length);
 
     // Get client profile
     const client = myClients[0] || {
@@ -150,6 +161,87 @@ const ClientPortalModule: React.FC<ClientPortalProps> = ({ user }) => {
                 </div>
             </div>
 
+            {/* SKINCARE & EVOLUTION SECTION - NEW! */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                {/* Skincare Plan */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-diva-light/30 flex flex-col">
+                    <div className="flex items-center mb-4 text-purple-600">
+                        <Sparkles className="mr-2" size={24} />
+                        <h2 className="text-lg font-bold text-diva-dark">Meu Plano de Skincare</h2>
+                    </div>
+
+                    {latestSkincare ? (
+                        <div className="flex-1 flex flex-col">
+                            <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 mb-4 flex-1">
+                                <p className="text-xs text-purple-600 font-bold mb-2 uppercase flex items-center">
+                                    <Clock size={12} className="mr-1" /> Atualizado em {formatDate(latestSkincare.date)}
+                                </p>
+                                <div className="text-sm text-gray-700 whitespace-pre-wrap font-medium leading-relaxed max-h-[200px] overflow-y-auto custom-scrollbar">
+                                    {latestSkincare.skincarePlan}
+                                </div>
+                            </div>
+                            <button className="w-full py-2 border border-purple-200 text-purple-700 rounded-lg hover:bg-purple-50 transition-colors text-sm font-bold flex items-center justify-center">
+                                <FileText size={16} className="mr-2" /> Ver Histórico Completo
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center py-8 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                            <Sparkles size={40} className="text-gray-300 mb-3" />
+                            <p className="text-gray-500 font-medium">Ainda sem plano personalizado</p>
+                            <p className="text-xs text-gray-400 max-w-xs mx-auto mt-1">
+                                Agende uma consulta para receber sua rotina ideal de cuidados com a pele.
+                            </p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Photo Evolution (Secure) */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-diva-light/30 flex flex-col">
+                    <div className="flex items-center mb-4 text-diva-primary">
+                        <Camera className="mr-2" size={24} />
+                        <h2 className="text-lg font-bold text-diva-dark">Minha Evolução</h2>
+                        <Lock size={14} className="ml-2 text-gray-400" />
+                    </div>
+
+                    {latestPhotos ? (
+                        <div className="flex-1 flex flex-col">
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div className="bg-gray-100 rounded-xl overflow-hidden aspect-square relative group">
+                                    {latestPhotos.beforePhotos && latestPhotos.beforePhotos[0] ? (
+                                        <img src={latestPhotos.beforePhotos[0]} alt="Antes" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-gray-400 bg-gray-200">Sem foto</div>
+                                    )}
+                                    <div className="absolute top-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase">Antes</div>
+                                </div>
+                                <div className="bg-gray-100 rounded-xl overflow-hidden aspect-square relative group">
+                                    {latestPhotos.afterPhotos && latestPhotos.afterPhotos[0] ? (
+                                        <img src={latestPhotos.afterPhotos[0]} alt="Depois" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-gray-400 bg-gray-200">Em breve</div>
+                                    )}
+                                    <div className="absolute top-2 left-2 bg-diva-primary/90 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase">Depois</div>
+                                </div>
+                            </div>
+                            <p className="text-xs text-center text-gray-400 mb-4">
+                                Registro de {formatDate(latestPhotos.date)} - {latestPhotos.serviceName}
+                            </p>
+                            <button className="w-full py-2 bg-diva-dark text-white rounded-lg hover:bg-diva-primary transition-colors text-sm font-bold flex items-center justify-center">
+                                <Image size={16} className="mr-2" /> Acessar Galeria Privada
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center py-8 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                            <Camera size={40} className="text-gray-300 mb-3" />
+                            <p className="text-gray-500 font-medium">Nenhum registro fotográfico</p>
+                            <p className="text-xs text-gray-400 max-w-xs mx-auto mt-1">
+                                Suas fotos de 'Antes e Depois' aparecerão aqui após seus procedimentos.
+                            </p>
+                        </div>
+                    )}
+                </div>
+            </div>
+
             {/* MY TREATMENTS / PLANS */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-diva-light/30 mb-8">
                 <div className="flex items-center mb-6 text-diva-primary">
@@ -169,8 +261,8 @@ const ClientPortalModule: React.FC<ClientPortalProps> = ({ user }) => {
                                         <div className="flex items-center gap-3">
                                             <h3 className="font-bold text-gray-800">{plan.name}</h3>
                                             <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase font-bold ${plan.status === 'completed' ? 'bg-green-100 text-green-700' :
-                                                    plan.status === 'closed' ? 'bg-blue-100 text-blue-700' :
-                                                        'bg-yellow-100 text-yellow-700'
+                                                plan.status === 'closed' ? 'bg-blue-100 text-blue-700' :
+                                                    'bg-yellow-100 text-yellow-700'
                                                 }`}>
                                                 {plan.status === 'closed' ? 'Ativo' : plan.status === 'completed' ? 'Concluído' : 'Processando'}
                                             </span>

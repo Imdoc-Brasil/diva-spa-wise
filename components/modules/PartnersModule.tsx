@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { Partner, PartnerType, Transaction } from '../../types';
-import { Users, Link as LinkIcon, DollarSign, Award, TrendingUp, Instagram, Building, User, Plus, Copy, Edit, Search, CheckCircle } from 'lucide-react';
+import { Users, Link as LinkIcon, DollarSign, Award, TrendingUp, Instagram, Building, User, Plus, Copy, Edit, Search, CheckCircle, FileText } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
 import NewPartnerModal from '../modals/NewPartnerModal';
+import PartnerContractModal from '../modals/PartnerContractModal';
 import { useToast } from '../ui/ToastContext';
 import { useData } from '../context/DataContext';
 
@@ -10,6 +11,7 @@ const PartnersModule: React.FC = () => {
     const { partners, addPartner, updatePartner, leads, clients, appointments, addTransaction } = useData();
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isContractModalOpen, setIsContractModalOpen] = useState(false);
     const [editingPartner, setEditingPartner] = useState<Partner | null>(null);
     const { addToast } = useToast();
 
@@ -55,7 +57,7 @@ const PartnersModule: React.FC = () => {
         switch (type) {
             case 'influencer': return <Instagram size={20} className="text-pink-600" />;
             case 'business': return <Building size={20} className="text-blue-600" />;
-            case 'client': return <User size={20} className="text-green-600" />;
+            default: return <User size={20} className="text-green-600" />;
         }
     };
 
@@ -66,6 +68,7 @@ const PartnersModule: React.FC = () => {
         if (confirm(`Confirmar pagamento de ${formatCurrency(partner.pendingPayout)} para ${partner.name} via PIX?`)) {
             const transaction: Transaction = {
                 id: `tx_payout_${Date.now()}`,
+                organizationId: 'org_default',
                 description: `Comissão Parceiro: ${partner.name}`,
                 amount: partner.pendingPayout,
                 type: 'expense',
@@ -92,6 +95,7 @@ const PartnersModule: React.FC = () => {
                 if (partner.pendingPayout > 0) {
                     const transaction: Transaction = {
                         id: `tx_payout_${Date.now()}_${partner.id}`,
+                        organizationId: 'org_default',
                         description: `Comissão Parceiro: ${partner.name}`,
                         amount: partner.pendingPayout,
                         type: 'expense',
@@ -128,6 +132,11 @@ const PartnersModule: React.FC = () => {
     const openEditModal = (partner: Partner) => {
         setEditingPartner(partner);
         setIsModalOpen(true);
+    };
+
+    const handleGenerateContract = (partner: Partner) => {
+        setEditingPartner(partner);
+        setIsContractModalOpen(true);
     };
 
     const filteredPartners = partnersWithMetrics.filter(p =>
@@ -273,15 +282,24 @@ const PartnersModule: React.FC = () => {
                                     </div>
 
                                     <div className="flex justify-between items-center pt-2">
-                                        <button
-                                            className="text-xs font-bold text-gray-500 hover:text-diva-dark flex items-center bg-white border border-gray-200 px-3 py-1.5 rounded-lg transition-colors"
-                                            onClick={() => {
-                                                navigator.clipboard.writeText(`https://divaspa.com.br/?ref=${partner.code}`);
-                                                addToast("Link copiado!", "success");
-                                            }}
-                                        >
-                                            <LinkIcon size={14} className="mr-1" /> Copiar Link Rastreável
-                                        </button>
+                                        <div className="flex gap-2">
+                                            <button
+                                                className="text-xs font-bold text-gray-500 hover:text-diva-dark flex items-center bg-white border border-gray-200 px-3 py-1.5 rounded-lg transition-colors"
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(`https://divaspa.com.br/?ref=${partner.code}`);
+                                                    addToast("Link copiado!", "success");
+                                                }}
+                                            >
+                                                <LinkIcon size={14} className="mr-1" /> Copiar Link
+                                            </button>
+
+                                            <button
+                                                className="text-xs font-bold text-gray-500 hover:text-diva-dark flex items-center bg-white border border-gray-200 px-3 py-1.5 rounded-lg transition-colors"
+                                                onClick={() => handleGenerateContract(partner)}
+                                            >
+                                                <FileText size={14} className="mr-1" /> Contrato
+                                            </button>
+                                        </div>
 
                                         {partner.pendingPayout > 0 && (
                                             <button
@@ -343,6 +361,14 @@ const PartnersModule: React.FC = () => {
                 onSave={handleSavePartner}
                 initialData={editingPartner}
             />
+
+            {editingPartner && (
+                <PartnerContractModal
+                    isOpen={isContractModalOpen}
+                    onClose={() => setIsContractModalOpen(false)}
+                    partner={editingPartner}
+                />
+            )}
         </div>
     );
 };

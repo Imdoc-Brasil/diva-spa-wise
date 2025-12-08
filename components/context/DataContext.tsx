@@ -53,9 +53,70 @@ const createUser = (role: UserRole): User => {
 // --- INITIAL MOCK DATA (Centralized) ---
 
 const initialClients: Client[] = [
-  { clientId: '1', organizationId: 'org_demo', userId: 'u1', name: 'Ana Silva', email: 'ana@example.com', phone: '(11) 99999-9999', rfmScore: 85, behaviorTags: ['VIP', 'Laser Perna'], lifetimeValue: 3500, lastContact: '2023-10-25', referralPoints: 150, loyaltyPoints: 300, unitId: 'u1' },
-  { clientId: '2', organizationId: 'org_demo', userId: 'u2', name: 'Beatriz Costa', email: 'bia@example.com', phone: '(11) 98888-8888', rfmScore: 40, behaviorTags: ['Novo Paciente'], lifetimeValue: 200, lastContact: '2023-10-20', referralPoints: 0, loyaltyPoints: 0, unitId: 'u2' },
-  { clientId: '3', organizationId: 'org_demo', userId: 'u3', name: 'Carla Dias', email: 'carla@example.com', phone: '(11) 97777-7777', rfmScore: 65, behaviorTags: ['Botox', 'Frequente'], lifetimeValue: 1200, lastContact: '2023-10-15', referralPoints: 50, loyaltyPoints: 100, unitId: 'u1' },
+  {
+    clientId: '1',
+    organizationId: 'org_demo',
+    userId: 'u1',
+    name: 'Ana Silva',
+    email: 'ana@example.com',
+    phone: '(11) 99999-9999',
+    rfmScore: 85,
+    behaviorTags: ['VIP', 'Laser Perna'],
+    lifetimeValue: 3500,
+    lastContact: '2023-10-25',
+    referralPoints: 150,
+    loyaltyPoints: 300,
+    unitId: 'u1',
+    cpf: '123.456.789-00',
+    rg: '12.345.678-9',
+    birthDate: '1990-05-15',
+    gender: 'female',
+    profession: 'Advogada',
+    address: {
+      street: 'Rua das Flores',
+      number: '123',
+      complement: 'Apto 101',
+      neighborhood: 'Jardins',
+      city: 'São Paulo',
+      state: 'SP',
+      zipCode: '01234-567'
+    },
+    notes: 'Cliente prefere horários pela manhã.'
+  },
+  {
+    clientId: '2',
+    organizationId: 'org_demo',
+    userId: 'u2',
+    name: 'Beatriz Costa',
+    email: 'bia@example.com',
+    phone: '(11) 98888-8888',
+    rfmScore: 40,
+    behaviorTags: ['Novo Paciente'],
+    lifetimeValue: 200,
+    lastContact: '2023-10-20',
+    referralPoints: 0,
+    loyaltyPoints: 0,
+    unitId: 'u2',
+    cpf: '987.654.321-00',
+    birthDate: '1995-10-20',
+    gender: 'female',
+    notes: 'Primeira vez fazendo laser.'
+  },
+  {
+    clientId: '3',
+    organizationId: 'org_demo',
+    userId: 'u3',
+    name: 'Carla Dias',
+    email: 'carla@example.com',
+    phone: '(11) 97777-7777',
+    rfmScore: 65,
+    behaviorTags: ['Botox', 'Frequente'],
+    lifetimeValue: 1200,
+    lastContact: '2023-10-15',
+    referralPoints: 50,
+    loyaltyPoints: 100,
+    unitId: 'u1'
+  },
 ];
 
 const initialLeads: SalesLead[] = [

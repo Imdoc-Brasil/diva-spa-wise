@@ -263,6 +263,20 @@ export interface Client {
     channelSource?: string; // Novo: Origem do cliente
     referredBy?: string;    // Novo: ID ou Nome de quem indicou
     cpf?: string;           // Novo: Documento CPF
+    rg?: string;            // Novo: RG
+    birthDate?: string;     // Novo: Data de Nascimento (ISO)
+    gender?: 'female' | 'male' | 'other'; // Novo: Gênero
+    profession?: string;    // Novo: Profissão
+    address?: {             // Novo: Endereço completo
+        street: string;
+        number: string;
+        complement?: string;
+        neighborhood: string;
+        city: string;
+        state: string;
+        zipCode: string;
+    };
+    notes?: string;         // Novo: Observações Gerais
     unitId?: string;        // Novo: ID da unidade
 }
 

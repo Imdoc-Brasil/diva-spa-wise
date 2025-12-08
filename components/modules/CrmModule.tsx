@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Client, SalesLead, LeadStage, User as UserType } from '../../types';
-import { Search, Filter, Phone, Mail, MoreHorizontal, Plus, Crown, Star, MessageCircle, TrendingUp, Users, DollarSign } from 'lucide-react';
+import { Search, Filter, Phone, Mail, MoreHorizontal, Plus, Crown, Star, MessageCircle, TrendingUp, Users, DollarSign, Download } from 'lucide-react';
 import ClientProfileModal from '../modals/ClientProfileModal';
 import NewClientModal from '../modals/NewClientModal';
 import { useUnitData } from '../hooks/useUnitData';
@@ -103,6 +103,31 @@ const CrmModule: React.FC<CrmModuleProps> = ({ user }) => {
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(val);
+
+  const handleExport = () => {
+    const headers = ['Nome', 'Email', 'Telefone', 'CPF', 'LTV', 'Pontos', 'Tags'];
+    const csvContent = [
+      headers.join(','),
+      ...filteredClients.map(c => [
+        `"${c.name}"`,
+        c.email,
+        c.phone,
+        c.cpf || '',
+        c.lifetimeValue,
+        c.loyaltyPoints,
+        `"${c.behaviorTags.join(';')}"`
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `pacientes_diva_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="flex flex-col h-full gap-6">
@@ -227,6 +252,15 @@ const CrmModule: React.FC<CrmModuleProps> = ({ user }) => {
               <option value="Hibernating">💤 Hibernando</option>
               <option value="Lost">❌ Perdidos</option>
             </select>
+
+            <button
+              onClick={handleExport}
+              className="px-4 py-2 bg-white border border-diva-light/50 rounded-lg text-diva-dark hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+              title="Exportar Lista"
+            >
+              <Download size={20} />
+              <span className="hidden sm:inline">Exportar</span>
+            </button>
 
             <button
               onClick={() => setIsNewClientModalOpen(true)}

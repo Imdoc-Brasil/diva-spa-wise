@@ -4,6 +4,7 @@ import { Transaction, TransactionType, TransactionStatus, User as UserType, User
 import { DollarSign, TrendingUp, TrendingDown, AlertCircle, Download, Filter, FileText, Lock, Award, Settings, Calendar, RefreshCcw } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
 import CashClosingModal from '../modals/CashClosingModal';
+import DREReportModal from '../modals/DREReportModal';
 import NewTransactionModal from '../modals/NewTransactionModal';
 import PaymentSettingsModal from '../modals/PaymentSettingsModal';
 import ReceiptPreviewModal from '../modals/ReceiptPreviewModal';
@@ -18,6 +19,7 @@ const FinanceModule: React.FC<FinanceModuleProps> = ({ user }) => {
     const { transactions, staff, appointments, suppliers, fiscalRecords, updateTransaction, addFiscalRecord } = useUnitData();
     const [activeTab, setActiveTab] = useState<'overview' | 'commissions' | 'payables' | 'fiscal'>('overview');
     const [isClosingModalOpen, setIsClosingModalOpen] = useState(false);
+    const [isDREModalOpen, setIsDREModalOpen] = useState(false);
     const [isNewTransactionModalOpen, setIsNewTransactionModalOpen] = useState(false);
     const [isPaymentSettingsModalOpen, setIsPaymentSettingsModalOpen] = useState(false);
 
@@ -370,8 +372,8 @@ const FinanceModule: React.FC<FinanceModuleProps> = ({ user }) => {
                                 </div>
                                 <div className="absolute top-[-20px] right-[-20px] opacity-10"><Lock size={120} /></div>
                             </div>
-                            <button className="w-full flex items-center justify-center space-x-2 bg-white border border-diva-dark text-diva-dark py-3 rounded-lg hover:bg-gray-50 transition">
-                                <Download size={18} /><span>Exportar Relatório DRE</span>
+                            <button onClick={() => setIsDREModalOpen(true)} className="w-full flex items-center justify-center space-x-2 bg-white border border-diva-dark text-diva-dark py-3 rounded-lg hover:bg-gray-50 transition">
+                                <Download size={18} /><span>Abrir Relatório DRE</span>
                             </button>
                         </div>
                     </div>
@@ -609,6 +611,7 @@ const FinanceModule: React.FC<FinanceModuleProps> = ({ user }) => {
             )}
 
             <CashClosingModal isOpen={isClosingModalOpen} onClose={() => setIsClosingModalOpen(false)} />
+            <DREReportModal isOpen={isDREModalOpen} onClose={() => setIsDREModalOpen(false)} transactions={transactions} />
             <NewTransactionModal isOpen={isNewTransactionModalOpen} onClose={() => setIsNewTransactionModalOpen(false)} />
             <PaymentSettingsModal isOpen={isPaymentSettingsModalOpen} onClose={() => setIsPaymentSettingsModalOpen(false)} />
 

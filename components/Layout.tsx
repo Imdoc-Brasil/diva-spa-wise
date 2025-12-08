@@ -135,12 +135,12 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
       items: [
         { label: 'Fluxo de Caixa', path: '/finance', icon: <DollarSign size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.FINANCE] },
         { label: 'Diva Pay', path: '/pay', icon: <CreditCard size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.FINANCE] },
-        { label: 'Relatórios DRE', path: '/reports', icon: <FileBarChart size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.FINANCE] },
       ]
     },
     {
       title: 'Gestão & Admin',
       items: [
+        { label: 'Analytics & Relatórios', path: '/reports', icon: <FileBarChart size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.FINANCE] },
         { label: 'Franquia', path: '/franchise', icon: <Building size={20} />, allowedRoles: [UserRole.ADMIN] },
         { label: 'Equipe (Staff)', path: '/staff', icon: <UserCheck size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF] },
         { label: 'Recrutamento', path: '/talent', icon: <Briefcase size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER] },

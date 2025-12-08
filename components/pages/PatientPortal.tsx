@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, CheckCircle, Clock, AlertCircle, Download, Calendar, MapPin, Users, MessageSquare, CreditCard, Bell, Megaphone, Star, Crown, Gift, History, Smartphone } from 'lucide-react';
+import { FileText, CheckCircle, Clock, AlertCircle, Download, Calendar, MapPin, Users, MessageSquare, CreditCard, Bell, Megaphone, Star, Crown, Gift, History, Smartphone, Plus, ChevronRight, ChevronLeft } from 'lucide-react';
 import SignaturePad from '../ui/SignaturePad';
-import { ClientDocument, DocumentSignature, ClinicEvent } from '../../types';
+import { ClientDocument, DocumentSignature, ClinicEvent, AppointmentStatus, ServiceAppointment } from '../../types';
 import { useData } from '../context/DataContext';
 import { TokenService, SignatureService, PDFService } from '../../services/documentServices';
 
@@ -17,7 +17,7 @@ const PatientPortal: React.FC<PatientPortalProps> = ({ token }) => {
     const [documents, setDocuments] = useState<ClientDocument[]>([]);
     const [selectedDocument, setSelectedDocument] = useState<ClientDocument | null>(null);
     const [showSignaturePad, setShowSignaturePad] = useState(false);
-    const [activeTab, setActiveTab] = useState<'documents' | 'events' | 'notifications' | 'loyalty'>('documents');
+    const [activeTab, setActiveTab] = useState<'documents' | 'events' | 'notifications' | 'loyalty' | 'scheduling'>('scheduling');
     const [installPrompt, setInstallPrompt] = useState<any>(null);
 
     useEffect(() => {
@@ -43,7 +43,15 @@ const PatientPortal: React.FC<PatientPortalProps> = ({ token }) => {
         }
     };
 
-    const { events, guests, addGuest, updateGuest } = useData();
+    const { events, guests, addGuest, updateGuest, appointments, services, staff, addAppointment } = useData();
+
+    // Booking State
+    const [showBooking, setShowBooking] = useState(false);
+    const [bookingStep, setBookingStep] = useState(1);
+    const [selectedService, setSelectedService] = useState<string | null>(null);
+    const [selectedProfessional, setSelectedProfessional] = useState<string | null>(null);
+    const [selectedDate, setSelectedDate] = useState<string>('');
+    const [selectedTime, setSelectedTime] = useState<string>('');
     // Derived state for registrations will be calculated from guests and clientId
 
     useEffect(() => {
@@ -317,7 +325,14 @@ const PatientPortal: React.FC<PatientPortalProps> = ({ token }) => {
                         </div>
                     </div>
 
-                    <div className="flex gap-6 mt-8 border-b border-gray-200">
+                    <div className="flex gap-6 mt-8 border-b border-gray-200 overflow-x-auto">
+                        <button
+                            onClick={() => setActiveTab('scheduling')}
+                            className={`pb-4 px-2 font-bold text-sm transition-colors relative whitespace-nowrap ${activeTab === 'scheduling' ? 'text-diva-primary' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            Agendamentos
+                            {activeTab === 'scheduling' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-diva-primary rounded-t-full"></div>}
+                        </button>
                         <button
                             onClick={() => setActiveTab('documents')}
                             className={`pb-4 px-2 font-bold text-sm transition-colors relative ${activeTab === 'documents' ? 'text-diva-primary' : 'text-gray-500 hover:text-gray-700'}`}
@@ -350,6 +365,249 @@ const PatientPortal: React.FC<PatientPortalProps> = ({ token }) => {
                         </button>
                     </div>
                 </div>
+
+                {activeTab === 'scheduling' && (
+                    <div className="space-y-6">
+                        {!showBooking ? (
+                            <>
+                                {/* Upcoming Appointments */}
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="font-bold text-lg text-diva-dark">Próximas Consultas</h3>
+                                    <button
+                                        onClick={() => setShowBooking(true)}
+                                        className="bg-diva-primary text-white px-4 py-2 rounded-lg font-bold text-sm shadow-md hover:bg-diva-dark transition-colors flex items-center gap-2"
+                                    >
+                                        <Plus size={16} /> Nova Consulta
+                                    </button>
+                                </div>
+
+                                {appointments.filter(a => a.clientName === clientName && a.status !== AppointmentStatus.CANCELLED).length > 0 ? (
+                                    <div className="space-y-4">
+                                        {appointments
+                                            .filter(a => a.clientName === clientName && a.status !== AppointmentStatus.CANCELLED)
+                                            .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+                                            .map(apt => (
+                                                <div key={apt.appointmentId} className="bg-white rounded-xl shadow-md p-5 border border-gray-100 flex justify-between items-center">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="bg-purple-100 text-purple-600 w-12 h-12 rounded-xl flex items-center justify-center">
+                                                            <Calendar size={24} />
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-bold text-gray-900">{apt.serviceName || apt.serviceId}</h4>
+                                                            <p className="text-sm text-gray-500 flex items-center gap-2">
+                                                                <Clock size={12} /> {new Date(apt.startTime).toLocaleDateString()} às {new Date(apt.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            </p>
+                                                            <p className="text-xs text-purple-600 font-medium mt-1">
+                                                                Profissional: {staff.find(s => s.id === apt.staffId)?.name || apt.staffName || 'Dra. Julia'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold mb-2 ${apt.status === AppointmentStatus.CONFIRMED ? 'bg-green-100 text-green-700' :
+                                                                apt.status === AppointmentStatus.COMPLETED ? 'bg-blue-100 text-blue-700' :
+                                                                    'bg-yellow-100 text-yellow-700'
+                                                            }`}>
+                                                            {apt.status === AppointmentStatus.CONFIRMED ? 'Confirmado' : apt.status === AppointmentStatus.COMPLETED ? 'Concluído' : 'Pendente'}
+                                                        </span>
+                                                        <br />
+                                                        <button className="text-xs text-red-400 hover:text-red-600 font-bold underline">Cancelar</button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                    </div>
+                                ) : (
+                                    <div className="bg-white rounded-xl shadow-sm p-8 text-center border border-gray-100">
+                                        <Calendar size={48} className="mx-auto text-gray-300 mb-4" />
+                                        <h3 className="font-bold text-gray-900">Nenhuma consulta agendada</h3>
+                                        <p className="text-gray-500 text-sm mb-6">Que tal marcar um momento para você?</p>
+                                        <button
+                                            onClick={() => setShowBooking(true)}
+                                            className="bg-diva-primary text-white px-6 py-3 rounded-xl font-bold hover:bg-diva-dark transition-colors"
+                                        >
+                                            Agendar Agora
+                                        </button>
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            /* BOOKING WIZARD */
+                            <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+                                <div className="bg-gray-50 p-4 border-b border-gray-100 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={() => {
+                                            if (bookingStep > 1) setBookingStep(bookingStep - 1);
+                                            else setShowBooking(false);
+                                        }} className="p-2 hover:bg-gray-200 rounded-full text-gray-500">
+                                            <ChevronLeft size={20} />
+                                        </button>
+                                        <h3 className="font-bold text-gray-900">
+                                            {bookingStep === 1 ? 'Escolha o Serviço' :
+                                                bookingStep === 2 ? 'Escolha o Profissional' :
+                                                    bookingStep === 3 ? 'Escolha a Data' : 'Confirmação'}
+                                        </h3>
+                                    </div>
+                                    <div className="text-sm font-bold text-diva-primary">Passo {bookingStep}/4</div>
+                                </div>
+
+                                <div className="p-6">
+                                    {/* STEP 1: SERVICES */}
+                                    {bookingStep === 1 && (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {services.filter(s => s.active).map(service => (
+                                                <div
+                                                    key={service.id}
+                                                    onClick={() => {
+                                                        setSelectedService(service.id);
+                                                        setBookingStep(2);
+                                                    }}
+                                                    className="border border-gray-200 rounded-xl p-4 cursor-pointer hover:border-diva-primary hover:bg-purple-50 transition-all flex justify-between items-center group"
+                                                >
+                                                    <div>
+                                                        <h4 className="font-bold text-gray-800">{service.name}</h4>
+                                                        <p className="text-sm text-gray-500">{service.duration} min • R$ {service.price.toFixed(2)}</p>
+                                                    </div>
+                                                    <ChevronRight className="text-gray-300 group-hover:text-diva-primary" size={20} />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* STEP 2: PROFESSIONAL */}
+                                    {bookingStep === 2 && (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div
+                                                onClick={() => {
+                                                    setSelectedProfessional('any');
+                                                    setBookingStep(3);
+                                                }}
+                                                className="border border-gray-200 rounded-xl p-4 cursor-pointer hover:border-diva-primary hover:bg-purple-50 transition-all flex items-center gap-4"
+                                            >
+                                                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-500">
+                                                    <Users size={20} />
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-gray-800">Qualquer Profissional</h4>
+                                                    <p className="text-sm text-gray-500">Encontrar horário mais próximo</p>
+                                                </div>
+                                            </div>
+                                            {staff.map(member => (
+                                                <div
+                                                    key={member.id}
+                                                    onClick={() => {
+                                                        setSelectedProfessional(member.id);
+                                                        setBookingStep(3);
+                                                    }}
+                                                    className="border border-gray-200 rounded-xl p-4 cursor-pointer hover:border-diva-primary hover:bg-purple-50 transition-all flex items-center gap-4"
+                                                >
+                                                    <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center font-bold">
+                                                        {member.name.charAt(0)}
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-bold text-gray-800">{member.name}</h4>
+                                                        <p className="text-sm text-gray-500">{member.role}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* STEP 3: DATE & TIME (Simplificado) */}
+                                    {bookingStep === 3 && (
+                                        <div className="space-y-6">
+                                            <div>
+                                                <label className="block text-sm font-bold text-gray-700 mb-2">Selecione o Dia</label>
+                                                <input
+                                                    type="date"
+                                                    className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:border-diva-primary"
+                                                    value={selectedDate}
+                                                    onChange={(e) => setSelectedDate(e.target.value)}
+                                                    min={new Date().toISOString().split('T')[0]}
+                                                />
+                                            </div>
+
+                                            {selectedDate && (
+                                                <div>
+                                                    <label className="block text-sm font-bold text-gray-700 mb-2">Horários Disponíveis</label>
+                                                    <div className="grid grid-cols-4 gap-3">
+                                                        {['09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00'].map(time => (
+                                                            <button
+                                                                key={time}
+                                                                onClick={() => setSelectedTime(time)}
+                                                                className={`py-2 rounded-lg text-sm font-bold transition-colors ${selectedTime === time ? 'bg-diva-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                                            >
+                                                                {time}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <div className="flex justify-end pt-4">
+                                                <button
+                                                    onClick={() => setBookingStep(4)}
+                                                    disabled={!selectedDate || !selectedTime}
+                                                    className="bg-diva-primary text-white px-8 py-3 rounded-xl font-bold hover:bg-diva-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    Continuar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* STEP 4: CONFIRMATION */}
+                                    {bookingStep === 4 && (
+                                        <div className="text-center py-6">
+                                            <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                                                <CheckCircle size={32} />
+                                            </div>
+                                            <h3 className="text-2xl font-bold text-gray-900 mb-2">Confirmar Agendamento?</h3>
+                                            <p className="text-gray-500 mb-8">
+                                                Serviço: <strong>{services.find(s => s.id === selectedService)?.name}</strong><br />
+                                                Data: <strong>{new Date(selectedDate).toLocaleDateString()} às {selectedTime}</strong><br />
+                                                Profissional: <strong>{selectedProfessional === 'any' ? 'Qualquer um disponível' : staff.find(s => s.id === selectedProfessional)?.name}</strong>
+                                            </p>
+
+                                            <button
+                                                onClick={() => {
+                                                    // Create appointment logic here
+                                                    const selectedServiceObj = services.find(s => s.id === selectedService);
+                                                    const startDateTime = new Date(`${selectedDate}T${selectedTime}`);
+                                                    const endDateTime = new Date(startDateTime.getTime() + (selectedServiceObj?.duration || 60) * 60000);
+
+                                                    const newAppt: ServiceAppointment = {
+                                                        appointmentId: `apt_${Date.now()}`,
+                                                        organizationId: 'org_demo',
+                                                        clientId: clientId,
+                                                        clientName: clientName,
+                                                        serviceId: selectedService || '',
+                                                        serviceName: selectedServiceObj?.name || '',
+                                                        staffId: selectedProfessional === 'any' ? staff[0].id : selectedProfessional || '',
+                                                        staffName: staff.find(s => s.id === (selectedProfessional === 'any' ? staff[0].id : selectedProfessional))?.name || '',
+                                                        roomId: 'room1', // Default room
+                                                        startTime: startDateTime.toISOString(),
+                                                        endTime: endDateTime.toISOString(),
+                                                        price: selectedServiceObj?.price || 0,
+                                                        status: AppointmentStatus.CONFIRMED,
+                                                        referralSource: 'app_paciente'
+                                                    };
+                                                    addAppointment(newAppt);
+                                                    alert('Agendamento realizado com sucesso!');
+                                                    setShowBooking(false);
+                                                    setBookingStep(1);
+                                                    setSelectedDate('');
+                                                    setSelectedTime('');
+                                                }}
+                                                className="bg-green-500 text-white px-8 py-3 rounded-xl font-bold hover:bg-green-600 transition-colors shadow-lg hover:shadow-xl w-full md:w-auto"
+                                            >
+                                                Confirmar Agendamento
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {activeTab === 'notifications' && (
                     <div className="space-y-4 max-w-2xl mx-auto">

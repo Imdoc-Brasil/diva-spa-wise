@@ -45,6 +45,7 @@ import NewOrganizationWizard from './components/onboarding/NewOrganizationWizard
 import TreatmentPlansModule from './components/modules/TreatmentPlansModule';
 import PublicPage from './components/public/PublicPage';
 import SalesPage from './components/public/SalesPage';
+import SignupPage from './components/public/SignupPage';
 import StaffDashboard from './components/StaffDashboard';
 import LoginPage from './components/LoginPage';
 import NotFound from './components/NotFound';
@@ -79,6 +80,7 @@ const AppContent: React.FC = () => {
                 {/* PUBLIC SITE ROUTE (Accessible without Login) */}
                 <Route path="/site" element={<PublicPage />} />
                 <Route path="/sales" element={<SalesPage />} />
+                <Route path="/signup" element={<SignupPage />} />
 
                 {user ? (
                     <>
