@@ -56,6 +56,8 @@ const SalesPage: React.FC = () => {
         return lostRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     };
 
+    const primaryColor = saasAppConfig?.primaryColor || '#9333ea';
+
     const scrollToSection = (id: string) => {
         const element = document.getElementById(id);
         if (element) {
@@ -64,13 +66,18 @@ const SalesPage: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-900 text-white font-sans selection:bg-purple-500 selection:text-white overflow-x-hidden">
+        <div className="min-h-screen bg-slate-900 text-white font-sans selection:bg-[var(--primary-color)] selection:text-white overflow-x-hidden">
+            <style>{`
+                :root {
+                    --primary-color: ${primaryColor};
+                }
+            `}</style>
 
             {/* Navbar */}
             <nav className="fixed w-full z-50 bg-slate-900/80 backdrop-blur-md border-b border-white/10">
                 <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center font-bold text-white">I</div>
+                        <div className="w-8 h-8 bg-gradient-to-br from-[var(--primary-color)] to-[var(--primary-color)] rounded-lg flex items-center justify-center font-bold text-white">I</div>
                         <span className="font-bold text-xl tracking-wide">I'mDoc SaaS</span>
                     </div>
                     <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
@@ -93,7 +100,7 @@ const SalesPage: React.FC = () => {
             {/* Hero Section */}
             <header className="relative pt-32 pb-20 px-6 overflow-hidden">
                 {/* Background Effects */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-purple-600/30 rounded-full blur-[120px] -z-10"></div>
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-[var(--primary-color)]/30 rounded-full blur-[120px] -z-10"></div>
                 <div className="absolute top-20 right-0 w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[100px] -z-10 animate-pulse"></div>
 
                 <div className="max-w-7xl mx-auto text-center relative z-10">
@@ -113,7 +120,7 @@ const SalesPage: React.FC = () => {
                     <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
                         <button
                             onClick={() => scrollToSection('pricing')}
-                            className="group relative px-8 py-4 bg-purple-600 hover:bg-purple-700 rounded-full font-bold text-lg shadow-[0_0_40px_-10px_rgba(147,51,234,0.5)] transition-all hover:scale-105"
+                            className="group relative px-8 py-4 bg-[var(--primary-color)] hover:opacity-90 rounded-full font-bold text-lg shadow-[0_0_40px_-10px_var(--primary-color)] transition-all hover:scale-105"
                         >
                             <span className="relative z-10 flex items-center gap-2">
                                 Quero Ver o Futuro Agora <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
@@ -149,7 +156,7 @@ const SalesPage: React.FC = () => {
 
                         <div className="absolute bottom-10 left-10 bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 shadow-lg animate-bounce duration-[4000ms]">
                             <div className="flex gap-3 items-center">
-                                <div className="p-2 bg-purple-500/20 rounded-lg text-purple-400"><Users size={20} /></div>
+                                <div className="p-2 bg-[var(--primary-color)]/20 rounded-lg text-[var(--primary-color)]"><Users size={20} /></div>
                                 <div>
                                     <p className="text-xs text-slate-400 uppercase">Novos Pacientes</p>
                                     <p className="text-lg font-bold text-white">+28 esta semana</p>
@@ -175,7 +182,7 @@ const SalesPage: React.FC = () => {
                                         type="number"
                                         value={dailyPatients}
                                         onChange={(e) => setDailyPatients(Number(e.target.value))}
-                                        className="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-2xl font-bold text-white focus:border-purple-500 outline-none transition-colors"
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-2xl font-bold text-white focus:border-[var(--primary-color)] outline-none transition-colors"
                                     />
                                 </div>
                                 <div className="text-left">
@@ -184,7 +191,7 @@ const SalesPage: React.FC = () => {
                                         type="number"
                                         value={ticket}
                                         onChange={(e) => setTicket(Number(e.target.value))}
-                                        className="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-2xl font-bold text-white focus:border-purple-500 outline-none transition-colors"
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-2xl font-bold text-white focus:border-[var(--primary-color)] outline-none transition-colors"
                                     />
                                 </div>
                             </div>
@@ -205,7 +212,7 @@ const SalesPage: React.FC = () => {
                                     </p>
                                     <button
                                         onClick={handleCaptureLead}
-                                        className="mt-6 px-8 py-3 bg-purple-600 hover:bg-purple-700 rounded-full font-bold text-white transition-all shadow-lg flex items-center justify-center gap-2 mx-auto"
+                                        className="mt-6 px-8 py-3 bg-[var(--primary-color)] hover:opacity-90 rounded-full font-bold text-white transition-all shadow-lg flex items-center justify-center gap-2 mx-auto"
                                     >
                                         <PhoneCall size={18} /> Quero Resolver Isso Agora
                                     </button>
@@ -222,13 +229,13 @@ const SalesPage: React.FC = () => {
                     <div className="max-w-7xl mx-auto">
                         <div className="text-center mb-20">
                             <h2 className="text-4xl font-bold mb-4">I'mdoc Intelligence</h2>
-                            <div className="h-1 w-20 bg-purple-600 mx-auto rounded-full"></div>
+                            <div className="h-1 w-20 bg-[var(--primary-color)] mx-auto rounded-full"></div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                             {/* Feature 1 */}
-                            <div className="bg-slate-800/30 p-8 rounded-3xl border border-white/5 hover:border-purple-500/50 hover:bg-slate-800/50 transition-all group">
-                                <div className="w-16 h-16 bg-purple-500/10 rounded-2xl flex items-center justify-center text-purple-400 mb-6 group-hover:scale-110 transition-transform">
+                            <div className="bg-slate-800/30 p-8 rounded-3xl border border-white/5 hover:border-[var(--primary-color)]/50 hover:bg-slate-800/50 transition-all group">
+                                <div className="w-16 h-16 bg-[var(--primary-color)]/10 rounded-2xl flex items-center justify-center text-[var(--primary-color)] mb-6 group-hover:scale-110 transition-transform">
                                     <TrendingUp size={32} />
                                 </div>
                                 <h3 className="text-2xl font-bold mb-4">Crescimento Automático</h3>
@@ -238,7 +245,7 @@ const SalesPage: React.FC = () => {
                             </div>
 
                             {/* Feature 2 */}
-                            <div className="bg-slate-800/30 p-8 rounded-3xl border border-white/5 hover:border-purple-500/50 hover:bg-slate-800/50 transition-all group">
+                            <div className="bg-slate-800/30 p-8 rounded-3xl border border-white/5 hover:border-[var(--primary-color)]/50 hover:bg-slate-800/50 transition-all group">
                                 <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-400 mb-6 group-hover:scale-110 transition-transform">
                                     <Cpu size={32} />
                                 </div>
@@ -249,7 +256,7 @@ const SalesPage: React.FC = () => {
                             </div>
 
                             {/* Feature 3 */}
-                            <div className="bg-slate-800/30 p-8 rounded-3xl border border-white/5 hover:border-purple-500/50 hover:bg-slate-800/50 transition-all group">
+                            <div className="bg-slate-800/30 p-8 rounded-3xl border border-white/5 hover:border-[var(--primary-color)]/50 hover:bg-slate-800/50 transition-all group">
                                 <div className="w-16 h-16 bg-pink-500/10 rounded-2xl flex items-center justify-center text-pink-400 mb-6 group-hover:scale-110 transition-transform">
                                     <Star size={32} />
                                 </div>
@@ -269,7 +276,7 @@ const SalesPage: React.FC = () => {
 
                 <div className="max-w-6xl mx-auto px-6">
                     <div className="text-center mb-20">
-                        <span className="text-purple-400 font-bold uppercase tracking-widest text-sm mb-2 block">O Efeito I'mdoc</span>
+                        <span className="text-[var(--primary-color)] font-bold uppercase tracking-widest text-sm mb-2 block">O Efeito I'mdoc</span>
                         <h2 className="text-4xl md:text-5xl font-bold mb-6">A Jornada do Paciente Perfeito</h2>
                         <p className="text-slate-400 max-w-2xl mx-auto">
                             Veja como transformamos um visitante curioso em um fã leal da sua marca,
@@ -279,7 +286,7 @@ const SalesPage: React.FC = () => {
 
                     <div className="relative">
                         {/* Vertical Line */}
-                        <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-1 bg-gradient-to-b from-purple-500 via-pink-500 to-blue-500 rounded-full opacity-30 hidden md:block"></div>
+                        <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-1 bg-gradient-to-b from-[var(--primary-color)] via-pink-500 to-blue-500 rounded-full opacity-30 hidden md:block"></div>
 
                         <div className="space-y-24">
                             {[
@@ -288,7 +295,7 @@ const SalesPage: React.FC = () => {
                                     icon: <Search size={24} />,
                                     title: "Descoberta & Agendamento",
                                     desc: "O paciente encontra seu site (Diva Pages), vê seus resultados e agenda online em 3 cliques, 24/7.",
-                                    color: "bg-purple-500"
+                                    color: "bg-[var(--primary-color)]"
                                 },
                                 {
                                     step: 2,
@@ -322,7 +329,7 @@ const SalesPage: React.FC = () => {
                                 <div key={idx} className={`flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16 group ${idx % 2 !== 0 ? 'md:flex-row-reverse' : ''}`}>
                                     {/* Text Side */}
                                     <div className={`md:w-1/2 text-center ${idx % 2 !== 0 ? 'md:text-left' : 'md:text-right'}`}>
-                                        <h3 className="text-2xl font-bold mb-2 group-hover:text-purple-400 transition-colors">{item.title}</h3>
+                                        <h3 className="text-2xl font-bold mb-2 group-hover:text-[var(--primary-color)] transition-colors">{item.title}</h3>
                                         <p className="text-slate-400">{item.desc}</p>
                                     </div>
 
@@ -347,8 +354,8 @@ const SalesPage: React.FC = () => {
             <section id="ai-demo" className="py-24 bg-slate-800/30">
                 <div className="max-w-5xl mx-auto px-6 flex flex-col md:flex-row items-center gap-12">
                     <div className="md:w-1/2">
-                        <div className="inline-flex items-center gap-2 bg-purple-500/10 border border-purple-500/20 rounded-full px-4 py-1.5 mb-6">
-                            <Sparkles size={14} className="text-purple-400" />
+                        <div className="inline-flex items-center gap-2 bg-[var(--primary-color)]/10 border border-[var(--primary-color)]/20 rounded-full px-4 py-1.5 mb-6">
+                            <Sparkles size={14} className="text-[var(--primary-color)]" />
                             <span className="text-xs font-bold uppercase tracking-widest text-purple-300">Diva AI 2.0</span>
                         </div>
                         <h2 className="text-4xl font-bold mb-6 leading-tight">
@@ -393,7 +400,7 @@ const SalesPage: React.FC = () => {
                             <div className="flex-1 p-4 space-y-4 overflow-hidden relative">
                                 {/* Message 1 (User) */}
                                 <div className="flex justify-end animate-slide-up">
-                                    <div className="bg-purple-600 text-white px-4 py-2 rounded-2xl rounded-tr-sm text-sm max-w-[85%] shadow-lg">
+                                    <div className="bg-[var(--primary-color)] text-white px-4 py-2 rounded-2xl rounded-tr-sm text-sm max-w-[85%] shadow-lg">
                                         Diva, quanto vamos faturar até o final do mês?
                                     </div>
                                 </div>
@@ -414,7 +421,7 @@ const SalesPage: React.FC = () => {
 
                                 {/* Message 3 (User) */}
                                 <div className="flex justify-end animate-slide-up" style={{ animationDelay: '1s', animationFillMode: 'both' }}>
-                                    <div className="bg-purple-600 text-white px-4 py-2 rounded-2xl rounded-tr-sm text-sm max-w-[85%] shadow-lg">
+                                    <div className="bg-[var(--primary-color)] text-white px-4 py-2 rounded-2xl rounded-tr-sm text-sm max-w-[85%] shadow-lg">
                                         Boa! Crie essa campanha pra mim agora.
                                     </div>
                                 </div>
@@ -423,7 +430,7 @@ const SalesPage: React.FC = () => {
                                 <div className="flex justify-start animate-slide-up" style={{ animationDelay: '1.5s', animationFillMode: 'both' }}>
                                     <div className="bg-slate-800 border border-white/5 text-slate-200 px-4 py-3 rounded-2xl rounded-tl-sm text-sm max-w-[90%] shadow-lg">
                                         <p className="mb-2"><strong>Campanha Criada!</strong> ⚡️</p>
-                                        <div className="bg-slate-900 rounded p-2 text-xs font-mono text-purple-300 border border-purple-500/30 mb-2">
+                                        <div className="bg-slate-900 rounded p-2 text-xs font-mono text-purple-300 border border-[var(--primary-color)]/30 mb-2">
                                             Segmento: Clientes Inativos (Botox) &gt; 6 meses<br />
                                             Canal: WhatsApp
                                         </div>
@@ -449,8 +456,8 @@ const SalesPage: React.FC = () => {
                                 <thead>
                                     <tr>
                                         <th className="p-6 text-slate-500 font-medium uppercase tracking-wider text-sm">Funcionalidade</th>
-                                        <th className="p-6 bg-purple-900/20 text-purple-400 font-bold text-xl rounded-t-xl border-t border-x border-purple-500/30 text-center w-1/3 relative">
-                                            <div className="absolute top-0 left-0 w-full h-1 bg-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.8)]"></div>
+                                        <th className="p-6 bg-[var(--primary-color)]/20 text-[var(--primary-color)] font-bold text-xl rounded-t-xl border-t border-x border-[var(--primary-color)]/30 text-center w-1/3 relative">
+                                            <div className="absolute top-0 left-0 w-full h-1 bg-[var(--primary-color)] shadow-[0_0_20px_rgba(168,85,247,0.8)]"></div>
                                             I'mdoc SaaS
                                         </th>
                                         <th className="p-6 text-slate-400 font-bold text-lg text-center w-1/4">Doctoralia</th>
@@ -468,9 +475,9 @@ const SalesPage: React.FC = () => {
                                     ].map((row, idx) => (
                                         <tr key={idx} className="hover:bg-white/5 transition-colors">
                                             <td className="p-6 text-slate-300 font-medium">{row.label}</td>
-                                            <td className="p-6 bg-purple-900/10 text-white font-bold text-center border-x border-purple-500/10 shadow-[inset_0_0_20px_rgba(168,85,247,0.05)]">
+                                            <td className="p-6 bg-[var(--primary-color)]/10 text-white font-bold text-center border-x border-[var(--primary-color)]/10 shadow-[inset_0_0_20px_rgba(168,85,247,0.05)]">
                                                 {row.imdoc === 'Sim (White Label)' || row.imdoc === 'Completo' || row.imdoc === 'Nativa & Preditiva' ? (
-                                                    <div className="flex items-center justify-center gap-2 text-purple-400">
+                                                    <div className="flex items-center justify-center gap-2 text-[var(--primary-color)]">
                                                         <CheckCircle size={20} /> {row.imdoc}
                                                     </div>
                                                 ) : (
@@ -520,11 +527,11 @@ const SalesPage: React.FC = () => {
                             </div>
 
                             {/* Plan 2: Growth (Highlighted) */}
-                            <div className="bg-slate-800 border-2 border-purple-500 p-8 rounded-3xl relative transform md:-translate-y-4 shadow-2xl flex flex-col">
+                            <div className="bg-slate-800 border-2 border-[var(--primary-color)] p-8 rounded-3xl relative transform md:-translate-y-4 shadow-2xl flex flex-col">
                                 <div className="absolute top-0 right-0 left-0 -mt-4 text-center">
-                                    <span className="bg-purple-600 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest">Mais Popular</span>
+                                    <span className="bg-[var(--primary-color)] text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest">Mais Popular</span>
                                 </div>
-                                <span className="text-xs font-bold uppercase tracking-widest text-purple-400 mb-2">I'mdoc Growth</span>
+                                <span className="text-xs font-bold uppercase tracking-widest text-[var(--primary-color)] mb-2">I'mdoc Growth</span>
                                 <h3 className="text-3xl font-bold mb-2">R$ 597<span className="text-base font-normal text-slate-500">/mês</span></h3>
                                 <p className="text-slate-300 text-sm mb-8">Automação total para clínicas em crescimento acelerado.</p>
 
@@ -537,7 +544,7 @@ const SalesPage: React.FC = () => {
                                 </ul>
                                 <button
                                     onClick={() => navigate('/signup?plan=growth')}
-                                    className="w-full py-4 bg-purple-600 rounded-xl font-bold hover:bg-purple-700 transition-colors shadow-lg"
+                                    className="w-full py-4 bg-[var(--primary-color)] rounded-xl font-bold hover:opacity-90 transition-colors shadow-lg"
                                 >
                                     Assinar Growth
                                 </button>
