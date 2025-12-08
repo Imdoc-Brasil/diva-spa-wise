@@ -63,6 +63,7 @@ import SaaSDashboard from './components/modules/saas/SaaSDashboard';
 import SaaSFinanceModule from './components/modules/saas/SaaSFinanceModule';
 import SalesPageEditorModule from './components/modules/saas/SalesPageEditorModule';
 import AnalyticsManager from './components/ui/AnalyticsManager';
+import { OrganizationSetup } from './components/auth/OrganizationSetup';
 
 // Scroll Restoration Component (Window level backup, main logic is in Layout)
 const ScrollToTop = () => {
@@ -89,6 +90,7 @@ const AppContent: React.FC = () => {
                 <Route path="/site" element={<PublicPage />} />
                 <Route path="/sales" element={<SalesPage />} />
                 <Route path="/signup" element={<SignupPage />} />
+                <Route path="/setup" element={<OrganizationSetup />} />
 
                 {user ? (
                     <>
