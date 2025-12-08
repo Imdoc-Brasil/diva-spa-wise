@@ -1,4 +1,7 @@
 export * from './types_financial';
+export * from './types_financial';
+import { SaaSLead, SaaSSubscriber } from './types_saas';
+export * from './types_saas';
 // ============================================
 // MULTI-TENANT SAAS - ORGANIZATION & SUBSCRIPTION
 // ============================================
@@ -1151,6 +1154,29 @@ export interface WebsiteConfig {
     showTestimonials: boolean;
     contactPhone: string;
     instagramUrl: string;
+    // SEO & Analytics
+    googleAnalyticsId?: string;
+    metaPixelId?: string;
+    seoTitle?: string;
+    seoDescription?: string;
+}
+
+export interface SaaSAppConfig {
+    heroTitle: string;
+    heroSubtitle: string;
+    heroImage: string;
+    primaryColor: string;
+    // Toggles
+    showCalculator: boolean;
+    showFeatures: boolean;
+    showComparison: boolean;
+    showPricing: boolean;
+    // SEO
+    googleAnalyticsId?: string;
+    metaPixelId?: string;
+    seoTitle?: string;
+    seoDescription?: string;
+    contactPhone?: string;
 }
 
 export interface Partner {
@@ -1428,6 +1454,8 @@ export interface DataContextType {
     updateNotificationConfig: (config: NotificationConfig) => void;
     websiteConfig: WebsiteConfig;
     updateWebsiteConfig: (config: WebsiteConfig) => void;
+    saasAppConfig: SaaSAppConfig;
+    updateSaaSAppConfig: (config: SaaSAppConfig) => void;
     updateProductStock: (productId: string, qty: number, type: 'add' | 'remove', unitId?: string) => void;
     yieldRules: YieldRule[];
     addYieldRule: (rule: Omit<YieldRule, 'organizationId'>) => void;
@@ -1460,6 +1488,14 @@ export interface DataContextType {
     guests: EventGuest[];
     addGuest: (guest: EventGuest) => void;
     updateGuest: (id: string, data: Partial<EventGuest>) => void;
+
+    // Accounts & Fiscal
+    saasLeads: SaaSLead[];
+    addSaaSLead: (lead: SaaSLead) => void;
+    updateSaaSLead: (id: string, data: Partial<SaaSLead>) => void;
+    saasSubscribers: SaaSSubscriber[];
+    addSaaSSubscriber: (sub: SaaSSubscriber) => void;
+    updateSaaSSubscriber: (id: string, data: Partial<SaaSSubscriber>) => void;
 
     // Accounts & Fiscal
     accounts: BankAccount[];

@@ -4,8 +4,12 @@ import {
     Cpu, Zap, TrendingUp, Users, Shield, Globe,
     CheckCircle, XCircle, ArrowRight, Play,
     MessageCircle, Calendar, CreditCard, Star,
-    Smartphone, BarChart3, Lock, Award, Heart, Search, Bell, Mic, Gift, Sparkles
+    Smartphone, BarChart3, Lock, Award, Heart, Search, Bell, Mic, Gift, Sparkles, PhoneCall
 } from 'lucide-react';
+import { useData } from '../context/DataContext';
+import { SaaSLead, SaaSLeadStage, SaaSPlan } from '../../types';
+import { useToast } from '../../components/ui/ToastContext';
+
 
 const SalesPage: React.FC = () => {
     const navigate = useNavigate();
@@ -13,6 +17,34 @@ const SalesPage: React.FC = () => {
     const [dailyPatients, setDailyPatients] = useState(10);
     const [ticket, setTicket] = useState(250);
     const [showLoss, setShowLoss] = useState(false);
+    const { addSaaSLead, saasAppConfig } = useData();
+    const { addToast } = useToast();
+
+    const handleCaptureLead = () => {
+        const lead: SaaSLead = {
+            id: `lead_${Date.now()}`,
+            name: 'Visitante Interessado',
+            clinicName: 'Clínica (Calculadora)',
+            email: 'contato@clinica.com',
+            phone: '(11) 99999-9999',
+            stage: SaaSLeadStage.NEW,
+            planInterest: SaaSPlan.GROWTH,
+            source: 'landing_page',
+            status: 'active',
+            notes: `Calculou perda de: ${calculateLoss()}`,
+            estimatedValue: 597,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+
+        if (addSaaSLead) {
+            addSaaSLead(lead);
+            addToast('Solicitação enviada! Nossa equipe entrará em contato.', 'success');
+        } else {
+            alert('Lead capturado (Demo Mode)');
+        }
+    };
+
 
     const calculateLoss = () => {
         const noShowRate = 0.15; // 15% market average
@@ -42,9 +74,15 @@ const SalesPage: React.FC = () => {
                         <span className="font-bold text-xl tracking-wide">I'mDoc SaaS</span>
                     </div>
                     <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
-                        <button onClick={() => scrollToSection('features')} className="hover:text-white transition-colors">Recursos</button>
-                        <button onClick={() => scrollToSection('comparison')} className="hover:text-white transition-colors">Comparativo</button>
-                        <button onClick={() => scrollToSection('pricing')} className="hover:text-white transition-colors">Planos</button>
+                        {saasAppConfig?.showFeatures && (
+                            <button onClick={() => scrollToSection('features')} className="hover:text-white transition-colors">Recursos</button>
+                        )}
+                        {saasAppConfig?.showComparison && (
+                            <button onClick={() => scrollToSection('comparison')} className="hover:text-white transition-colors">Comparativo</button>
+                        )}
+                        {saasAppConfig?.showPricing && (
+                            <button onClick={() => scrollToSection('pricing')} className="hover:text-white transition-colors">Planos</button>
+                        )}
                         <button className="bg-white text-slate-900 px-6 py-2 rounded-full hover:bg-slate-100 transition-colors font-bold">
                             Entrar
                         </button>
@@ -65,14 +103,11 @@ const SalesPage: React.FC = () => {
                     </div>
 
                     <h1 className="text-5xl md:text-7xl font-black mb-8 leading-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-slate-400">
-                        Não é apenas gestão.<br />
-                        É o <span className="text-purple-400">Futuro</span> da Sua Clínica.
+                        {saasAppConfig?.heroTitle || "Não é apenas gestão. É o Futuro da Sua Clínica."}
                     </h1>
 
                     <p className="text-lg md:text-xl text-slate-400 max-w-3xl mx-auto mb-10 leading-relaxed">
-                        Abandone planilhas e softwares do passado. O I'mdoc usa
-                        <strong className="text-white"> Inteligência Artificial </strong>
-                        para lotar sua agenda, fidelizar pacientes e automatizar seu financeiro enquanto você dorme.
+                        {saasAppConfig?.heroSubtitle || "Abandone planilhas e softwares do passado. O I'mdoc usa Inteligência Artificial para lotar sua agenda, fidelizar pacientes e automatizar seu financeiro enquanto você dorme."}
                     </p>
 
                     <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
@@ -95,7 +130,7 @@ const SalesPage: React.FC = () => {
                     {/* Dashboard Preview Mockup */}
                     <div className="relative mx-auto max-w-5xl rounded-xl border border-white/10 shadow-2xl bg-slate-900/50 backdrop-blur-xl overflow-hidden aspect-video group">
                         <img
-                            src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop"
+                            src={saasAppConfig?.heroImage || "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop"}
                             alt="Dashboard Preview"
                             className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-500"
                         />
@@ -126,98 +161,107 @@ const SalesPage: React.FC = () => {
             </header>
 
             {/* Pain Calculator Section */}
-            <section className="py-24 bg-slate-800/50 relative">
-                <div className="max-w-4xl mx-auto px-6 text-center">
-                    <h2 className="text-3xl md:text-5xl font-bold mb-6">Sua clínica está perdendo dinheiro pelo ralo...</h2>
-                    <p className="text-xl text-slate-400 mb-12">...e você nem vê. Calcule agora o prejuízo da "má gestão".</p>
+            {saasAppConfig?.showCalculator && (
+                <section className="py-20 bg-slate-800 relative">
+                    <div className="max-w-4xl mx-auto px-6 text-center">
+                        <h2 className="text-3xl md:text-5xl font-bold mb-6">Sua clínica está perdendo dinheiro pelo ralo...</h2>
+                        <p className="text-xl text-slate-400 mb-12">...e você nem vê. Calcule agora o prejuízo da "má gestão".</p>
 
-                    <div className="bg-slate-900 p-8 rounded-3xl border border-white/10 shadow-xl max-w-2xl mx-auto">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                            <div className="text-left">
-                                <label className="block text-xs font-bold uppercase text-slate-500 mb-2">Pacientes por Dia</label>
-                                <input
-                                    type="number"
-                                    value={dailyPatients}
-                                    onChange={(e) => setDailyPatients(Number(e.target.value))}
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-2xl font-bold text-white focus:border-purple-500 outline-none transition-colors"
-                                />
+                        <div className="bg-slate-900 p-8 rounded-3xl border border-white/10 shadow-xl max-w-2xl mx-auto">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                <div className="text-left">
+                                    <label className="block text-xs font-bold uppercase text-slate-500 mb-2">Pacientes por Dia</label>
+                                    <input
+                                        type="number"
+                                        value={dailyPatients}
+                                        onChange={(e) => setDailyPatients(Number(e.target.value))}
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-2xl font-bold text-white focus:border-purple-500 outline-none transition-colors"
+                                    />
+                                </div>
+                                <div className="text-left">
+                                    <label className="block text-xs font-bold uppercase text-slate-500 mb-2">Ticket Médio (R$)</label>
+                                    <input
+                                        type="number"
+                                        value={ticket}
+                                        onChange={(e) => setTicket(Number(e.target.value))}
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-2xl font-bold text-white focus:border-purple-500 outline-none transition-colors"
+                                    />
+                                </div>
                             </div>
-                            <div className="text-left">
-                                <label className="block text-xs font-bold uppercase text-slate-500 mb-2">Ticket Médio (R$)</label>
-                                <input
-                                    type="number"
-                                    value={ticket}
-                                    onChange={(e) => setTicket(Number(e.target.value))}
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-2xl font-bold text-white focus:border-purple-500 outline-none transition-colors"
-                                />
-                            </div>
+
+                            {!showLoss ? (
+                                <button
+                                    onClick={() => setShowLoss(true)}
+                                    className="w-full py-4 bg-red-500 hover:bg-red-600 rounded-xl font-bold text-lg transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <Zap size={20} /> Calcular Meu Prejuízo Invisível
+                                </button>
+                            ) : (
+                                <div className="animate-zoom-in duration-300">
+                                    <p className="text-sm text-slate-400 mb-2">Você pode estar perdendo até:</p>
+                                    <p className="text-5xl font-black text-red-500 mb-4">{calculateLoss()} / mês</p>
+                                    <p className="text-xs text-slate-500 max-w-md mx-auto">
+                                        <br /><strong className="text-green-400">O I'mdoc recupera esse dinheiro para você.</strong>
+                                    </p>
+                                    <button
+                                        onClick={handleCaptureLead}
+                                        className="mt-6 px-8 py-3 bg-purple-600 hover:bg-purple-700 rounded-full font-bold text-white transition-all shadow-lg flex items-center justify-center gap-2 mx-auto"
+                                    >
+                                        <PhoneCall size={18} /> Quero Resolver Isso Agora
+                                    </button>
+                                </div>
+                            )}
                         </div>
-
-                        {!showLoss ? (
-                            <button
-                                onClick={() => setShowLoss(true)}
-                                className="w-full py-4 bg-red-500 hover:bg-red-600 rounded-xl font-bold text-lg transition-colors flex items-center justify-center gap-2"
-                            >
-                                <Zap size={20} /> Calcular Meu Prejuízo Invisível
-                            </button>
-                        ) : (
-                            <div className="animate-zoom-in duration-300">
-                                <p className="text-sm text-slate-400 mb-2">Você pode estar perdendo até:</p>
-                                <p className="text-5xl font-black text-red-500 mb-4">{calculateLoss()} / mês</p>
-                                <p className="text-xs text-slate-500 max-w-md mx-auto">
-                                    Baseado em estatísticas de mercado: 15% de no-shows não recuperados + 20% de falta de recorrência (LTV).
-                                    <br /><strong className="text-green-400">O I'mdoc recupera esse dinheiro para você.</strong>
-                                </p>
-                            </div>
-                        )}
                     </div>
-                </div>
-            </section>
+                </section>
+            )}
 
             {/* Features / 3 Pillars */}
-            <section id="features" className="py-24 px-6">
-                <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-20">
-                        <h2 className="text-4xl font-bold mb-4">I'mdoc Intelligence</h2>
-                        <div className="h-1 w-20 bg-purple-600 mx-auto rounded-full"></div>
+            {saasAppConfig?.showFeatures && (
+                <section id="features" className="py-24 px-6">
+                    <div className="max-w-7xl mx-auto">
+                        <div className="text-center mb-20">
+                            <h2 className="text-4xl font-bold mb-4">I'mdoc Intelligence</h2>
+                            <div className="h-1 w-20 bg-purple-600 mx-auto rounded-full"></div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            {/* Feature 1 */}
+                            <div className="bg-slate-800/30 p-8 rounded-3xl border border-white/5 hover:border-purple-500/50 hover:bg-slate-800/50 transition-all group">
+                                <div className="w-16 h-16 bg-purple-500/10 rounded-2xl flex items-center justify-center text-purple-400 mb-6 group-hover:scale-110 transition-transform">
+                                    <TrendingUp size={32} />
+                                </div>
+                                <h3 className="text-2xl font-bold mb-4">Crescimento Automático</h3>
+                                <p className="text-slate-400 leading-relaxed">
+                                    Marketing que roda sozinho. Campanhas de WhatsApp, recuperação de inativos e réguas de relacionamento que vendem por você.
+                                </p>
+                            </div>
+
+                            {/* Feature 2 */}
+                            <div className="bg-slate-800/30 p-8 rounded-3xl border border-white/5 hover:border-purple-500/50 hover:bg-slate-800/50 transition-all group">
+                                <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-400 mb-6 group-hover:scale-110 transition-transform">
+                                    <Cpu size={32} />
+                                </div>
+                                <h3 className="text-2xl font-bold mb-4">Gestão Invisível</h3>
+                                <p className="text-slate-400 leading-relaxed">
+                                    Financeiro, DRE e Estoque que se atualizam sozinhos. A Inteligência Artificial cuida da burocracia para você cuidar dos pacientes.
+                                </p>
+                            </div>
+
+                            {/* Feature 3 */}
+                            <div className="bg-slate-800/30 p-8 rounded-3xl border border-white/5 hover:border-purple-500/50 hover:bg-slate-800/50 transition-all group">
+                                <div className="w-16 h-16 bg-pink-500/10 rounded-2xl flex items-center justify-center text-pink-400 mb-6 group-hover:scale-110 transition-transform">
+                                    <Star size={32} />
+                                </div>
+                                <h3 className="text-2xl font-bold mb-4">Experiência 5 Estrelas</h3>
+                                <p className="text-slate-400 leading-relaxed">
+                                    App exclusivo para seu paciente (White Label), Clube de Vantagens e Telemedicina integrada para fidelização total.
+                                </p>
+                            </div>
+                        </div>
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {/* Feature 1 */}
-                        <div className="bg-slate-800/30 p-8 rounded-3xl border border-white/5 hover:border-purple-500/50 hover:bg-slate-800/50 transition-all group">
-                            <div className="w-16 h-16 bg-purple-500/10 rounded-2xl flex items-center justify-center text-purple-400 mb-6 group-hover:scale-110 transition-transform">
-                                <TrendingUp size={32} />
-                            </div>
-                            <h3 className="text-2xl font-bold mb-4">Crescimento Automático</h3>
-                            <p className="text-slate-400 leading-relaxed">
-                                Marketing que roda sozinho. Campanhas de WhatsApp, recuperação de inativos e réguas de relacionamento que vendem por você.
-                            </p>
-                        </div>
-
-                        {/* Feature 2 */}
-                        <div className="bg-slate-800/30 p-8 rounded-3xl border border-white/5 hover:border-purple-500/50 hover:bg-slate-800/50 transition-all group">
-                            <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-400 mb-6 group-hover:scale-110 transition-transform">
-                                <Cpu size={32} />
-                            </div>
-                            <h3 className="text-2xl font-bold mb-4">Gestão Invisível</h3>
-                            <p className="text-slate-400 leading-relaxed">
-                                Financeiro, DRE e Estoque que se atualizam sozinhos. A Inteligência Artificial cuida da burocracia para você cuidar dos pacientes.
-                            </p>
-                        </div>
-
-                        {/* Feature 3 */}
-                        <div className="bg-slate-800/30 p-8 rounded-3xl border border-white/5 hover:border-purple-500/50 hover:bg-slate-800/50 transition-all group">
-                            <div className="w-16 h-16 bg-pink-500/10 rounded-2xl flex items-center justify-center text-pink-400 mb-6 group-hover:scale-110 transition-transform">
-                                <Star size={32} />
-                            </div>
-                            <h3 className="text-2xl font-bold mb-4">Experiência 5 Estrelas</h3>
-                            <p className="text-slate-400 leading-relaxed">
-                                App exclusivo para seu paciente (White Label), Clube de Vantagens e Telemedicina integrada para fidelização total.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </section>
+                </section>
+            )}
 
             {/* PATIENT JOURNEY TIMELINE */}
             <section className="py-24 bg-slate-900 relative overflow-hidden">
@@ -395,130 +439,134 @@ const SalesPage: React.FC = () => {
             </section>
 
             {/* Dynamic Comparison Table */}
-            <section id="comparison" className="py-24 px-6 bg-slate-900 border-t border-white/5">
-                <div className="max-w-5xl mx-auto">
-                    <h2 className="text-4xl font-bold text-center mb-16">Por que somos superiores?</h2>
+            {saasAppConfig?.showComparison && (
+                <section id="comparison" className="py-20 bg-slate-800 border-t border-white/5">
+                    <div className="max-w-5xl mx-auto">
+                        <h2 className="text-4xl font-bold text-center mb-16">Por que somos superiores?</h2>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr>
-                                    <th className="p-6 text-slate-500 font-medium uppercase tracking-wider text-sm">Funcionalidade</th>
-                                    <th className="p-6 bg-purple-900/20 text-purple-400 font-bold text-xl rounded-t-xl border-t border-x border-purple-500/30 text-center w-1/3 relative">
-                                        <div className="absolute top-0 left-0 w-full h-1 bg-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.8)]"></div>
-                                        I'mdoc SaaS
-                                    </th>
-                                    <th className="p-6 text-slate-400 font-bold text-lg text-center w-1/4">Doctoralia</th>
-                                    <th className="p-6 text-slate-400 font-bold text-lg text-center w-1/4">Legado</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/5">
-                                {[
-                                    { label: 'Foco Principal', imdoc: 'Sua Marca & Clínica', doc: ' Marketplace (Deles)', leg: 'Burocracia' },
-                                    { label: 'Inteligência Artificial', imdoc: 'Nativa & Preditiva', doc: 'Não tem', leg: 'Não tem' },
-                                    { label: 'App do Paciente', imdoc: 'Sim (White Label)', doc: 'Não', leg: 'Não' },
-                                    { label: 'Automação Marketing', imdoc: 'Régua Completa', doc: 'Básico', leg: 'Email Básico' },
-                                    { label: 'Ecossistema (Kiosk/TV)', imdoc: 'Completo', doc: 'Agenda apenas', leg: 'Prontuário apenas' },
-                                    { label: 'Design & UX', imdoc: 'Premium Future', doc: 'Padrão', leg: 'Datado' },
-                                ].map((row, idx) => (
-                                    <tr key={idx} className="hover:bg-white/5 transition-colors">
-                                        <td className="p-6 text-slate-300 font-medium">{row.label}</td>
-                                        <td className="p-6 bg-purple-900/10 text-white font-bold text-center border-x border-purple-500/10 shadow-[inset_0_0_20px_rgba(168,85,247,0.05)]">
-                                            {row.imdoc === 'Sim (White Label)' || row.imdoc === 'Completo' || row.imdoc === 'Nativa & Preditiva' ? (
-                                                <div className="flex items-center justify-center gap-2 text-purple-400">
-                                                    <CheckCircle size={20} /> {row.imdoc}
-                                                </div>
-                                            ) : (
-                                                row.imdoc
-                                            )}
-                                        </td>
-                                        <td className="p-6 text-slate-500 text-center">{row.doc}</td>
-                                        <td className="p-6 text-slate-500 text-center">{row.leg}</td>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr>
+                                        <th className="p-6 text-slate-500 font-medium uppercase tracking-wider text-sm">Funcionalidade</th>
+                                        <th className="p-6 bg-purple-900/20 text-purple-400 font-bold text-xl rounded-t-xl border-t border-x border-purple-500/30 text-center w-1/3 relative">
+                                            <div className="absolute top-0 left-0 w-full h-1 bg-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.8)]"></div>
+                                            I'mdoc SaaS
+                                        </th>
+                                        <th className="p-6 text-slate-400 font-bold text-lg text-center w-1/4">Doctoralia</th>
+                                        <th className="p-6 text-slate-400 font-bold text-lg text-center w-1/4">Legado</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                    {[
+                                        { label: 'Foco Principal', imdoc: 'Sua Marca & Clínica', doc: ' Marketplace (Deles)', leg: 'Burocracia' },
+                                        { label: 'Inteligência Artificial', imdoc: 'Nativa & Preditiva', doc: 'Não tem', leg: 'Não tem' },
+                                        { label: 'App do Paciente', imdoc: 'Sim (White Label)', doc: 'Não', leg: 'Não' },
+                                        { label: 'Automação Marketing', imdoc: 'Régua Completa', doc: 'Básico', leg: 'Email Básico' },
+                                        { label: 'Ecossistema (Kiosk/TV)', imdoc: 'Completo', doc: 'Agenda apenas', leg: 'Prontuário apenas' },
+                                        { label: 'Design & UX', imdoc: 'Premium Future', doc: 'Padrão', leg: 'Datado' },
+                                    ].map((row, idx) => (
+                                        <tr key={idx} className="hover:bg-white/5 transition-colors">
+                                            <td className="p-6 text-slate-300 font-medium">{row.label}</td>
+                                            <td className="p-6 bg-purple-900/10 text-white font-bold text-center border-x border-purple-500/10 shadow-[inset_0_0_20px_rgba(168,85,247,0.05)]">
+                                                {row.imdoc === 'Sim (White Label)' || row.imdoc === 'Completo' || row.imdoc === 'Nativa & Preditiva' ? (
+                                                    <div className="flex items-center justify-center gap-2 text-purple-400">
+                                                        <CheckCircle size={20} /> {row.imdoc}
+                                                    </div>
+                                                ) : (
+                                                    row.imdoc
+                                                )}
+                                            </td>
+                                            <td className="p-6 text-slate-500 text-center">{row.doc}</td>
+                                            <td className="p-6 text-slate-500 text-center">{row.leg}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </div>
-            </section>
+                </section>
+            )}
 
             {/* PRICING PLANS */}
-            <section id="pricing" className="py-24 px-6 bg-slate-800/30">
-                <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-20">
-                        <h2 className="text-4xl font-bold mb-4">Escolha o plano ideal para sua fase</h2>
-                        <p className="text-slate-400">Sem fidelidade. Sem taxas escondidas. Cancele quando quiser.</p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-                        {/* Plan 1: Start */}
-                        <div className="bg-slate-900 border border-white/5 p-8 rounded-3xl hover:border-white/20 transition-all flex flex-col">
-                            <span className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">I'mdoc Start</span>
-                            <h3 className="text-3xl font-bold mb-2">R$ 297<span className="text-base font-normal text-slate-500">/mês</span></h3>
-                            <p className="text-slate-400 text-sm mb-8">Para clínicas que estão começando a se profissionalizar.</p>
-
-                            <ul className="space-y-4 mb-8 flex-1">
-                                {['Agenda Inteligente', 'Prontuário Eletrônico', 'Lembretes WhatsApp', 'App do Paciente (Básico)'].map((feat, i) => (
-                                    <li key={i} className="flex items-center gap-3 text-sm text-slate-300">
-                                        <CheckCircle size={16} className="text-slate-500 shrink-0" /> {feat}
-                                    </li>
-                                ))}
-                            </ul>
-                            <button
-                                onClick={() => navigate('/signup?plan=start')}
-                                className="w-full py-4 border border-white/10 rounded-xl font-bold hover:bg-white/5 transition-colors"
-                            >
-                                Começar Grátis
-                            </button>
+            {saasAppConfig?.showPricing && (
+                <section id="pricing" className="py-24 px-6 bg-slate-800/30">
+                    <div className="max-w-7xl mx-auto">
+                        <div className="text-center mb-20">
+                            <h2 className="text-4xl font-bold mb-4">Escolha o plano ideal para sua fase</h2>
+                            <p className="text-slate-400">Sem fidelidade. Sem taxas escondidas. Cancele quando quiser.</p>
                         </div>
 
-                        {/* Plan 2: Growth (Highlighted) */}
-                        <div className="bg-slate-800 border-2 border-purple-500 p-8 rounded-3xl relative transform md:-translate-y-4 shadow-2xl flex flex-col">
-                            <div className="absolute top-0 right-0 left-0 -mt-4 text-center">
-                                <span className="bg-purple-600 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest">Mais Popular</span>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+                            {/* Plan 1: Start */}
+                            <div className="bg-slate-900 border border-white/5 p-8 rounded-3xl hover:border-white/20 transition-all flex flex-col">
+                                <span className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">I'mdoc Start</span>
+                                <h3 className="text-3xl font-bold mb-2">R$ 297<span className="text-base font-normal text-slate-500">/mês</span></h3>
+                                <p className="text-slate-400 text-sm mb-8">Para clínicas que estão começando a se profissionalizar.</p>
+
+                                <ul className="space-y-4 mb-8 flex-1">
+                                    {['Agenda Inteligente', 'Prontuário Eletrônico', 'Lembretes WhatsApp', 'App do Paciente (Básico)'].map((feat, i) => (
+                                        <li key={i} className="flex items-center gap-3 text-sm text-slate-300">
+                                            <CheckCircle size={16} className="text-slate-500 shrink-0" /> {feat}
+                                        </li>
+                                    ))}
+                                </ul>
+                                <button
+                                    onClick={() => navigate('/signup?plan=start')}
+                                    className="w-full py-4 border border-white/10 rounded-xl font-bold hover:bg-white/5 transition-colors"
+                                >
+                                    Começar Grátis
+                                </button>
                             </div>
-                            <span className="text-xs font-bold uppercase tracking-widest text-purple-400 mb-2">I'mdoc Growth</span>
-                            <h3 className="text-3xl font-bold mb-2">R$ 597<span className="text-base font-normal text-slate-500">/mês</span></h3>
-                            <p className="text-slate-300 text-sm mb-8">Automação total para clínicas em crescimento acelerado.</p>
 
-                            <ul className="space-y-4 mb-8 flex-1">
-                                {['Tudo do Start +', 'Marketing Automático (Régua)', 'Diva AI (Chatbot)', 'Financeiro Completo (DRE)', 'Clube de Pontos'].map((feat, i) => (
-                                    <li key={i} className="flex items-center gap-3 text-sm text-white">
-                                        <CheckCircle size={16} className="text-green-400 shrink-0" /> {feat}
-                                    </li>
-                                ))}
-                            </ul>
-                            <button
-                                onClick={() => navigate('/signup?plan=growth')}
-                                className="w-full py-4 bg-purple-600 rounded-xl font-bold hover:bg-purple-700 transition-colors shadow-lg"
-                            >
-                                Assinar Growth
-                            </button>
-                        </div>
+                            {/* Plan 2: Growth (Highlighted) */}
+                            <div className="bg-slate-800 border-2 border-purple-500 p-8 rounded-3xl relative transform md:-translate-y-4 shadow-2xl flex flex-col">
+                                <div className="absolute top-0 right-0 left-0 -mt-4 text-center">
+                                    <span className="bg-purple-600 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest">Mais Popular</span>
+                                </div>
+                                <span className="text-xs font-bold uppercase tracking-widest text-purple-400 mb-2">I'mdoc Growth</span>
+                                <h3 className="text-3xl font-bold mb-2">R$ 597<span className="text-base font-normal text-slate-500">/mês</span></h3>
+                                <p className="text-slate-300 text-sm mb-8">Automação total para clínicas em crescimento acelerado.</p>
 
-                        {/* Plan 3: Empire */}
-                        <div className="bg-slate-900 border border-white/5 p-8 rounded-3xl hover:border-white/20 transition-all flex flex-col">
-                            <span className="text-xs font-bold uppercase tracking-widest text-yellow-500 mb-2">I'mdoc Empire</span>
-                            <h3 className="text-3xl font-bold mb-2">R$ 997<span className="text-base font-normal text-slate-500">/mês</span></h3>
-                            <p className="text-slate-400 text-sm mb-8">Para redes, franquias e gestão multi-unidade.</p>
+                                <ul className="space-y-4 mb-8 flex-1">
+                                    {['Tudo do Start +', 'Marketing Automático (Régua)', 'Diva AI (Chatbot)', 'Financeiro Completo (DRE)', 'Clube de Pontos'].map((feat, i) => (
+                                        <li key={i} className="flex items-center gap-3 text-sm text-white">
+                                            <CheckCircle size={16} className="text-green-400 shrink-0" /> {feat}
+                                        </li>
+                                    ))}
+                                </ul>
+                                <button
+                                    onClick={() => navigate('/signup?plan=growth')}
+                                    className="w-full py-4 bg-purple-600 rounded-xl font-bold hover:bg-purple-700 transition-colors shadow-lg"
+                                >
+                                    Assinar Growth
+                                </button>
+                            </div>
 
-                            <ul className="space-y-4 mb-8 flex-1">
-                                {['Tudo do Growth +', 'Gestão Multi-Unidades', 'App White Label Próprio', 'API Aberta', 'Gerente de Contas'].map((feat, i) => (
-                                    <li key={i} className="flex items-center gap-3 text-sm text-slate-300">
-                                        <CheckCircle size={16} className="text-yellow-500 shrink-0" /> {feat}
-                                    </li>
-                                ))}
-                            </ul>
-                            <button
-                                onClick={() => navigate('/signup?plan=empire')}
-                                className="w-full py-4 border border-white/10 rounded-xl font-bold hover:bg-white/5 transition-colors"
-                            >
-                                Começar Agora
-                            </button>
+                            {/* Plan 3: Empire */}
+                            <div className="bg-slate-900 border border-white/5 p-8 rounded-3xl hover:border-white/20 transition-all flex flex-col">
+                                <span className="text-xs font-bold uppercase tracking-widest text-yellow-500 mb-2">I'mdoc Empire</span>
+                                <h3 className="text-3xl font-bold mb-2">R$ 997<span className="text-base font-normal text-slate-500">/mês</span></h3>
+                                <p className="text-slate-400 text-sm mb-8">Para redes, franquias e gestão multi-unidade.</p>
+
+                                <ul className="space-y-4 mb-8 flex-1">
+                                    {['Tudo do Growth +', 'Gestão Multi-Unidades', 'App White Label Próprio', 'API Aberta', 'Gerente de Contas'].map((feat, i) => (
+                                        <li key={i} className="flex items-center gap-3 text-sm text-slate-300">
+                                            <CheckCircle size={16} className="text-yellow-500 shrink-0" /> {feat}
+                                        </li>
+                                    ))}
+                                </ul>
+                                <button
+                                    onClick={() => navigate('/signup?plan=empire')}
+                                    className="w-full py-4 border border-white/10 rounded-xl font-bold hover:bg-white/5 transition-colors"
+                                >
+                                    Começar Agora
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </section>
+                </section>
+            )}
 
             {/* CTA Section */}
             <section className="py-32 px-6 relative overflow-hidden">

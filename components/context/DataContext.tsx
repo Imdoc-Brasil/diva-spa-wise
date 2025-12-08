@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { Client, SalesLead, ServiceAppointment, AppointmentStatus, LeadStage, Transaction, WaitlistItem, StaffMember, OrganizationMember, ServiceRoom, DataContextType, ServiceDefinition, BusinessConfig, NotificationConfig, Product, BusinessUnit, YieldRule, FormTemplate, FormResponse, AppointmentRecord, ClinicEvent, EventGuest, Partner, WebsiteConfig, User, UserRole, AppNotification, OpenVial, VialUsageLog, MarketingCampaign, AutomationRule, CustomerSegment, MembershipPlan, Subscription, ChatConversation, ChatMessage, TreatmentPlan, TreatmentPlanTemplate, Supplier, BankAccount, FiscalRecord } from '../../types';
+import { Client, SalesLead, ServiceAppointment, AppointmentStatus, LeadStage, Transaction, WaitlistItem, StaffMember, OrganizationMember, ServiceRoom, DataContextType, ServiceDefinition, BusinessConfig, NotificationConfig, Product, BusinessUnit, YieldRule, FormTemplate, FormResponse, AppointmentRecord, ClinicEvent, EventGuest, Partner, WebsiteConfig, SaaSAppConfig, User, UserRole, AppNotification, OpenVial, VialUsageLog, MarketingCampaign, AutomationRule, CustomerSegment, MembershipPlan, Subscription, ChatConversation, ChatMessage, TreatmentPlan, TreatmentPlanTemplate, Supplier, BankAccount, FiscalRecord, SaaSLead, SaaSSubscriber, SaaSLeadStage, SaaSPlan } from '../../types';
 import { MOCK_TREATMENT_PLANS, MOCK_TREATMENT_TEMPLATES } from '../../utils/mockTreatmentPlans';
 import { useToast } from '../ui/ToastContext';
 import { useOrganization } from './OrganizationContext';
@@ -441,6 +441,20 @@ const initialWebsiteConfig: WebsiteConfig = {
   instagramUrl: '@divaspa'
 };
 
+const initialSaaSAppConfig: SaaSAppConfig = {
+  heroTitle: "Não é apenas gestão. É o Futuro da Sua Clínica.",
+  heroSubtitle: "Abandone planilhas e softwares do passado. O I'mdoc usa Inteligência Artificial para lotar sua agenda, fidelizar pacientes e automatizar seu financeiro enquanto você dorme.",
+  heroImage: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop",
+  primaryColor: "#9333ea", // Purple-600
+  showCalculator: true,
+  showFeatures: true,
+  showComparison: true,
+  showPricing: true,
+  googleAnalyticsId: "",
+  metaPixelId: "",
+  contactPhone: "(11) 99999-9999"
+};
+
 const initialProducts: Product[] = [
   { id: 'p1', organizationId: 'org_demo', name: 'Kit Pós-Laser Calmante', description: 'Loção hidratante e gel refrescante.', price: 189.90, costPrice: 85.00, category: 'homecare', stock: 15, stockByUnit: { 'u1': 10, 'u2': 5 }, minStockLevel: 20, loyaltyPoints: 20 },
   { id: 'p2', organizationId: 'org_demo', name: 'Pacote 10 Sessões - Axila', description: 'Tratamento completo.', price: 890.00, category: 'treatment_package', loyaltyPoints: 100 },
@@ -602,6 +616,86 @@ const initialCampaigns: MarketingCampaign[] = [
   },
 ];
 
+const initialSaaSLeads: SaaSLead[] = [
+  {
+    id: 'sl1',
+    name: 'Dra. Mariana Costa',
+    clinicName: 'Clínica Dermato Costa',
+    email: 'mariana.costa@clinic.com',
+    phone: '(11) 98765-4321',
+    stage: SaaSLeadStage.NEW,
+    planInterest: SaaSPlan.GROWTH,
+    source: 'landing_page',
+    status: 'active',
+    notes: 'Interessada em automação de WhatsApp.',
+    estimatedValue: 597,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'sl2',
+    name: 'Dr. Fernando Silva',
+    clinicName: 'Silva Estética',
+    email: 'dr.fernando@silva.com',
+    phone: '(21) 91234-5678',
+    stage: SaaSLeadStage.DEMO_SCHEDULED,
+    planInterest: SaaSPlan.EMPIRE,
+    source: 'referral',
+    status: 'active',
+    notes: 'Agendado demo para próxima terça. Possui 3 unidades.',
+    estimatedValue: 997,
+    createdAt: new Date(Date.now() - 86400000).toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'sl3',
+    name: 'Carla Perez',
+    clinicName: 'Spa da Carla',
+    email: 'carla@spa.com',
+    phone: '(71) 99999-0000',
+    stage: SaaSLeadStage.TRIAL_STARTED,
+    planInterest: SaaSPlan.START,
+    source: 'landing_page',
+    status: 'active',
+    notes: 'Trial iniciado ontem.',
+    estimatedValue: 297,
+    createdAt: new Date(Date.now() - 172800000).toISOString(),
+    updatedAt: new Date().toISOString()
+  }
+];
+
+const initialSaaSSubscribers: SaaSSubscriber[] = [
+  {
+    id: 'org_demo',
+    clinicName: 'Diva Spa Demonstração',
+    adminName: 'Admin Demo',
+    adminEmail: 'admin@divaspa.com',
+    adminPhone: '(11) 99999-9999',
+    plan: SaaSPlan.EMPIRE,
+    status: 'active',
+    mrr: 997,
+    joinedAt: '2023-01-01T00:00:00Z',
+    nextBillingDate: '2023-12-01T00:00:00Z',
+    usersCount: 5,
+    smsBalance: 500
+  },
+  {
+    id: 'sub_2',
+    clinicName: 'Royal Face Jardins',
+    adminName: 'Dra. Ana Vilela',
+    adminEmail: 'ana@royalface.com',
+    adminPhone: '(11) 98888-7777',
+    plan: SaaSPlan.GROWTH,
+    status: 'active',
+    mrr: 597,
+    joinedAt: '2023-06-15T00:00:00Z',
+    nextBillingDate: '2023-11-15T00:00:00Z',
+    usersCount: 3,
+    smsBalance: 120
+  }
+];
+
+
 const initialAutomations: AutomationRule[] = [
   { id: 'auto1', organizationId: 'org_demo', name: 'Feliz Aniversário', trigger: 'birthday', action: 'send_message', active: true },
   { id: 'auto2', organizationId: 'org_demo', name: 'Reativação 30d', trigger: 'inactive_30d', action: 'send_message', active: true },
@@ -670,6 +764,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [businessConfig, setBusinessConfig] = useState<BusinessConfig>(() => loadState('businessConfig', initialBusinessConfig));
   const [notificationConfig, setNotificationConfig] = useState<NotificationConfig>(() => loadState('notificationConfig', initialNotificationConfig));
   const [websiteConfig, setWebsiteConfig] = useState<WebsiteConfig>(() => loadState('websiteConfig', initialWebsiteConfig));
+  const [saasAppConfig, setSaaSAppConfig] = useState<SaaSAppConfig>(() => loadState('saasAppConfig', initialSaaSAppConfig));
   const [products, setProducts] = useState<Product[]>(() => loadState('products', initialProducts));
   const [suppliers, setSuppliers] = useState<Supplier[]>(() => loadState('suppliers', initialSuppliers));
   const [yieldRules, setYieldRules] = useState<YieldRule[]>(() => loadState('yieldRules', initialYieldRules));
@@ -712,6 +807,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => localStorage.setItem('services', JSON.stringify(services)), [services]);
   useEffect(() => localStorage.setItem('businessConfig', JSON.stringify(businessConfig)), [businessConfig]);
   useEffect(() => localStorage.setItem('notificationConfig', JSON.stringify(notificationConfig)), [notificationConfig]);
+  useEffect(() => localStorage.setItem('websiteConfig', JSON.stringify(websiteConfig)), [websiteConfig]);
+  useEffect(() => localStorage.setItem('saasAppConfig', JSON.stringify(saasAppConfig)), [saasAppConfig]);
   useEffect(() => localStorage.setItem('products', JSON.stringify(products)), [products]);
   useEffect(() => localStorage.setItem('yieldRules', JSON.stringify(yieldRules)), [yieldRules]);
   useEffect(() => localStorage.setItem('formTemplates', JSON.stringify(formTemplates)), [formTemplates]);
@@ -886,7 +983,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const addToWaitlist = (item: Omit<WaitlistItem, 'organizationId'>) => {
     const newItem: WaitlistItem = { ...item, organizationId: currentOrgId };
-    setWaitlist(prev => [newItem, ...prev]);
+    setWaitlist(prev => [...prev, newItem]);
     addToast(`${item.clientName} adicionado à lista de espera.`, 'info');
   };
 
@@ -1029,9 +1126,13 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     addToast('Templates de notificação atualizados.', 'success');
   };
 
-  const updateWebsiteConfig = (config: WebsiteConfig) => {
-    setWebsiteConfig(config);
+  const updateWebsiteConfig = (newConfig: WebsiteConfig) => {
+    setWebsiteConfig(newConfig);
     addToast('Site publicado com sucesso!', 'success');
+  };
+
+  const updateSaaSAppConfig = (newConfig: SaaSAppConfig) => {
+    setSaaSAppConfig(newConfig);
   };
 
   const login = (role: UserRole) => {
@@ -1149,7 +1250,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const addEvent = (event: Omit<ClinicEvent, 'organizationId'>) => {
     const newEvent: ClinicEvent = { ...event, organizationId: currentOrgId };
-    setEvents(prev => [newEvent, ...prev]);
+    setEvents(prev => [...prev, newEvent]);
     addToast('Evento criado com sucesso!', 'success');
   };
 
@@ -1194,7 +1295,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Pharmacy Logic
   const addVial = (vial: Omit<OpenVial, 'organizationId'>) => {
     const newVial: OpenVial = { ...vial, organizationId: currentOrgId };
-    setVials(prev => [newVial, ...prev]);
+    setVials(prev => [...prev, newVial]);
     addToast('Frasco aberto registrado!', 'success');
   };
 
@@ -1307,7 +1408,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const addSupplier = (supplier: Omit<Supplier, 'organizationId'>) => {
     const newSupplier: Supplier = { ...supplier, organizationId: currentOrgId };
-    setSuppliers(prev => [newSupplier, ...prev]);
+    setSuppliers(prev => [...prev, newSupplier]);
     addToast('Fornecedor cadastrado com sucesso!', 'success');
   };
 
@@ -1327,6 +1428,36 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
   const updateAccount = (id: string, data: Partial<BankAccount>) => {
     setAccounts(prev => prev.map(a => a.id === id ? { ...a, ...data } : a));
+  };
+
+  // SaaS Master Backoffice Logic
+  const [saasLeads, setSaaSLeads] = useState<SaaSLead[]>(initialSaaSLeads);
+  const [saasSubscribers, setSaaSSubscribers] = useState<SaaSSubscriber[]>(initialSaaSSubscribers);
+
+  useEffect(() => {
+    localStorage.setItem('diva_saas_leads', JSON.stringify(saasLeads));
+  }, [saasLeads]);
+
+  useEffect(() => {
+    localStorage.setItem('diva_saas_subscribers', JSON.stringify(saasSubscribers));
+  }, [saasSubscribers]);
+
+  const addSaaSLead = (lead: SaaSLead) => {
+    setSaaSLeads(prev => [...prev, lead]);
+    addToast('Lead SaaS registrado com sucesso!', 'success');
+  };
+
+  const updateSaaSLead = (id: string, data: Partial<SaaSLead>) => {
+    setSaaSLeads(prev => prev.map(l => l.id === id ? { ...l, ...data } : l));
+  };
+
+  const addSaaSSubscriber = (sub: SaaSSubscriber) => {
+    setSaaSSubscribers(prev => [...prev, sub]);
+    addToast('Assinante SaaS adicionado!', 'success');
+  };
+
+  const updateSaaSSubscriber = (id: string, data: Partial<SaaSSubscriber>) => {
+    setSaaSSubscribers(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
   };
 
   const addFiscalRecord = (record: FiscalRecord) => {
@@ -1423,6 +1554,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       updateNotificationConfig,
       websiteConfig,
       updateWebsiteConfig,
+      saasAppConfig,
+      updateSaaSAppConfig,
       currentUser,
       login,
       logout,
@@ -1494,6 +1627,14 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       addSupplier,
       updateSupplier,
       removeSupplier,
+
+      // SaaS Master Backoffice
+      saasLeads,
+      addSaaSLead,
+      updateSaaSLead,
+      saasSubscribers,
+      addSaaSSubscriber,
+      updateSaaSSubscriber,
 
       conversations: filteredConversations,
       addMessage,

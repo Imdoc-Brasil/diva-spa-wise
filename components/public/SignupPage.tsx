@@ -2,14 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { SUBSCRIPTION_PLANS } from '../../utils/subscriptionPlans';
-import { Organization, OrganizationType } from '../../types';
+import { Organization, OrganizationType, SaaSPlan, SaaSSubscriber } from '../../types';
 import { useData } from '../context/DataContext';
 import { Building, CreditCard, ChevronRight, Check, ArrowLeft, Shield, User, Lock, Mail } from 'lucide-react';
 
 const SignupPage: React.FC = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const { login } = useData(); // We will use this to "login" the user after creation
+    const { login, addSaaSSubscriber } = useData(); // We will use this to "login" the user after creation
 
     // Initial Plan from URL
     const planParam = searchParams.get('plan');
@@ -68,6 +68,33 @@ const SignupPage: React.FC = () => {
 
         // In a real app, this would create the User and the Organization via API
         // Here we will simulate a successful signup and auto-login
+
+        // Create Subscriber in Master CRM
+        const planEnum = selectedPlanId === 'starter' ? SaaSPlan.START :
+            selectedPlanId === 'professional' ? SaaSPlan.GROWTH : SaaSPlan.EMPIRE;
+
+        const price = billingCycle === 'monthly'
+            ? (SUBSCRIPTION_PLANS.find(p => p.id === selectedPlanId)?.pricing.monthly || 0)
+            : (SUBSCRIPTION_PLANS.find(p => p.id === selectedPlanId)?.pricing.yearly || 0) / 12;
+
+        const newSubscriber: SaaSSubscriber = {
+            id: `org_${Date.now()}`,
+            clinicName: orgName,
+            adminName: userName,
+            adminEmail: userEmail,
+            adminPhone: '(00) 00000-0000', // Mock
+            plan: planEnum,
+            status: 'active',
+            mrr: Math.round(price),
+            joinedAt: new Date().toISOString(),
+            nextBillingDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // 14 days trial
+            usersCount: 1,
+            smsBalance: 50 // Trial balance
+        };
+
+        if (addSaaSSubscriber) {
+            addSaaSSubscriber(newSubscriber);
+        }
 
         // Mock Login as Admin
         // In reality, we would create a new user object, but for this demo, we can just switch role to ADMIN

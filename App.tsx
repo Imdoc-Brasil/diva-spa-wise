@@ -43,6 +43,7 @@ import TalentModule from './components/modules/TalentModule';
 import OrganizationSettings from './components/modules/OrganizationSettings';
 import NewOrganizationWizard from './components/onboarding/NewOrganizationWizard';
 import TreatmentPlansModule from './components/modules/TreatmentPlansModule';
+
 import PublicPage from './components/public/PublicPage';
 import SalesPage from './components/public/SalesPage';
 import SignupPage from './components/public/SignupPage';
@@ -55,6 +56,13 @@ import { DataProvider, useData } from './components/context/DataContext';
 import { OrganizationProvider } from './components/context/OrganizationContext';
 import DemoBanner from './components/ui/DemoBanner';
 import { UserRole } from './types';
+import MasterLayout from './components/MasterLayout';
+import SaaSCrmModule from './components/modules/saas/SaaSCrmModule';
+import SubscribersModule from './components/modules/saas/SubscribersModule';
+import SaaSDashboard from './components/modules/saas/SaaSDashboard';
+import SaaSFinanceModule from './components/modules/saas/SaaSFinanceModule';
+import SalesPageEditorModule from './components/modules/saas/SalesPageEditorModule';
+import AnalyticsManager from './components/ui/AnalyticsManager';
 
 // Scroll Restoration Component (Window level backup, main logic is in Layout)
 const ScrollToTop = () => {
@@ -103,6 +111,20 @@ const AppContent: React.FC = () => {
                                 </ProtectedRoute>
                             }
                         />
+
+
+                        {/* MASTER / SAAS ADMIN ROUTES */}
+                        <Route path="/master/*" element={
+                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN]}>
+                                <MasterLayout />
+                            </ProtectedRoute>
+                        }>
+                            <Route index element={<SaaSDashboard />} />
+                            <Route path="crm" element={<SaaSCrmModule />} />
+                            <Route path="subscribers" element={<SubscribersModule />} />
+                            <Route path="finance" element={<SaaSFinanceModule />} />
+                            <Route path="cms" element={<SalesPageEditorModule />} />
+                        </Route>
 
                         {/* MAIN APP ROUTES (WITH LAYOUT) */}
                         <Route path="/*" element={
@@ -189,12 +211,21 @@ const AppContent: React.FC = () => {
                                         }
                                     />
 
-                                    {/* Compliance & Regulatory */}
                                     <Route
                                         path="/compliance"
                                         element={
                                             <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER]}>
                                                 <ComplianceModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
+
+                                    {/* Franchise & Multi-Unit */}
+                                    <Route
+                                        path="/franchise"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER]}>
+                                                <FranchiseModule />
                                             </ProtectedRoute>
                                         }
                                     />
@@ -535,6 +566,7 @@ const App: React.FC = () => {
         <ToastProvider>
             <OrganizationProvider>
                 <DataProvider>
+                    <AnalyticsManager />
                     <AppContent />
                 </DataProvider>
             </OrganizationProvider>

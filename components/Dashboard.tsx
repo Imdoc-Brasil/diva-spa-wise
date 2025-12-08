@@ -38,6 +38,7 @@ const Dashboard: React.FC = () => {
     // Mock User for Briefing (In real app, this comes from Auth Context)
     const mockUser: User = {
         uid: 'admin',
+        organizationId: 'org_demo',
         email: 'admin@diva.com',
         displayName: 'Ana Gerente',
         role: UserRole.MANAGER
@@ -144,6 +145,12 @@ const Dashboard: React.FC = () => {
                     <p className="text-gray-500 text-xs md:text-sm">Visão geral em tempo real da operação Diva Spa.</p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+                    <button
+                        onClick={() => navigate('/master')}
+                        className="bg-black text-yellow-400 border border-yellow-500/50 px-4 py-2 rounded-full text-xs font-bold flex items-center justify-center shadow-lg hover:shadow-yellow-500/20 transition-all hover:scale-105 animate-pulse-slow"
+                    >
+                        <TrendingUp size={14} className="mr-2" /> SaaS Master
+                    </button>
                     <button
                         onClick={() => setIsBriefingOpen(true)}
                         className="bg-gradient-to-r from-diva-accent to-yellow-600 text-white px-4 py-2 rounded-full text-xs font-bold flex items-center justify-center shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 active:scale-95"

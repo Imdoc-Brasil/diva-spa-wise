@@ -4,6 +4,7 @@ import { ShoppingBag, Search, Tag, Heart, Plus, Minus, CreditCard, Sparkles, Pac
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Legend, LineChart, Line, Cell } from 'recharts';
 import { useData } from '../context/DataContext';
 import { useUnitData } from '../hooks/useUnitData';
+import { useToast } from '../ui/ToastContext';
 import SuppliersModal from '../modals/SuppliersModal';
 
 
@@ -44,7 +45,8 @@ interface MarketplaceModuleProps {
 }
 
 const MarketplaceModule: React.FC<MarketplaceModuleProps> = ({ user }) => {
-    const { products, updateProductStock, selectedUnitId, suppliers } = useUnitData(); // Use real products from context
+    const { products, updateProductStock, selectedUnitId, suppliers } = useUnitData();
+    const { addToast } = useToast();
     const [viewMode, setViewMode] = useState<'storefront' | 'inventory' | 'purchasing' | 'audit' | 'analytics'>('storefront');
     const [activeCategory, setActiveCategory] = useState<ProductCategory | 'all'>('all');
     const [cart, setCart] = useState<{ product: Product, qty: number }[]>([]);
@@ -55,6 +57,20 @@ const MarketplaceModule: React.FC<MarketplaceModuleProps> = ({ user }) => {
 
     const formatCurrency = (val: number) =>
         new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+
+    // Auto-Replenishment Alert System
+    React.useEffect(() => {
+        if (!products.length) return;
+        const lowStockCount = products.filter(p => {
+            const stock = getProductStock(p);
+            const min = p.minStockLevel || 5;
+            return stock <= min;
+        }).length;
+
+        if (lowStockCount > 0) {
+            addToast(`⚠️ Atenção: ${lowStockCount} produtos com estoque crítico. Acesse "Compras" para reabastecer.`, 'warning');
+        }
+    }, []); // Run once on mount (or depend on products/viewMode if needed, but simplistic is better for UX to avoid span)
 
     // Suppliers Logic
     const [isSuppliersModalOpen, setIsSuppliersModalOpen] = useState(false);
@@ -125,26 +141,60 @@ const MarketplaceModule: React.FC<MarketplaceModuleProps> = ({ user }) => {
     };
 
     // Purchasing Logic
+    // Purchasing Logic (Smart Replenishment)
     const handleGenerateReplenishment = () => {
         const lowStockItems = products.filter(p => getStockStatus(p) === 'low' || getStockStatus(p) === 'critical');
+
         if (lowStockItems.length === 0) {
-            alert("Estoque saudável! Nenhum item precisa de reposição urgente.");
+            addToast("Estoque saudável! Nenhum item precisa de reposição urgente.", 'success');
             return;
         }
 
-        const newOrder: PurchaseOrder = {
-            id: `po_${Date.now()}`,
-            supplierId: 'sup1', // Mock default
-            supplierName: 'Mix Fornecedores (Auto)',
-            status: 'draft',
-            date: new Date().toISOString().split('T')[0],
-            itemsCount: lowStockItems.length * 10, // Mock qty
-            totalCost: lowStockItems.reduce((acc, p) => acc + ((p.costPrice || 0) * 10), 0),
-            items: lowStockItems.map(p => ({ productId: p.id, productName: p.name, quantity: 10, unitCost: p.costPrice || 0 }))
-        };
+        // 1. Agrupar por fornecedor
+        const itemsBySupplier: { [key: string]: typeof lowStockItems } = {};
 
-        setOrders([newOrder, ...orders]);
-        alert(`${lowStockItems.length} itens adicionados a um novo pedido de reposição!`);
+        lowStockItems.forEach(item => {
+            const supplierName = item.supplier || 'Fornecedor Geral';
+            if (!itemsBySupplier[supplierName]) {
+                itemsBySupplier[supplierName] = [];
+            }
+            itemsBySupplier[supplierName].push(item);
+        });
+
+        // 2. Gerar Pedidos separados
+        const newOrders: PurchaseOrder[] = [];
+
+        Object.entries(itemsBySupplier).forEach(([supName, items]) => {
+            // Smart Quantity: (Min * 3) - Current
+            const poItems = items.map(p => {
+                const current = getProductStock(p);
+                const target = (p.minStockLevel || 5) * 3;
+                const qtyToOrder = Math.max(target - current, 10); // Minimum order of 10
+
+                return {
+                    productId: p.id,
+                    productName: p.name,
+                    quantity: qtyToOrder,
+                    unitCost: p.costPrice || 0
+                };
+            });
+
+            const supplierObj = suppliers.find(s => s.name === supName);
+
+            newOrders.push({
+                id: `po_auto_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+                supplierId: supplierObj?.id || 'sup_unknown',
+                supplierName: supName,
+                status: 'draft',
+                date: new Date().toISOString().split('T')[0],
+                itemsCount: poItems.length,
+                totalCost: poItems.reduce((acc, i) => acc + (i.unitCost * i.quantity), 0),
+                items: poItems
+            });
+        });
+
+        setOrders(prev => [...newOrders, ...prev]);
+        addToast(`${newOrders.length} pedido(s) gerado(s) automaticamente para ${lowStockItems.length} itens críticos!`, 'success');
     };
 
     const handleReceiveOrder = (id: string) => {
@@ -154,7 +204,7 @@ const MarketplaceModule: React.FC<MarketplaceModuleProps> = ({ user }) => {
                 updateProductStock(item.productId, item.quantity, 'add', selectedUnitId);
             });
             setOrders(orders.map(o => o.id === id ? { ...o, status: 'received' } : o));
-            alert("Estoque atualizado e despesa lançada no Financeiro.");
+            addToast("Estoque atualizado e despesa lançada no Financeiro.", 'success');
         }
     };
 
@@ -165,7 +215,7 @@ const MarketplaceModule: React.FC<MarketplaceModuleProps> = ({ user }) => {
             updateProductStock(item.product.id, item.qty, 'remove', selectedUnitId);
         });
 
-        alert(`Compra de ${formatCurrency(cartTotal)} realizada com sucesso!`);
+        addToast(`Compra de ${formatCurrency(cartTotal)} realizada com sucesso!`, 'success');
         setCart([]);
     };
 
