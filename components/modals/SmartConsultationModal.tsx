@@ -7,9 +7,10 @@ interface SmartConsultationModalProps {
     isOpen: boolean;
     onClose: () => void;
     client: Client;
+    onFinish?: (data: { transcription: string; skincarePlan: string }) => void;
 }
 
-const SmartConsultationModal: React.FC<SmartConsultationModalProps> = ({ isOpen, onClose, client }) => {
+const SmartConsultationModal: React.FC<SmartConsultationModalProps> = ({ isOpen, onClose, client, onFinish }) => {
     const { addAppointmentRecord } = useData();
     const [isRecording, setIsRecording] = useState(false);
     const [transcript, setTranscript] = useState('');
@@ -82,9 +83,19 @@ Data: ${new Date().toLocaleDateString()}
     };
 
     const handleSave = () => {
+        if (onFinish) {
+            onFinish({
+                transcription: transcript,
+                skincarePlan: skincarePlan
+            });
+            onClose();
+            return;
+        }
+
         // Save transcription and skincare plan to appointment record
         const record = {
             id: `rec_${Date.now()}`,
+            organizationId: client.organizationId || 'org_demo',
             appointmentId: `appt_${Date.now()}`, // In production, this should be passed via props
             clientId: client.clientId,
             clientName: client.name,

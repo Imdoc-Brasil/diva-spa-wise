@@ -4,12 +4,9 @@ import { ShoppingBag, Search, Tag, Heart, Plus, Minus, CreditCard, Sparkles, Pac
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Legend, LineChart, Line, Cell } from 'recharts';
 import { useData } from '../context/DataContext';
 import { useUnitData } from '../hooks/useUnitData';
+import SuppliersModal from '../modals/SuppliersModal';
 
-const mockSuppliers: Supplier[] = [
-    { id: 'sup1', name: 'DermoTech Labs', contact: '(11) 4444-5555', email: 'pedidos@dermotech.com', rating: 4.8, categories: ['Dermocosméticos'] },
-    { id: 'sup2', name: 'MedHospitalar', contact: '(11) 3333-2222', email: 'vendas@med.com.br', rating: 4.2, categories: ['Descartáveis', 'Profissional'] },
-    { id: 'sup3', name: 'VitaSkin Pro', contact: '(21) 9999-8888', email: 'comercial@vitaskin.com', rating: 5.0, categories: ['Home Care', 'Luxo'] },
-];
+
 
 const mockOrders: PurchaseOrder[] = [
     {
@@ -47,7 +44,7 @@ interface MarketplaceModuleProps {
 }
 
 const MarketplaceModule: React.FC<MarketplaceModuleProps> = ({ user }) => {
-    const { products, updateProductStock, selectedUnitId } = useUnitData(); // Use real products from context
+    const { products, updateProductStock, selectedUnitId, suppliers } = useUnitData(); // Use real products from context
     const [viewMode, setViewMode] = useState<'storefront' | 'inventory' | 'purchasing' | 'audit' | 'analytics'>('storefront');
     const [activeCategory, setActiveCategory] = useState<ProductCategory | 'all'>('all');
     const [cart, setCart] = useState<{ product: Product, qty: number }[]>([]);
@@ -58,6 +55,20 @@ const MarketplaceModule: React.FC<MarketplaceModuleProps> = ({ user }) => {
 
     const formatCurrency = (val: number) =>
         new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+
+    // Suppliers Logic
+    const [isSuppliersModalOpen, setIsSuppliersModalOpen] = useState(false);
+    const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+
+    const handleAddSupplier = () => {
+        setSelectedSupplier(null);
+        setIsSuppliersModalOpen(true);
+    };
+
+    const handleEditSupplier = (supplier: Supplier) => {
+        setSelectedSupplier(supplier);
+        setIsSuppliersModalOpen(true);
+    };
 
     const getProductStock = (product: Product): number => {
         if (selectedUnitId === 'all') {
@@ -457,11 +468,11 @@ const MarketplaceModule: React.FC<MarketplaceModuleProps> = ({ user }) => {
                     <div className="w-80 bg-white rounded-xl shadow-sm border border-diva-light/30 flex flex-col">
                         <div className="p-4 border-b border-gray-100 bg-gray-50 rounded-t-xl flex justify-between items-center">
                             <h3 className="font-bold text-diva-dark">Fornecedores</h3>
-                            <button className="p-1 hover:bg-gray-200 rounded text-diva-primary"><Plus size={16} /></button>
+                            <button onClick={handleAddSupplier} className="p-1 hover:bg-gray-200 rounded text-diva-primary"><Plus size={16} /></button>
                         </div>
                         <div className="flex-1 overflow-y-auto p-3 space-y-3">
-                            {mockSuppliers.map(sup => (
-                                <div key={sup.id} className="p-3 border border-gray-100 rounded-lg hover:border-diva-primary transition-colors cursor-pointer bg-white group shadow-sm">
+                            {suppliers.map(sup => (
+                                <div key={sup.id} onClick={() => handleEditSupplier(sup)} className="p-3 border border-gray-100 rounded-lg hover:border-diva-primary transition-colors cursor-pointer bg-white group shadow-sm">
                                     <div className="flex justify-between items-start mb-1">
                                         <h4 className="font-bold text-diva-dark text-sm">{sup.name}</h4>
                                         <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded flex items-center font-bold">
@@ -739,6 +750,11 @@ const MarketplaceModule: React.FC<MarketplaceModuleProps> = ({ user }) => {
                     </div>
                 </div>
             )}
+            <SuppliersModal
+                isOpen={isSuppliersModalOpen}
+                onClose={() => setIsSuppliersModalOpen(false)}
+                supplierToEdit={selectedSupplier}
+            />
         </div>
     );
 };

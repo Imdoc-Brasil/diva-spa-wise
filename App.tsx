@@ -40,13 +40,18 @@ import MigrationModule from './components/modules/MigrationModule';
 import UserProfileModule from './components/modules/UserProfileModule';
 import PromotionsModule from './components/modules/PromotionsModule';
 import TalentModule from './components/modules/TalentModule';
+import OrganizationSettings from './components/modules/OrganizationSettings';
+import NewOrganizationWizard from './components/onboarding/NewOrganizationWizard';
+import TreatmentPlansModule from './components/modules/TreatmentPlansModule';
 import PublicPage from './components/public/PublicPage';
+import SalesPage from './components/public/SalesPage';
 import StaffDashboard from './components/StaffDashboard';
 import LoginPage from './components/LoginPage';
 import NotFound from './components/NotFound';
 import PatientPortal from './components/pages/PatientPortal';
 import { ToastProvider } from './components/ui/ToastContext';
 import { DataProvider, useData } from './components/context/DataContext';
+import { OrganizationProvider } from './components/context/OrganizationContext';
 import DemoBanner from './components/ui/DemoBanner';
 import { UserRole } from './types';
 
@@ -73,6 +78,7 @@ const AppContent: React.FC = () => {
             <Routes>
                 {/* PUBLIC SITE ROUTE (Accessible without Login) */}
                 <Route path="/site" element={<PublicPage />} />
+                <Route path="/sales" element={<SalesPage />} />
 
                 {user ? (
                     <>
@@ -431,6 +437,16 @@ const AppContent: React.FC = () => {
                                         }
                                     />
 
+                                    {/* Treatment Plans */}
+                                    <Route
+                                        path="/plans"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF]}>
+                                                <TreatmentPlansModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
+
                                     {/* Academy */}
                                     <Route
                                         path="/academy"
@@ -447,6 +463,26 @@ const AppContent: React.FC = () => {
                                         element={
                                             <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF]}>
                                                 <HelpModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
+
+                                    {/* Create Organization Wizard */}
+                                    <Route
+                                        path="/settings/organization/new"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF]}>
+                                                <NewOrganizationWizard />
+                                            </ProtectedRoute>
+                                        }
+                                    />
+
+                                    {/* Organization Settings */}
+                                    <Route
+                                        path="/settings/organization"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN]}>
+                                                <OrganizationSettings />
                                             </ProtectedRoute>
                                         }
                                     />
@@ -490,12 +526,16 @@ const AppContent: React.FC = () => {
     );
 };
 
+
+
 const App: React.FC = () => {
     return (
         <ToastProvider>
-            <DataProvider>
-                <AppContent />
-            </DataProvider>
+            <OrganizationProvider>
+                <DataProvider>
+                    <AppContent />
+                </DataProvider>
+            </OrganizationProvider>
         </ToastProvider>
     );
 };

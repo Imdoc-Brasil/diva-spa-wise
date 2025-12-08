@@ -13,7 +13,9 @@ import CommandPalette from './CommandPalette';
 import DivaAI from './DivaAI';
 import NotificationCenter from './NotificationCenter';
 import UnitSelector from './ui/UnitSelector';
+import OrganizationSwitcher from './ui/OrganizationSwitcher';
 import { useData } from './context/DataContext';
+import { useOrganization } from './context/OrganizationContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -39,7 +41,7 @@ const roleTranslations: Record<UserRole, string> = {
   [UserRole.MANAGER]: 'Gerente',
   [UserRole.STAFF]: 'Profissional',
   [UserRole.FINANCE]: 'Financeiro',
-  [UserRole.CLIENT]: 'Cliente'
+  [UserRole.CLIENT]: 'Paciente'
 };
 
 const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch }) => {
@@ -52,6 +54,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
   const location = useLocation();
   const navigate = useNavigate();
   const { notifications } = useData();
+  const { organization } = useOrganization();
   const unreadCount = notifications ? notifications.filter(n => !n.read).length : 0;
 
   // Handle Resize & Initial Mobile Check
@@ -95,7 +98,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
       title: 'Principal',
       items: [
         { label: 'Dashboard', path: '/', icon: <PieChart size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER] },
-        { label: 'Portal Cliente', path: '/portal', icon: <Home size={20} />, allowedRoles: [UserRole.CLIENT] },
+        { label: 'Portal do Paciente', path: '/portal', icon: <Home size={20} />, allowedRoles: [UserRole.CLIENT] },
         { label: 'Inbox & Chat', path: '/inbox', icon: <MessageSquare size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF] },
         { label: 'Agenda', path: '/schedule', icon: <Calendar size={20} />, allowedRoles: [UserRole.STAFF, UserRole.ADMIN, UserRole.CLIENT] },
         { label: 'Tarefas & Ops', path: '/tasks', icon: <ClipboardList size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF] },
@@ -107,7 +110,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
         { label: 'Concierge', path: '/concierge', icon: <Move size={20} />, allowedRoles: [UserRole.STAFF, UserRole.ADMIN, UserRole.MANAGER] },
         { label: 'Mapa de Salas', path: '/rooms', icon: <Map size={20} />, allowedRoles: [UserRole.STAFF, UserRole.ADMIN] },
         { label: 'Farmácia', path: '/pharmacy', icon: <Beaker size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF] },
-        { label: 'Boutique Diva', path: '/marketplace', icon: <ShoppingBag size={20} />, allowedRoles: [UserRole.CLIENT, UserRole.ADMIN, UserRole.STAFF] },
+        ...(organization?.settings.enableMarketplace ? [{ label: organization?.settings.marketplaceName || 'Boutique Diva', path: '/marketplace', icon: <ShoppingBag size={20} />, allowedRoles: [UserRole.CLIENT, UserRole.ADMIN, UserRole.STAFF] }] : []),
         { label: 'Enxoval', path: '/laundry', icon: <Shirt size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF] },
         { label: 'Ativos & Manut.', path: '/assets', icon: <Wrench size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER] },
       ]
@@ -116,6 +119,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
       title: 'Crescimento & CRM',
       items: [
         { label: 'CRM Pacientes', path: '/crm', icon: <Users size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF] },
+        { label: 'Planos de Tratamento', path: '/plans', icon: <ClipboardList size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF] },
         { label: 'Funil de Vendas', path: '/funnel', icon: <FileBarChart size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER] },
         { label: 'Marketing', path: '/marketing', icon: <Megaphone size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER] },
         { label: 'Promoções (Smart)', path: '/promotions', icon: <Tag size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER] },
@@ -174,8 +178,10 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
         <div className="h-16 flex items-center justify-between px-4 border-b border-white/5 shrink-0 bg-transparent">
           {isSidebarOpen || isMobile ? (
             <div className="flex items-center gap-2">
-              <Sparkles size={22} className="text-diva-accent" />
-              <h1 className="text-lg font-bold tracking-widest text-white font-serif">DIVA SPA</h1>
+              <div className="w-8 h-8 bg-gradient-to-br from-diva-accent to-yellow-200 rounded-lg flex items-center justify-center shadow-lg shadow-diva-accent/20">
+                <span className="text-diva-primary font-bold text-xl">I</span>
+              </div>
+              <h1 className="text-lg font-bold tracking-widest text-white font-serif">I'mDoc</h1>
             </div>
           ) : (
             <span className="font-bold text-xl mx-auto font-serif">DS</span>
@@ -194,7 +200,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
 
         <div className="flex-1 overflow-y-auto py-4 custom-scrollbar">
           {navSections.map((section, idx) => {
-            const filteredItems = section.items.filter(item => item.allowedRoles.includes(user.role));
+            const filteredItems = section.items.filter(item => item && item.allowedRoles.includes(user.role));
 
             if (filteredItems.length === 0) return null;
 
@@ -332,8 +338,10 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
           </div>
 
           <div className="flex items-center space-x-3 md:space-x-4">
-            {/* Unit Selector */}
-            <div className="hidden md:block">
+            {/* Organization & Unit Selectors */}
+            <div className="hidden md:flex items-center gap-2">
+              <OrganizationSwitcher />
+              <div className="h-6 w-px bg-gray-200 mx-1"></div>
               <UnitSelector />
             </div>
 
@@ -379,6 +387,12 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
 
         <div className="p-3 sm:p-4 md:p-8 max-w-7xl mx-auto w-full min-h-[calc(100vh-64px)] pb-20 md:pb-8 animate-in fade-in duration-300" onClick={() => setIsNotificationsOpen(false)}>
           {children}
+
+          <div className="mt-12 pt-6 border-t border-diva-light/20 text-center">
+            <p className="text-xs text-gray-400 font-medium">
+              © {new Date().getFullYear()} I'mDoc Technology® <span className="mx-1">•</span> Desenvolvimento Contínuo
+            </p>
+          </div>
         </div>
       </main>
 

@@ -7,6 +7,8 @@ import NewClientModal from '../modals/NewClientModal';
 import { useUnitData } from '../hooks/useUnitData';
 import { useDataIsolation, sanitizeClientData } from '../../hooks/useDataIsolation';
 import { useToast } from '../ui/ToastContext';
+import { calculateRFM, RFMSegment, getRFMDisplay } from '../../utils/rfmUtils';
+import { ServiceAppointment } from '../../types';
 
 interface CrmModuleProps {
   user: UserType;
@@ -26,20 +28,33 @@ const CrmModule: React.FC<CrmModuleProps> = ({ user }) => {
   const [isNewClientModalOpen, setIsNewClientModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTag, setFilterTag] = useState<string>('');
+  const [filterSegment, setFilterSegment] = useState<RFMSegment | ''>('');
+
+  // Enhance clients with dynamic RFM
+  const enhancedClients = useMemo(() => {
+    return visibleClients.map(client => {
+      // Calculate RFM using available appointments and client LTV (fallback)
+      // Note: Passing empty array for invoices implies we rely on client.lifetimeValue or update logic later
+      const metrics = calculateRFM(client, appointments as ServiceAppointment[], client.lifetimeValue);
+      return { ...client, rfmMetrics: metrics };
+    });
+  }, [visibleClients, appointments]);
 
   // Search and filter clients
   const filteredClients = useMemo(() => {
-    return visibleClients.filter(client => {
+    return enhancedClients.filter(client => {
       const matchesSearch =
         client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        client.phone.includes(searchTerm);
+        client.phone.includes(searchTerm) ||
+        client.cpf?.includes(searchTerm);
 
       const matchesTag = !filterTag || client.behaviorTags.includes(filterTag);
+      const matchesSegment = !filterSegment || client.rfmMetrics.segment === filterSegment;
 
-      return matchesSearch && matchesTag;
+      return matchesSearch && matchesTag && matchesSegment;
     });
-  }, [visibleClients, searchTerm, filterTag]);
+  }, [enhancedClients, searchTerm, filterTag, filterSegment]);
 
   // Get all unique tags
   const allTags = useMemo(() => {
@@ -52,15 +67,15 @@ const CrmModule: React.FC<CrmModuleProps> = ({ user }) => {
 
   // Calculate statistics
   const stats = useMemo(() => {
-    const totalClients = visibleClients.length;
-    const vipClients = visibleClients.filter(c => c.rfmScore > 70).length;
+    const totalClients = enhancedClients.length;
+    const vipClients = enhancedClients.filter(c => c.rfmMetrics.segment === 'Champions' || c.rfmMetrics.segment === 'Loyal').length;
     const totalLTV = canViewFinancialData
-      ? visibleClients.reduce((sum, c) => sum + c.lifetimeValue, 0)
+      ? enhancedClients.reduce((sum, c) => sum + c.lifetimeValue, 0)
       : 0;
     const avgLTV = totalClients > 0 ? totalLTV / totalClients : 0;
 
     return { totalClients, vipClients, totalLTV, avgLTV };
-  }, [visibleClients, canViewFinancialData]);
+  }, [enhancedClients, canViewFinancialData]);
 
   const handleClientClick = (client: Client) => {
     setSelectedClient(client);
@@ -152,8 +167,8 @@ const CrmModule: React.FC<CrmModuleProps> = ({ user }) => {
             <button
               onClick={() => setActiveTab('clients')}
               className={`pb-2 text-xs md:text-sm font-semibold tracking-wide transition-colors ${activeTab === 'clients'
-                  ? 'text-diva-primary border-b-2 border-diva-primary'
-                  : 'text-gray-400 hover:text-diva-dark'
+                ? 'text-diva-primary border-b-2 border-diva-primary'
+                : 'text-gray-400 hover:text-diva-dark'
                 }`}
             >
               <span className="hidden sm:inline">BASE DE PACIENTES</span>
@@ -162,8 +177,8 @@ const CrmModule: React.FC<CrmModuleProps> = ({ user }) => {
             <button
               onClick={() => setActiveTab('leads')}
               className={`pb-2 text-xs md:text-sm font-semibold tracking-wide transition-colors ${activeTab === 'leads'
-                  ? 'text-diva-primary border-b-2 border-diva-primary'
-                  : 'text-gray-400 hover:text-diva-dark'
+                ? 'text-diva-primary border-b-2 border-diva-primary'
+                : 'text-gray-400 hover:text-diva-dark'
                 }`}
             >
               <span className="hidden sm:inline">PIPELINE DE VENDAS</span>
@@ -197,6 +212,22 @@ const CrmModule: React.FC<CrmModuleProps> = ({ user }) => {
               </select>
             )}
 
+            <select
+              value={filterSegment}
+              onChange={(e) => setFilterSegment(e.target.value as RFMSegment)}
+              className="px-3 py-2 border border-diva-light/50 rounded-lg text-sm focus:ring-1 focus:ring-diva-primary outline-none bg-white font-medium text-gray-700"
+            >
+              <option value="">Todos os Perfis</option>
+              <option value="Champions">👑 Premium</option>
+              <option value="Loyal">💙 Pacientes Leais</option>
+              <option value="PotentialLoyalist">💎 Potenciais Fiéis</option>
+              <option value="NewCustomers">🌱 Novos Pacientes</option>
+              <option value="Promising">✨ Promissores</option>
+              <option value="NeedsAttention">⚠️ Precisam de Atenção</option>
+              <option value="Hibernating">💤 Hibernando</option>
+              <option value="Lost">❌ Perdidos</option>
+            </select>
+
             <button
               onClick={() => setIsNewClientModalOpen(true)}
               className="bg-diva-primary text-white px-4 py-2 rounded-lg hover:bg-diva-dark transition-colors flex items-center justify-center gap-2 active:scale-95"
@@ -229,59 +260,56 @@ const CrmModule: React.FC<CrmModuleProps> = ({ user }) => {
                     <tbody className="text-sm divide-y divide-gray-50">
                       {filteredClients.map(client => {
                         const safeClient = canViewFinancialData ? client : { ...client, lifetimeValue: 0, rfmScore: 0 };
+                        // client.rfmMetrics is available from enhancedClients
 
                         return (
                           <tr
                             key={client.clientId}
                             onClick={() => handleClientClick(client)}
-                            className={`transition-colors cursor-pointer group border-b border-gray-50 ${safeClient.rfmScore > 70 ? 'bg-purple-50 hover:bg-purple-100' : 'hover:bg-diva-light/10'}`}
+                            className="hover:bg-diva-light/10 cursor-pointer transition-colors group"
                           >
-                            <td className="py-4 pl-2">
-                              <div className="flex items-center gap-2">
-                                {safeClient.rfmScore > 70 && <Crown size={14} className="text-purple-600" />}
+                            <td className="py-3 pl-2">
+                              <div className="flex items-center">
+                                <div className="w-8 h-8 rounded-full bg-diva-primary/10 text-diva-primary flex items-center justify-center font-bold mr-3 border border-diva-light/30">
+                                  {safeClient.name.charAt(0)}
+                                </div>
                                 <div>
-                                  <p className="font-medium text-diva-dark group-hover:text-diva-primary transition-colors">{client.name}</p>
-                                  <p className="text-xs text-gray-400">{client.email}</p>
+                                  <p className="font-semibold text-gray-900 leading-tight">{safeClient.name}</p>
+                                  <p className="text-xs text-gray-400">{safeClient.email}</p>
                                 </div>
                               </div>
                             </td>
-                            <td className="py-4">
-                              <div className="flex gap-1 flex-wrap">
-                                {client.behaviorTags.map(tag => (
-                                  <span key={tag} className="bg-diva-light/30 text-diva-dark px-2 py-0.5 rounded text-xs border border-diva-light/50">
-                                    {tag}
-                                  </span>
+                            <td className="py-3">
+                              <div className="flex flex-wrap gap-1">
+                                {client.behaviorTags.slice(0, 2).map(tag => (
+                                  <span key={tag} className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{tag}</span>
                                 ))}
+                                {client.behaviorTags.length > 2 && (
+                                  <span className="text-[10px] bg-gray-50 text-gray-400 px-1 rounded">+{client.behaviorTags.length - 2}</span>
+                                )}
                               </div>
                             </td>
-                            <td className="py-4">
-                              {canViewFinancialData ? (
-                                <>
-                                  <div className="w-full bg-gray-200 rounded-full h-2.5 max-w-[100px]">
-                                    <div className={`h-2.5 rounded-full ${safeClient.rfmScore > 70 ? 'bg-purple-600' : 'bg-diva-accent'}`} style={{ width: `${safeClient.rfmScore}%` }}></div>
-                                  </div>
-                                  <span className="text-xs text-gray-500 mt-1 block font-bold">{safeClient.rfmScore}/100</span>
-                                </>
-                              ) : (
-                                <span className="text-xs text-gray-400">-</span>
-                              )}
+                            <td className="py-3">
+                              <div className="flex items-center gap-2">
+                                <div className={`text-[10px] font-bold px-2 py-0.5 rounded-full text-nowrap whitespace-nowrap ${client.rfmMetrics?.segmentColor || 'bg-gray-100'}`}>
+                                  {client.rfmMetrics?.score || 0} - {client.rfmMetrics?.segmentLabel || 'N/A'}
+                                </div>
+                              </div>
                             </td>
-                            <td className="py-4 text-center">
-                              {client.loyaltyPoints ? (
-                                <span className="inline-flex items-center bg-yellow-50 text-yellow-700 border border-yellow-200 px-2 py-0.5 rounded-full text-xs font-bold">
-                                  <Star size={10} className="mr-1 fill-current" /> {client.loyaltyPoints}
-                                </span>
-                              ) : (
-                                <span className="text-xs text-gray-400">-</span>
-                              )}
+                            <td className="py-3 text-center">
+                              {safeClient.loyaltyPoints > 0 ? (
+                                <div className="inline-flex items-center gap-1 text-xs font-bold text-yellow-600 bg-yellow-50 px-2 py-1 rounded-lg border border-yellow-100">
+                                  <Star size={10} className="fill-current" /> {safeClient.loyaltyPoints}
+                                </div>
+                              ) : <span className="text-gray-300">-</span>}
                             </td>
-                            <td className="py-4 font-mono text-diva-dark">
-                              {canViewFinancialData ? `R$ ${safeClient.lifetimeValue.toLocaleString('pt-BR')}` : '-'}
+                            <td className="py-3 font-mono text-xs text-gray-600">
+                              {canViewFinancialData ? formatCurrency(safeClient.lifetimeValue) : '-'}
                             </td>
-                            <td className="py-4 text-gray-500">
-                              {client.lastContact ? new Date(client.lastContact).toLocaleDateString() : '-'}
+                            <td className="py-3 text-xs text-gray-500">
+                              {safeClient.lastContact ? new Date(safeClient.lastContact).toLocaleDateString() : '-'}
                             </td>
-                            <td className="py-4">
+                            <td className="py-3">
                               <div className="flex space-x-2 text-gray-400">
                                 <button
                                   onClick={(e) => handlePhoneClick(client, e)}
@@ -323,8 +351,8 @@ const CrmModule: React.FC<CrmModuleProps> = ({ user }) => {
                         key={client.clientId}
                         onClick={() => handleClientClick(client)}
                         className={`bg-white border rounded-xl p-4 cursor-pointer transition-all active:scale-[0.98] ${safeClient.rfmScore > 70
-                            ? 'border-purple-200 bg-purple-50'
-                            : 'border-gray-200 hover:border-diva-primary hover:shadow-md'
+                          ? 'border-purple-200 bg-purple-50'
+                          : 'border-gray-200 hover:border-diva-primary hover:shadow-md'
                           }`}
                       >
                         {/* Header */}

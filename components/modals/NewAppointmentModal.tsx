@@ -10,6 +10,7 @@ interface NewAppointmentModalProps {
   isOpen: boolean;
   onClose: () => void;
   appointmentToEdit?: ServiceAppointment | null;
+  initialData?: Partial<ServiceAppointment>;
 }
 
 // Mock Service Options (In real app, fetch from Settings/Services)
@@ -20,11 +21,13 @@ const services = [
   { name: 'Drenagem Linfática', price: 180, duration: 60 },
 ];
 
-const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClose, appointmentToEdit }) => {
+const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClose, appointmentToEdit, initialData }) => {
   const { addAppointment, updateAppointment, appointments, clients, staff, rooms, selectedUnitId } = useUnitData();
   const { addToast } = useToast();
   const [isNewClientModalOpen, setIsNewClientModalOpen] = useState(false);
   const [conflictWarning, setConflictWarning] = useState<string | null>(null);
+  const [clientSearch, setClientSearch] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const initialFormState = {
     clientId: '',
@@ -54,15 +57,28 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClo
           status: appointmentToEdit.status,
           referralSource: appointmentToEdit.referralSource || 'instagram'
         });
+        setClientSearch(appointmentToEdit.clientName || '');
+      } else if (initialData) {
+        setFormData({
+          ...initialFormState,
+          clientId: initialData.clientId || '',
+          serviceName: initialData.serviceName || services[0].name,
+          staffName: initialData.staffName || '',
+          status: AppointmentStatus.SCHEDULED,
+          referralSource: 'instagram',
+          ...initialData
+        });
+        setClientSearch(initialData.clientName || '');
       } else {
         setFormData(prev => ({
           ...initialFormState,
           date: new Date().toISOString().split('T')[0]
         }));
+        setClientSearch('');
       }
       setConflictWarning(null);
     }
-  }, [isOpen, appointmentToEdit]);
+  }, [isOpen, appointmentToEdit, initialData]);
 
   // Check for conflicts whenever relevant fields change
   useEffect(() => {
@@ -117,7 +133,7 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClo
     const selectedRoom = rooms.find(r => r.name === formData.roomId) || rooms[0];
 
     if (!client || !service) {
-      addToast('Selecione um cliente e um serviço válidos.', 'error');
+      addToast('Selecione um paciente e um serviço válidos.', 'error');
       return;
     }
 
@@ -126,6 +142,7 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClo
     const endDate = new Date(startDate.getTime() + service.duration * 60000);
 
     const appointmentData: ServiceAppointment = {
+      organizationId: 'org_demo',
       appointmentId: appointmentToEdit ? appointmentToEdit.appointmentId : `apt_${Date.now()}`,
       clientId: client.clientId,
       clientName: client.name,
@@ -165,29 +182,59 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClo
         <form onSubmit={handleSubmit} className="p-4 md:p-6 space-y-4 md:space-y-5 overflow-y-auto flex-1">
 
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Cliente *</label>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Paciente *</label>
             <div className="flex gap-2 items-center">
               <div className="relative flex-1">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-                <select
-                  required
+                <input
+                  type="text"
                   className="w-full pl-9 pr-3 py-2.5 md:py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all bg-white text-gray-900 text-sm"
-                  value={formData.clientId}
-                  onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
-                >
-                  <option value="" className="text-gray-400">Selecione um cliente...</option>
-                  {clients.map(client => (
-                    <option key={client.clientId} value={client.clientId} className="text-gray-900">
-                      {client.name}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Buscar paciente (Nome, CPF, Telefone)..."
+                  value={clientSearch}
+                  onChange={(e) => {
+                    setClientSearch(e.target.value);
+                    setShowSuggestions(true);
+                    if (e.target.value === '') setFormData({ ...formData, clientId: '' });
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                />
+                {showSuggestions && clientSearch.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                    {clients.filter(c =>
+                      c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+                      c.phone?.includes(clientSearch) ||
+                      c.cpf?.includes(clientSearch)
+                    ).length > 0 ? (
+                      clients.filter(c =>
+                        c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+                        c.phone?.includes(clientSearch) ||
+                        c.cpf?.includes(clientSearch)
+                      ).map(client => (
+                        <div
+                          key={client.clientId}
+                          className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0"
+                          onClick={() => {
+                            setClientSearch(client.name);
+                            setFormData({ ...formData, clientId: client.clientId });
+                            setShowSuggestions(false);
+                          }}
+                        >
+                          <p className="font-bold text-gray-800 text-sm">{client.name}</p>
+                          <p className="text-xs text-gray-500">{client.email} • {client.phone}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-3 text-sm text-gray-500">Nenhum paciente encontrado.</div>
+                    )}
+                  </div>
+                )}
               </div>
               <button
                 type="button"
                 onClick={() => setIsNewClientModalOpen(true)}
                 className="bg-diva-light/20 text-diva-primary p-2.5 md:p-3 rounded-lg hover:bg-diva-primary hover:text-white transition-colors border border-diva-light/50 active:scale-95 shrink-0"
-                title="Novo Cliente"
+                title="Novo Paciente"
               >
                 <Plus size={20} />
               </button>

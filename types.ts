@@ -1,3 +1,219 @@
+export * from './types_financial';
+// ============================================
+// MULTI-TENANT SAAS - ORGANIZATION & SUBSCRIPTION
+// ============================================
+
+export interface Address {
+    street: string;
+    number: string;
+    complement?: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+}
+
+export type OrganizationType = 'individual' | 'clinic' | 'group' | 'franchise';
+export type SubscriptionStatus = 'trial' | 'active' | 'past_due' | 'suspended' | 'cancelled';
+export type SubscriptionTier = 'starter' | 'professional' | 'enterprise' | 'custom';
+export type BillingCycle = 'monthly' | 'yearly';
+
+export interface SubscriptionPlan {
+    id: string;
+    name: string;
+    tier: SubscriptionTier;
+    pricing: {
+        monthly: number; // R$ por mês
+        yearly: number; // R$ por ano (com desconto)
+        currency: 'BRL' | 'USD';
+    };
+    limits: {
+        maxUnits: number;
+        maxUsers: number;
+        maxClients: number;
+        maxStorage: number; // GB
+        maxAppointmentsPerMonth?: number;
+    };
+    features: string[];
+    popular?: boolean;
+    description?: string;
+}
+
+export interface OrganizationLimits {
+    maxUnits: number;
+    maxUsers: number;
+    maxClients: number;
+    maxStorage: number; // GB
+    features: string[];
+}
+
+export interface OrganizationUsage {
+    units: number;
+    users: number;
+    clients: number;
+    storage: number; // GB usado
+    appointmentsThisMonth: number;
+}
+
+export interface OrganizationOwner {
+    userId: string;
+    name: string;
+    email: string;
+    phone: string;
+    cpf?: string;
+    cnpj?: string;
+}
+
+export interface OrganizationBilling {
+    email: string;
+    address?: Address;
+    taxId?: string; // CNPJ ou CPF
+    paymentMethodId?: string; // ID do método de pagamento no gateway
+    nextBillingDate?: string;
+    lastPaymentDate?: string;
+    lastPaymentAmount?: number;
+}
+
+export interface OrganizationSettings {
+    timezone: string; // "America/Sao_Paulo"
+    language: string; // "pt-BR"
+    currency: string; // "BRL"
+    dateFormat: string; // "DD/MM/YYYY"
+    timeFormat: '12h' | '24h';
+    allowMultiUnit: boolean;
+    shareClientsAcrossUnits: boolean;
+    requireTwoFactor: boolean;
+    allowStaffDataAccess: boolean;
+    enableWhatsAppIntegration: boolean;
+
+    enableEmailMarketing: boolean;
+    enableMarketplace: boolean; // Controla visibilidade
+    marketplaceName?: string; // White label "Boutique" name
+}
+
+export interface Organization {
+    // Identificação
+    id: string; // org_abc123
+    slug: string; // dr-silva-dermatologia (URL: app.divaspa.com/dr-silva-dermatologia)
+    domain?: string; // customdomain.com
+
+    // Informações Básicas
+    name: string; // "Dr. Silva Dermatologia"
+    displayName: string; // Nome exibido no sistema
+    logo?: string; // URL do logo
+    favicon?: string; // URL do favicon
+    primaryColor?: string; // Cor primária da marca (#8B5CF6)
+    secondaryColor?: string; // Cor secundária
+
+    // Tipo de Organização
+    type: OrganizationType;
+
+    // Plano e Assinatura
+    subscriptionPlanId: string; // ID do plano atual
+    subscriptionStatus: SubscriptionStatus;
+    subscriptionStartedAt?: string;
+    trialEndsAt?: string;
+    billingCycle: BillingCycle;
+
+    // Limites do Plano
+    limits: OrganizationLimits;
+
+    // Uso Atual
+    usage: OrganizationUsage;
+
+    // Contato e Proprietário
+    owner: OrganizationOwner;
+
+    // Cobrança
+    billing: OrganizationBilling;
+
+    // Configurações
+    settings: OrganizationSettings;
+
+    // Metadata
+    createdAt: string;
+    activatedAt?: string;
+    suspendedAt?: string;
+    cancelledAt?: string;
+    lastActivityAt?: string;
+
+    // Features Flags
+    features?: {
+        whiteLabel?: boolean; // Marca própria
+        customDomain?: boolean; // Domínio personalizado
+        apiAccess?: boolean; // Acesso à API
+        advancedReports?: boolean; // Relatórios avançados
+        multiLanguage?: boolean; // Multi-idioma
+    };
+}
+
+export type MemberStatus = 'active' | 'invited' | 'pending' | 'disabled';
+
+export interface OrganizationMember {
+    id: string;
+    organizationId: string;
+    userId?: string;
+    email: string;
+    name: string;
+    role: string; // UserRole cast
+    status: MemberStatus;
+    invitedAt: string;
+    joinedAt?: string;
+    lastActiveAt?: string;
+    avatarUrl?: string;
+}
+
+export interface SubscriptionInvoice {
+    id: string;
+    organizationId: string;
+    amount: number;
+    currency: 'BRL' | 'USD';
+    status: 'draft' | 'open' | 'paid' | 'void' | 'uncollectible';
+    dueDate: string;
+    paidAt?: string;
+    periodStart: string;
+    periodEnd: string;
+    items: SubscriptionInvoiceItem[];
+    subtotal: number;
+    tax?: number;
+    discount?: number;
+    total: number;
+    paymentMethod?: string;
+    paymentUrl?: string; // Link para pagamento
+    invoiceUrl?: string; // Link para visualizar fatura
+    createdAt: string;
+}
+
+export interface SubscriptionInvoiceItem {
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    amount: number;
+    type: 'subscription' | 'addon' | 'overage';
+}
+
+export interface PaymentMethodInfo {
+    id: string;
+    type: 'credit_card' | 'boleto' | 'pix' | 'debit_card';
+    default: boolean;
+
+    // Cartão de Crédito
+    cardBrand?: string; // visa, mastercard, etc
+    cardLast4?: string;
+    cardExpMonth?: number;
+    cardExpYear?: number;
+    cardHolderName?: string;
+
+    // Boleto/PIX
+    autoRenew?: boolean;
+
+    createdAt: string;
+}
+
+// ============================================
+// USER & AUTHENTICATION
+// ============================================
 
 export enum UserRole {
     ADMIN = 'admin',
@@ -9,6 +225,7 @@ export enum UserRole {
 
 export interface User {
     uid: string;
+    organizationId: string; // ← NOVO: ID da organização do usuário
     email: string;
     displayName: string;
     role: UserRole;
@@ -31,6 +248,7 @@ export interface UserPreferences {
 
 export interface Client {
     clientId: string;
+    organizationId: string; // ← NOVO: ID da organização
     userId: string;
     name: string;
     email: string;
@@ -58,6 +276,7 @@ export enum LeadStage {
 
 export interface SalesLead {
     leadId: string;
+    organizationId: string; // ← NOVO: ID da organização
     name: string;
     contact: string;
     stage: LeadStage;
@@ -81,6 +300,7 @@ export enum AppointmentStatus {
 
 export interface ServiceAppointment {
     appointmentId: string;
+    organizationId: string; // ← NOVO: ID da organização
     clientId: string;
     clientName: string;
     staffId: string;
@@ -98,6 +318,7 @@ export interface ServiceAppointment {
 
 export interface Invoice {
     id: string;
+    organizationId: string; // ← NOVO: ID da organização
     appointmentId?: string;
     clientId: string;
     clientName: string;
@@ -175,10 +396,14 @@ export interface ClientWallet {
     }[];
 }
 
+export type RevenueType = 'service' | 'product' | 'mixed';
+
 export interface Transaction {
     id: string;
+    organizationId: string; // ← NOVO: ID da organização
     description: string;
     category: string;
+    revenueType?: RevenueType; // Novo: Classificação Fiscal
     amount: number;
     type: TransactionType;
     status: TransactionStatus;
@@ -186,13 +411,64 @@ export interface Transaction {
     paymentMethod?: PaymentMethod | 'split';
     unitId?: string; // Novo: ID da unidade
     relatedAppointmentId?: string; // Novo: ID do agendamento relacionado
+
+    // Financial Gateway Info
+    gatewayId?: string;
+    installments?: number;
+    netAmount?: number;
+    mdrFee?: number;
+    settlementDate?: string;
+
+    // Accounts Payable Info (Expenses)
+    supplierId?: string;
+    dueDate?: string; // Vencimento
+    recurrence?: {
+        rule: 'monthly' | 'weekly' | 'yearly';
+        currentInstallment: number;
+        totalInstallments: number;
+        groupId: string; // ID comum para todas as parcelas
+    };
+
+    // Fiscal & Payment Info
+    sourceAccountId?: string; // Conta de onde saiu/entrou o dinheiro
+    fiscalRecordId?: string; // Link para a Nota Fiscal/Recibo
+    attachmentUrl?: string; // URL do cupom/nota uploadado
 }
 
 export type TransactionType = 'income' | 'expense';
 export type TransactionStatus = 'paid' | 'pending' | 'overdue';
 
+export interface BankAccount {
+    id: string;
+    organizationId: string;
+    name: string; // "Itaú", "Caixa Físico"
+    type: 'bank' | 'cash' | 'card_machine';
+    balance: number;
+    color?: string;
+    icon?: string;
+}
+
+export interface FiscalRecord {
+    id: string;
+    organizationId: string;
+    transactionId: string;
+    type: 'NFS-e' | 'NF-e' | 'Recibo';
+    status: 'pending' | 'emitted' | 'cancelled' | 'error';
+    number?: string; // Número da nota
+    series?: string;
+    emissionDate?: string;
+    amount: number;
+    issuerName: string; // Quem emitiu (CPF do profissional ou CNPJ da empresa)
+    issuerDocument: string;
+    recipientName: string;
+    recipientDocument: string;
+    pdfUrl?: string;
+    xmlUrl?: string;
+}
+
 export interface StaffMember {
     id: string;
+    organizationId: string; // ← NOVO: ID da organização
     userId: string;
     name: string;
     email?: string;
@@ -268,6 +544,7 @@ export interface Kudo {
 
 export interface Product {
     id: string;
+    organizationId: string; // ← NOVO: ID da organização
     name: string;
     description?: string;
     price: number;
@@ -307,6 +584,7 @@ export interface CampaignStats {
 
 export interface Campaign {
     id: string;
+    organizationId: string; // ← NOVO: ID da organização
     name: string;
     type: 'whatsapp' | 'email' | 'sms';
     status: 'draft' | 'scheduled' | 'sent' | 'active';
@@ -325,11 +603,15 @@ export interface Campaign {
 
 export interface Supplier {
     id: string;
+    organizationId: string; // ← Novo: ID da organização
     name: string;
-    contact: string;
-    email: string;
-    rating: number;
+    contact: string; // Generic contact name
+    email?: string;
+    phone?: string;
+    document?: string; // CNPJ or CPF
+    rating?: number;
     categories: string[];
+    active: boolean;
 }
 
 export interface PurchaseOrder {
@@ -364,6 +646,7 @@ export interface StockAuditItem {
 
 export interface ServiceRoom {
     id: string;
+    organizationId: string; // ← NOVO: ID da organização
     name: string;
     type: 'treatment' | 'spa' | 'consultation' | 'virtual';
     status: 'available' | 'occupied' | 'cleaning' | 'maintenance';
@@ -378,6 +661,7 @@ export interface ServiceRoom {
     }[];
     ambience: { temperature: number; lighting: number; music?: string };
     meetingUrl?: string; // For virtual rooms
+    unitId?: string; // Novo: ID da unidade
 }
 
 export interface SessionRecord {
@@ -390,6 +674,7 @@ export interface SessionRecord {
 
 export interface ServiceDefinition {
     id: string;
+    organizationId: string; // ← NOVO: ID da organização
     name: string;
     category: 'laser' | 'esthetics' | 'spa' | 'injectables';
     duration: number; // minutes
@@ -410,6 +695,7 @@ export interface ProtocolItem {
 
 export interface FormTemplate {
     id: string;
+    organizationId: string; // ← NOVO: ID da organização
     title: string;
     type: 'anamnesis' | 'consent' | 'evolution';
     active: boolean;
@@ -431,6 +717,7 @@ export type FieldType = 'text' | 'textarea' | 'number' | 'date' | 'select' | 'ch
 
 export interface FormResponse {
     id: string;
+    organizationId: string; // ← NOVO: ID da organização
     formTemplateId: string;
     formTitle: string;
     appointmentId?: string;
@@ -451,6 +738,7 @@ export interface FieldResponse {
 
 export interface AppointmentRecord {
     id: string;
+    organizationId: string;
     appointmentId: string;
     clientId: string;
     clientName: string;
@@ -491,6 +779,7 @@ export interface AppointmentRecord {
 
 export interface YieldRule {
     id: string;
+    organizationId: string; // ← NOVO: ID da organização
     name: string;
     type: 'surge_time' | 'last_minute' | 'seasonality';
     description: string;
@@ -501,22 +790,29 @@ export interface YieldRule {
 
 export interface CustomerSegment {
     id: string;
+    organizationId: string;
     name: string;
     description: string;
     count: number;
     criteria?: any;
 }
 
-export type CampaignChannel = 'email' | 'whatsapp' | 'sms' | 'instagram';
+export type CampaignChannel = 'email' | 'whatsapp' | 'sms' | 'instagram' | 'in_app';
 export type CampaignStatus = 'draft' | 'scheduled' | 'active' | 'completed';
 
 export interface MarketingCampaign {
     id: string;
+    organizationId: string; // ← NOVO: ID da organização
     name: string;
     channel: CampaignChannel;
     segmentId: string;
     scheduledFor?: string;
     status: CampaignStatus;
+    // Content Config
+    messageContent?: string;
+    templateId?: string;
+    useWhatsappFlow?: boolean;
+    flowId?: string;
     stats: {
         sent: number;
         opened: number;
@@ -527,6 +823,7 @@ export interface MarketingCampaign {
 
 export interface AutomationRule {
     id: string;
+    organizationId: string;
     name: string;
     trigger: 'birthday' | 'post_service' | 'abandoned_cart' | 'inactive_30d' | 'lead_stale_24h';
     action: 'send_message' | 'create_task' | 'notify_team';
@@ -537,9 +834,10 @@ export type ChannelType = 'whatsapp' | 'instagram' | 'email';
 
 export interface ChatConversation {
     id: string;
+    organizationId: string; // ← NOVO
     clientId: string;
     clientName: string;
-    channel: ChannelType;
+    channel: 'whatsapp' | 'instagram' | 'email';
     lastMessage: string;
     lastMessageTime: string;
     unreadCount: number;
@@ -564,6 +862,7 @@ export interface TimeSlot {
 
 export interface MembershipPlan {
     id: string;
+    organizationId: string;
     name: string;
     price: number;
     billingCycle: 'monthly' | 'yearly';
@@ -574,6 +873,7 @@ export interface MembershipPlan {
 
 export interface Subscription {
     id: string;
+    organizationId: string;
     clientId: string;
     clientName: string;
     planId: string;
@@ -683,6 +983,7 @@ export type TaskCategory = string;
 
 export interface BusinessUnit {
     id: string;
+    organizationId: string; // ← NOVO: ID da organização (unidade pertence a uma org)
     name: string;
     location: string; // Formato: "Cidade, Estado" (ex: "Salvador, BA")
     address?: {
@@ -776,6 +1077,7 @@ export type FeedbackSentiment = 'positive' | 'neutral' | 'negative';
 
 export interface OpenVial {
     id: string;
+    organizationId: string; // ← NOVO: ID da organização
     productId: string;
     productName: string;
     batchNumber: string;
@@ -839,21 +1141,24 @@ export interface WebsiteConfig {
 
 export interface Partner {
     id: string;
+    organizationId: string; // ← NOVO: ID da organização
     name: string;
-    type: PartnerType;
+    type: 'business' | 'influencer';
     contact: string;
+    // Referral Program
     code: string;
-    commissionRate: number;
-    clientDiscountRate: number;
+    commissionRate: number; // % que o parceiro ganha
+    clientDiscountRate: number; // % que o cliente ganha
+    // Stats
     active: boolean;
     totalReferred: number;
     totalRevenue: number;
     pendingPayout: number;
     totalPaid: number;
-    pixKey: string;
+    pixKey?: string;
 }
 
-export type PartnerType = 'business' | 'influencer' | 'client';
+export type PartnerType = 'business' | 'influencer';
 
 export interface CallLog {
     id: string;
@@ -867,20 +1172,29 @@ export interface CallLog {
 
 export interface ClinicEvent {
     id: string;
+    organizationId: string; // ← NOVO: ID da organização
     title: string;
     date: string;
     time: string;
     description: string;
     status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
+
+    // Capacity & Attendance
     capacity: number;
     confirmedCount: number;
     checkInCount: number;
+
+    // Financials
     revenue: number;
     cost: number;
-    bannerUrl: string;
-    price?: number; // Preço do ingresso
-    location?: string;
-    feed?: EventFeedPost[];
+
+    // Marketing
+    bannerUrl?: string;
+    price: number; // Ingresso (0 se gratuito)
+    location: string; // Sala ou Endereço
+
+    // Social
+    feed: EventFeedPost[];
 }
 
 export interface EventFeedPost {
@@ -1026,6 +1340,7 @@ export interface Lesson {
 
 export interface WaitlistItem {
     id: string;
+    organizationId: string; // ← NOVO: ID da organização
     clientName: string;
     service: string;
     preference: string;
@@ -1051,40 +1366,49 @@ export interface DataContextType {
     transactions: Transaction[];
     waitlist: WaitlistItem[];
     staff: StaffMember[];
+    members: OrganizationMember[]; // New: Team Members
     rooms: ServiceRoom[];
     taskCategories: string[];
     services: ServiceDefinition[];
     businessConfig: BusinessConfig;
     notificationConfig: NotificationConfig;
     products: Product[];
-    addClient: (client: Client) => void;
+    addClient: (client: Omit<Client, 'organizationId'>) => void;
     updateClient: (clientId: string, data: Partial<Client>) => void;
-    addLead: (lead: SalesLead) => void;
+    addLead: (lead: Omit<SalesLead, 'organizationId'>) => void;
     updateLeadStage: (id: string, stage: LeadStage) => void;
     updateLead: (id: string, data: Partial<SalesLead>) => void;
     removeLead: (id: string) => void;
-    addAppointment: (appt: ServiceAppointment) => void;
+    addAppointment: (appt: Omit<ServiceAppointment, 'organizationId'>) => void;
     updateAppointment: (appt: ServiceAppointment) => void;
     updateAppointmentStatus: (id: string, status: AppointmentStatus) => void;
     deleteAppointment: (id: string) => void;
-    addTransaction: (transaction: Transaction) => void;
-    addToWaitlist: (item: WaitlistItem) => void;
+    addTransaction: (transaction: Omit<Transaction, 'organizationId'>) => void;
+    updateTransaction: (id: string, updates: Partial<Transaction>) => void;
+    addToWaitlist: (item: Omit<WaitlistItem, 'organizationId'>) => void;
     removeFromWaitlist: (id: string) => void;
     updateRoomStatus: (id: string, status: string) => void;
     updateRoomEquipments: (roomId: string, equipments: any[]) => void;
-    addRoom: (room: ServiceRoom) => void;
+    addRoom: (room: Omit<ServiceRoom, 'organizationId'>) => void;
     removeRoom: (id: string) => void;
     addTaskCategory: (category: string) => void;
     removeTaskCategory: (category: string) => void;
-    addStaff: (staff: StaffMember) => void;
-    updateStaff: (id: string, data: Partial<StaffMember>) => void;
+    addStaff: (staff: Omit<StaffMember, 'organizationId'>) => void;
+    updateStaff: (id: string, updates: Partial<StaffMember>) => void;
     removeStaff: (id: string) => void;
-    addService: (service: ServiceDefinition) => void;
+
+    // Team Management
+    inviteMember: (email: string, role: string, name: string) => void;
+    updateMemberRole: (memberId: string, role: string) => void;
+    removeMember: (memberId: string) => void;
+
+    toggleRoom: (roomId: string) => void;
+    addService: (service: Omit<ServiceDefinition, 'organizationId'>) => void;
     toggleService: (id: string) => void;
     deleteService: (id: string) => void;
     updateService: (id: string, data: Partial<ServiceDefinition>) => void;
     partners: Partner[];
-    addPartner: (partner: Partner) => void;
+    addPartner: (partner: Omit<Partner, 'organizationId'>) => void;
     updatePartner: (id: string, data: Partial<Partner>) => void;
     updateBusinessConfig: (config: BusinessConfig) => void;
     updateNotificationConfig: (config: NotificationConfig) => void;
@@ -1092,7 +1416,7 @@ export interface DataContextType {
     updateWebsiteConfig: (config: WebsiteConfig) => void;
     updateProductStock: (productId: string, qty: number, type: 'add' | 'remove', unitId?: string) => void;
     yieldRules: YieldRule[];
-    addYieldRule: (rule: YieldRule) => void;
+    addYieldRule: (rule: Omit<YieldRule, 'organizationId'>) => void;
     updateYieldRule: (id: string, data: Partial<YieldRule>) => void;
     deleteYieldRule: (id: string) => void;
     updateUser: (data: Partial<User>) => void;
@@ -1100,32 +1424,41 @@ export interface DataContextType {
     login: (role: UserRole) => void;
     logout: () => void;
     formTemplates: FormTemplate[];
-    addFormTemplate: (template: FormTemplate) => void;
+    addFormTemplate: (template: Omit<FormTemplate, 'organizationId'>) => void;
     updateFormTemplate: (id: string, data: Partial<FormTemplate>) => void;
     deleteFormTemplate: (id: string) => void;
     formResponses: FormResponse[];
-    addFormResponse: (response: FormResponse) => void;
+    addFormResponse: (response: Omit<FormResponse, 'organizationId'>) => void;
     getClientFormResponses: (clientId: string) => FormResponse[];
     appointmentRecords: AppointmentRecord[];
     addAppointmentRecord: (record: AppointmentRecord) => void;
     updateAppointmentRecord: (id: string, data: Partial<AppointmentRecord>) => void;
     getAppointmentRecord: (appointmentId: string) => AppointmentRecord | undefined;
     units: BusinessUnit[];
-    addUnit: (unit: BusinessUnit) => void;
+    addUnit: (unit: Omit<BusinessUnit, 'organizationId'>) => void;
     updateUnit: (id: string, data: Partial<BusinessUnit>) => void;
     removeUnit: (id: string) => void;
     selectedUnitId: string | 'all';
     setSelectedUnitId: (id: string | 'all') => void;
     events: ClinicEvent[];
-    addEvent: (event: ClinicEvent) => void;
+    addEvent: (event: Omit<ClinicEvent, 'organizationId'>) => void;
     updateEvent: (event: ClinicEvent) => void;
     guests: EventGuest[];
     addGuest: (guest: EventGuest) => void;
     updateGuest: (id: string, data: Partial<EventGuest>) => void;
 
+    // Accounts & Fiscal
+    accounts: BankAccount[];
+    addAccount: (account: BankAccount) => void;
+    updateAccount: (id: string, data: Partial<BankAccount>) => void;
+
+    fiscalRecords: FiscalRecord[];
+    addFiscalRecord: (record: FiscalRecord) => void;
+    updateFiscalRecord: (id: string, data: Partial<FiscalRecord>) => void;
+
     // Pharmacy
     vials: OpenVial[];
-    addVial: (vial: OpenVial) => void;
+    addVial: (vial: Omit<OpenVial, 'organizationId'>) => void;
     updateVial: (id: string, updates: Partial<OpenVial>) => void;
     removeVial: (id: string) => void;
     vialUsageLogs: VialUsageLog[];
@@ -1133,7 +1466,7 @@ export interface DataContextType {
 
     // Marketing
     campaigns: MarketingCampaign[];
-    addCampaign: (campaign: MarketingCampaign) => void;
+    addCampaign: (campaign: Omit<MarketingCampaign, 'organizationId'>) => void;
     updateCampaign: (id: string, data: Partial<MarketingCampaign>) => void;
     removeCampaign: (id: string) => void;
     automations: AutomationRule[];
@@ -1155,6 +1488,12 @@ export interface DataContextType {
     updateSubscription: (id: string, data: Partial<Subscription>) => void;
     cancelSubscription: (id: string) => void;
 
+    // Suppliers (Inventory & Finance)
+    suppliers: Supplier[];
+    addSupplier: (supplier: Omit<Supplier, 'organizationId'>) => void;
+    updateSupplier: (id: string, data: Partial<Supplier>) => void;
+    removeSupplier: (id: string) => void;
+
     // Communication
     conversations: ChatConversation[];
     addMessage: (conversationId: string, message: ChatMessage) => void;
@@ -1166,6 +1505,13 @@ export interface DataContextType {
     addNotification: (notification: Omit<AppNotification, 'id' | 'timestamp' | 'read'>) => void;
     markAsRead: (id: string) => void;
     markAllAsRead: () => void;
+
+    // Treatment Plans
+    treatmentPlans: TreatmentPlan[];
+    treatmentTemplates: TreatmentPlanTemplate[];
+    addTreatmentPlan: (plan: TreatmentPlan) => void;
+    updateTreatmentPlan: (plan: TreatmentPlan) => void;
+    addTreatmentTemplate: (template: TreatmentPlanTemplate) => void;
 }
 
 // ============================================
@@ -1201,5 +1547,67 @@ export interface DocumentTemplate {
     active: boolean;
     createdAt: string;
     updatedAt: string;
+}
+
+// ============================================
+// TREATMENT PLANS & SALES PIPELINE (Module Vendas)
+// ============================================
+
+export type TreatmentPriority = 'high' | 'medium' | 'low';
+export type TreatmentItemStatus = 'pending' | 'paid' | 'scheduled' | 'completed';
+export type PlanStatus = 'prescribed' | 'negotiating' | 'closed' | 'partially_paid' | 'completed' | 'lost';
+
+export interface TreatmentPlanItem {
+    id: string; // ID único do item no plano
+    serviceId: string; // ID do serviço (ServiceDefinition)
+    serviceName: string; // Nome cacheado
+    quantity: number; // Quantas sessões
+    sessionsUsed: number; // Controle de consumo
+    priority: TreatmentPriority;
+    periodicity?: string; // Ex: "A cada 4 meses"
+    unitPrice: number; // Preço unitário no momento da criação
+    totalPrice: number; // unitPrice * quantity
+    status: TreatmentItemStatus;
+}
+
+export interface TreatmentPlan {
+    id: string;
+    organizationId: string;
+    clientId: string; // Paciente
+    clientName: string;
+    professionalId: string; // Médico que prescreveu
+    professionalName: string;
+
+    name: string; // "Plano Anual da Beleza"
+    description?: string;
+
+    items: TreatmentPlanItem[];
+
+    // Valores
+    subtotal: number;
+    discount: number;
+    total: number;
+
+    // CRM
+    status: PlanStatus; // Status geral do plano
+    pipelineStage: string; // "Novo", "Apresentado", "Negociação", "Fechado"
+
+    createdAt: string;
+    updatedAt: string;
+    validDh?: string; // Validade da proposta
+}
+
+export interface TreatmentPlanTemplate {
+    id: string;
+    organizationId: string;
+    name: string;
+    description: string;
+    items: {
+        serviceId: string; // Referência se existir, ou apenas nome/categoria
+        serviceName: string; // Fallback
+        quantity: number;
+        priority: TreatmentPriority;
+        periodicity?: string;
+    }[];
 }
 

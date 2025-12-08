@@ -48,6 +48,7 @@ const NewClientModal: React.FC<NewClientModalProps> = ({ isOpen, onClose }) => {
     }
 
     const newClient: Client = {
+      organizationId: 'org_demo',
       clientId: `c_${Date.now()}`,
       userId: `u_${Date.now()}`,
       name: formData.name,
@@ -172,7 +173,7 @@ const NewClientModal: React.FC<NewClientModalProps> = ({ isOpen, onClose }) => {
               >
                 <option value="instagram">Instagram</option>
                 <option value="google">Google / Site</option>
-                <option value="referral">Indicação (Amigo/Cliente)</option>
+                <option value="referral">Indicação (Amigo/Paciente)</option>
                 <option value="facebook">Facebook</option>
                 <option value="passing">Passou em frente</option>
                 <option value="influencer">Influenciador</option>

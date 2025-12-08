@@ -21,7 +21,7 @@ interface SchedulingModuleProps {
 }
 
 const SchedulingModule: React.FC<SchedulingModuleProps> = ({ user }) => {
-    const { appointments, addTransaction, updateAppointmentStatus, deleteAppointment, clients, waitlist, addToWaitlist, removeFromWaitlist, staff, updateStaff, updateClient, products, rooms } = useUnitData();
+    const { appointments, addTransaction, updateAppointmentStatus, deleteAppointment, clients, waitlist, addToWaitlist, removeFromWaitlist, staff, updateStaff, updateClient, products, rooms, services } = useUnitData();
     const { filterAppointments, canViewAllData } = useDataIsolation(user);
 
     // Combine real rooms with virtual/online room
@@ -90,6 +90,7 @@ const SchedulingModule: React.FC<SchedulingModuleProps> = ({ user }) => {
             // Add to waitlist
             const newItem: WaitlistItem = {
                 id: `w_${Date.now()}`,
+                organizationId: user.organizationId || 'org_demo',
                 clientName: appt.clientName,
                 service: appt.serviceName,
                 preference: 'Reagendamento (Veio da Agenda)',
@@ -134,6 +135,7 @@ const SchedulingModule: React.FC<SchedulingModuleProps> = ({ user }) => {
             invoice.splitDetails.forEach((split, index) => {
                 const transaction: Transaction = {
                     id: `t_${Date.now()}_${index}`,
+                    organizationId: user.organizationId || 'org_demo',
                     description: `Pagamento (Parcial): ${invoice.clientName} - ${invoice.items[0].description}`,
                     amount: split.amount,
                     type: 'income',
@@ -147,6 +149,7 @@ const SchedulingModule: React.FC<SchedulingModuleProps> = ({ user }) => {
         } else {
             const transaction: Transaction = {
                 id: `t_${Date.now()}`,
+                organizationId: user.organizationId || 'org_demo',
                 description: `Pagamento: ${invoice.clientName} - ${invoice.items[0].description}`,
                 amount: invoice.total,
                 type: 'income',
@@ -173,6 +176,7 @@ const SchedulingModule: React.FC<SchedulingModuleProps> = ({ user }) => {
                     if (commissionAmount > 0) {
                         const commissionTransaction: Transaction = {
                             id: `comm_${Date.now()}`,
+                            organizationId: user.organizationId || 'org_demo',
                             description: `Comissão: ${staffMember.name} - ${invoice.clientName}`,
                             amount: commissionAmount,
                             type: 'expense',
@@ -288,6 +292,7 @@ const SchedulingModule: React.FC<SchedulingModuleProps> = ({ user }) => {
 
     const mockFallbackClient: Client = {
         clientId: '0',
+        organizationId: user.organizationId || 'org_demo',
         userId: '0',
         name: selectedAppointment?.clientName || 'Cliente',
         email: '',
@@ -699,12 +704,19 @@ const SchedulingModule: React.FC<SchedulingModuleProps> = ({ user }) => {
             {/* MODALS */}
             {selectedAppointment && (
                 <ServiceModal
+                    key={selectedAppointment.appointmentId}
                     isOpen={isServiceModalOpen}
                     onClose={() => setIsServiceModalOpen(false)}
                     onSave={handleSaveRecord}
                     onEdit={handleEditAppointment}
                     appointment={selectedAppointment}
                     client={selectedClient || mockFallbackClient}
+                    mode={(() => {
+                        const s = services.find(srv => srv.id === selectedAppointment.serviceId) || services.find(srv => srv.name === selectedAppointment.serviceName);
+                        if (s?.category === 'laser') return 'laser';
+                        if (selectedAppointment.serviceName.toLowerCase().includes('laser')) return 'laser';
+                        return 'clinical';
+                    })()}
                 />
             )}
 

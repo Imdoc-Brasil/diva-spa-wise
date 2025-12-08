@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, CheckCircle, Clock, AlertCircle, Download, Calendar, MapPin, Users, MessageSquare, CreditCard } from 'lucide-react';
+import { FileText, CheckCircle, Clock, AlertCircle, Download, Calendar, MapPin, Users, MessageSquare, CreditCard, Bell, Megaphone, Star, Crown, Gift, History, Smartphone } from 'lucide-react';
 import SignaturePad from '../ui/SignaturePad';
 import { ClientDocument, DocumentSignature, ClinicEvent } from '../../types';
 import { useData } from '../context/DataContext';
@@ -17,7 +17,31 @@ const PatientPortal: React.FC<PatientPortalProps> = ({ token }) => {
     const [documents, setDocuments] = useState<ClientDocument[]>([]);
     const [selectedDocument, setSelectedDocument] = useState<ClientDocument | null>(null);
     const [showSignaturePad, setShowSignaturePad] = useState(false);
-    const [activeTab, setActiveTab] = useState<'documents' | 'events'>('documents');
+    const [activeTab, setActiveTab] = useState<'documents' | 'events' | 'notifications' | 'loyalty'>('documents');
+    const [installPrompt, setInstallPrompt] = useState<any>(null);
+
+    useEffect(() => {
+        const handleBeforeInstallPrompt = (e: any) => {
+            e.preventDefault();
+            setInstallPrompt(e);
+        };
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    }, []);
+
+    const handleInstallApp = () => {
+        if (installPrompt) {
+            installPrompt.prompt();
+            installPrompt.userChoice.then((choiceResult: any) => {
+                if (choiceResult.outcome === 'accepted') {
+                    console.log('User accepted the install prompt');
+                }
+                setInstallPrompt(null);
+            });
+        } else {
+            alert('Para instalar: Toque no botão de compartilhamento do seu navegador e selecione "Adicionar à Tela de Início".');
+        }
+    };
 
     const { events, guests, addGuest, updateGuest } = useData();
     // Derived state for registrations will be calculated from guests and clientId
@@ -27,7 +51,20 @@ const PatientPortal: React.FC<PatientPortalProps> = ({ token }) => {
         const loadData = () => {
             try {
                 // Validar token
-                const tokenData = TokenService.validateToken(token);
+                let tokenData = TokenService.validateToken(token);
+
+                // MOCK PARA DEMONSTRAÇÃO
+                if (token === 'demo' || token === 'demo-token') {
+                    tokenData = {
+                        id: 'demo-token-id',
+                        clientId: 'c1',
+                        token: token,
+                        expiresAt: new Date(Date.now() + 86400000).toISOString(), // 24h
+                        createdAt: new Date().toISOString(),
+                        purpose: 'document_signature',
+                        documentIds: [],
+                    };
+                }
 
                 if (!tokenData) {
                     setError('Link inválido ou expirado. Por favor, solicite um novo link.');
@@ -261,8 +298,24 @@ const PatientPortal: React.FC<PatientPortalProps> = ({ token }) => {
             <div className="max-w-4xl mx-auto">
                 {/* Header */}
                 <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
-                    <h1 className="text-3xl font-bold text-diva-dark mb-2">Portal do Paciente</h1>
-                    <p className="text-gray-600">Olá, <strong>{clientName}</strong>! Bem-vindo ao seu espaço exclusivo.</p>
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <h1 className="text-3xl font-bold text-diva-dark mb-2">Portal do Paciente</h1>
+                            <p className="text-gray-600">Olá, <strong>{clientName}</strong>! Bem-vindo ao seu espaço exclusivo.</p>
+                            <button onClick={handleInstallApp} className="mt-3 text-xs bg-diva-primary/10 text-diva-primary px-3 py-1.5 rounded-full font-bold flex items-center gap-2 hover:bg-diva-primary/20 transition-colors">
+                                <Smartphone size={14} /> Instalar Aplicativo
+                            </button>
+                        </div>
+                        <div onClick={() => setActiveTab('loyalty')} className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-white px-5 py-3 rounded-2xl shadow-lg flex items-center gap-3 transform hover:scale-105 transition-transform cursor-pointer active:scale-95">
+                            <div className="p-2 bg-white/20 rounded-full">
+                                <Crown size={24} className="fill-white" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-bold uppercase tracking-wider opacity-90">Meus Pontos Diva</p>
+                                <p className="text-2xl font-black leading-none">1.250</p>
+                            </div>
+                        </div>
+                    </div>
 
                     <div className="flex gap-6 mt-8 border-b border-gray-200">
                         <button
@@ -279,10 +332,160 @@ const PatientPortal: React.FC<PatientPortalProps> = ({ token }) => {
                             Eventos & Workshops
                             {activeTab === 'events' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-diva-primary rounded-t-full"></div>}
                         </button>
+                        <button
+                            onClick={() => setActiveTab('notifications')}
+                            className={`pb-4 px-2 font-bold text-sm transition-colors relative flex items-center gap-2 ${activeTab === 'notifications' ? 'text-diva-primary' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            <Bell size={16} />
+                            Notificações
+                            {activeTab === 'notifications' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-diva-primary rounded-t-full"></div>}
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('loyalty')}
+                            className={`pb-4 px-2 font-bold text-sm transition-colors relative flex items-center gap-2 ${activeTab === 'loyalty' ? 'text-diva-primary' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            <Gift size={16} />
+                            Fidelidade
+                            {activeTab === 'loyalty' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-diva-primary rounded-t-full"></div>}
+                        </button>
                     </div>
                 </div>
 
-                {activeTab === 'documents' ? (
+                {activeTab === 'notifications' && (
+                    <div className="space-y-4 max-w-2xl mx-auto">
+                        <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-100 flex gap-4 hover:shadow-xl transition-shadow cursor-pointer relative group">
+                            <div className="w-12 h-12 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
+                                <Megaphone size={20} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-gray-900">Promoção Relâmpago!</h3>
+                                <p className="text-gray-600 text-sm mt-1">
+                                    Somente hoje! <b>20% OFF</b> em Drenagem Linfática. Aproveite essa oportunidade para relaxar e cuidar de você.
+                                </p>
+                                <button className="mt-3 bg-purple-600 text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">Agendar Agora</button>
+                                <span className="text-xs text-gray-400 block mt-2">Há 2 horas</span>
+                            </div>
+                            <div className="absolute top-4 right-4 w-2 h-2 bg-blue-500 rounded-full"></div>
+                        </div>
+
+                        <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-100 flex gap-4 hover:shadow-xl transition-shadow cursor-pointer">
+                            <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                                <Calendar size={20} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-gray-900">Lembrete de Agendamento</h3>
+                                <p className="text-gray-600 text-sm mt-1">
+                                    Sua sessão de Laser é <b>amanhã às 14:00</b>. Estamos ansiosos para te ver.
+                                </p>
+                                <div className="flex gap-2 mt-3">
+                                    <button className="bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">Confirmar</button>
+                                    <button className="border border-gray-300 text-gray-600 text-xs font-bold px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">Remarcar</button>
+                                </div>
+                                <span className="text-xs text-gray-400 block mt-2">Ontem</span>
+                            </div>
+                        </div>
+
+                        <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-100 flex gap-4 hover:shadow-xl transition-shadow cursor-pointer">
+                            <div className="w-12 h-12 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center shrink-0">
+                                <MessageSquare size={20} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-gray-900">Pesquisa de Satisfação</h3>
+                                <p className="text-gray-600 text-sm mt-1">
+                                    Como foi seu atendimento com Dra. Julia? Sua opinião é muito importante para nós.
+                                </p>
+                                <div className="flex gap-1 mt-3">
+                                    {[1, 2, 3, 4, 5].map(s => <Star key={s} size={16} className="text-yellow-400 fill-current cursor-pointer hover:scale-110 transition-transform" />)}
+                                </div>
+                                <span className="text-xs text-gray-400 block mt-2">3 dias atrás</span>
+                            </div>
+                        </div>
+
+                        <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-100 flex gap-4 opacity-75">
+                            <div className="w-12 h-12 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center shrink-0">
+                                <Megaphone size={20} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-gray-700">Bem-vindo(a) ao Diva Spa!</h3>
+                                <p className="text-gray-500 text-sm mt-1">
+                                    Ficamos felizes em tê-lo(a) conosco. Confira nossos tratamentos e pacotes especiais.
+                                </p>
+                                <span className="text-xs text-gray-400 block mt-2">1 semana atrás</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'loyalty' && (
+                    <div className="space-y-6 animate-in fade-in duration-500">
+                        {/* Status Card */}
+                        <div className="bg-gradient-to-r from-yellow-500 to-amber-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+                            <div className="relative z-10">
+                                <p className="text-sm font-medium opacity-90 mb-1">Seu Saldo Atual</p>
+                                <h2 className="text-4xl font-black mb-4">1.250 <span className="text-xl font-normal opacity-80">pontos</span></h2>
+                                <div className="w-full bg-white/20 h-2 rounded-full overflow-hidden mb-2">
+                                    <div className="h-full bg-white w-[60%]"></div>
+                                </div>
+                                <p className="text-xs">Faltam <strong>250 pontos</strong> para sua próxima recompensa!</p>
+                            </div>
+                            <Gift className="absolute -bottom-4 -right-4 w-32 h-32 opacity-20 rotate-12" />
+                        </div>
+
+                        {/* Rewards */}
+                        <div>
+                            <h3 className="text-lg font-bold text-diva-dark mb-4 flex items-center gap-2">
+                                <Gift size={20} className="text-diva-primary" /> Recompensas Disponíveis
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {[
+                                    { title: 'Massagem Relaxante (30min)', points: 1500, image: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400' },
+                                    { title: 'Hidratação Facial Profunda', points: 2000, image: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=400' },
+                                    { title: 'Kit Skincare Premium', points: 3000, image: 'https://images.unsplash.com/photo-1556228720-1957be83f3e7?w=400' }
+                                ].map((reward, i) => (
+                                    <div key={i} className="bg-white p-4 rounded-xl shadow border border-gray-100 flex gap-4 items-center group cursor-pointer hover:border-yellow-400 transition-colors">
+                                        <div className="w-16 h-16 rounded-lg bg-gray-100 overflow-hidden shrink-0">
+                                            <img src={reward.image} alt={reward.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="font-bold text-gray-800 text-sm">{reward.title}</h4>
+                                            <p className="text-yellow-600 font-bold text-xs mt-1">{reward.points} pontos</p>
+                                        </div>
+                                        <button className="bg-gray-100 text-gray-400 px-3 py-1.5 rounded-lg text-xs font-bold" disabled>Resgatar</button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* History */}
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                            <div className="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                                <h3 className="font-bold text-diva-dark flex items-center gap-2">
+                                    <History size={18} /> Histórico
+                                </h3>
+                                <button className="text-xs text-diva-primary font-bold hover:underline">Ver tudo</button>
+                            </div>
+                            <div className="divide-y divide-gray-100">
+                                {[
+                                    { date: '12/05/2025', desc: 'Procedimento: Laser Lavieen', value: '+250', type: 'earn' },
+                                    { date: '12/05/2025', desc: 'Bônus de Avaliação', value: '+50', type: 'earn' },
+                                    { date: '15/04/2025', desc: 'Resgate: Desconto 10%', value: '-500', type: 'burn' }
+                                ].map((item, i) => (
+                                    <div key={i} className="p-4 flex justify-between items-center">
+                                        <div>
+                                            <p className="font-bold text-gray-800 text-sm">{item.desc}</p>
+                                            <p className="text-xs text-gray-500">{item.date}</p>
+                                        </div>
+                                        <span className={`font-bold ${item.type === 'earn' ? 'text-green-600' : 'text-red-500'}`}>
+                                            {item.value}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'documents' && (
                     <>
                         {/* Documents List */}
                         <div className="space-y-4">
@@ -395,7 +598,9 @@ const PatientPortal: React.FC<PatientPortalProps> = ({ token }) => {
                             </div>
                         </div>
                     </>
-                ) : (
+                )}
+
+                {activeTab === 'events' && (
                     <div className="space-y-6">
                         {events.map(evt => {
                             // Check if registered

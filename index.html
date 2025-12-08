@@ -5,17 +5,19 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#115259" />
-  <meta name="description" content="Sistema Operacional Diva Spa - Gestão de Estética, Agendamento e CRM." />
+  <meta name="description" content="Sistema Operacional I'mDoc SaaS - Gestão de Estética, Agendamento e CRM." />
 
   <!-- Open Graph / Social Sharing -->
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Diva Spa OS - Gestão de Estética" />
+  <meta property="og:title" content="I'mDoc SaaS - Gestão de Estética" />
   <meta property="og:description" content="Agende seu horário e gerencie sua beleza com tecnologia de ponta." />
   <meta property="og:image"
     content="https://images.unsplash.com/photo-1540555700478-4be289fbecef?q=80&w=1000&auto=format&fit=crop" />
 
-  <title>Diva Spa - CRM & Esthetics Management</title>
+  <title>I'mDoc SaaS - CRM & Esthetics Management</title>
 
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3774/3774299.png" />
   <!-- Favicon (SVG Data URI) -->
   <link rel="icon"
     href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✨</text></svg>">
@@ -98,6 +100,19 @@
     .scrollbar-hide {
       -ms-overflow-style: none;
       scrollbar-width: none;
+    }
+
+    @media print {
+      .no-print {
+        display: none !important;
+      }
+
+      body {
+        background: white;
+      }
+
+      /* Ensure modal content takes up full width/height if needed, 
+         though the modal implementation tries to use a print-specific container */
     }
   </style>
   <script type="importmap">

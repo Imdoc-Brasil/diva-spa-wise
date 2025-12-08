@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
-import { Client, ClientDocument, ClientPhoto, ClientWallet, Invoice, AppointmentRecord, AppointmentStatus } from '../../types';
-import { X, Calendar, DollarSign, Image, FileText, Clock, Phone, Mail, MapPin, Tag, ChevronRight, Download, Eye, Upload, CheckCircle, AlertTriangle, ScanFace, Share2, Sparkles, Star, ArrowRightLeft, MessageCircle } from 'lucide-react';
+import { Client, ClientDocument, ClientPhoto, ClientWallet, Invoice, AppointmentRecord, AppointmentStatus, TreatmentPlan } from '../../types';
+import { X, Calendar, DollarSign, Image, FileText, Clock, Phone, Mail, MapPin, Tag, ChevronRight, Download, Eye, Upload, CheckCircle, AlertTriangle, ScanFace, Share2, Sparkles, Star, ArrowRightLeft, MessageCircle, ClipboardList, Plus, BarChart3, Crown, Smartphone, Home, Bell, Megaphone, User } from 'lucide-react';
 import DocumentModal from './DocumentModal';
 import SkinAnalysisModal from './SkinAnalysisModal';
 import SocialMediaModal from './SocialMediaModal';
@@ -12,7 +12,10 @@ import AppointmentRecordModal from './AppointmentRecordModal';
 import SendDocumentWhatsAppModal from './SendDocumentWhatsAppModal';
 import ClientFormsViewer from '../ui/ClientFormsViewer';
 import SmartConsultationModal from './SmartConsultationModal';
+import PrescribePlanModal from './PrescribePlanModal';
+import PlanDetailsModal from './PlanDetailsModal';
 import { useData } from '../context/DataContext';
+import { calculateRFM } from '../../utils/rfmUtils';
 
 interface ClientProfileModalProps {
     client: Client;
@@ -40,8 +43,8 @@ const mockPhotos: ClientPhoto[] = [
 ];
 
 const ClientProfileModal: React.FC<ClientProfileModalProps> = ({ client, isOpen, onClose }) => {
-    const { appointments, transactions, units, updateClient, formTemplates, formResponses, addFormResponse, appointmentRecords, addAppointmentRecord, updateAppointmentRecord, getAppointmentRecord, products, updateProductStock, updateAppointmentStatus } = useData();
-    const [activeTab, setActiveTab] = useState<'timeline' | 'gallery' | 'docs' | 'financial' | 'forms' | 'medical_record'>('timeline');
+    const { appointments, transactions, units, updateClient, formTemplates, formResponses, addFormResponse, appointmentRecords, addAppointmentRecord, updateAppointmentRecord, getAppointmentRecord, products, updateProductStock, updateAppointmentStatus, treatmentPlans, addTreatmentPlan, updateTreatmentPlan } = useData();
+    const [activeTab, setActiveTab] = useState<'timeline' | 'gallery' | 'docs' | 'financial' | 'forms' | 'medical_record' | 'plans' | 'app_view'>('timeline');
     const [docs, setDocs] = useState<ClientDocument[]>(initialDocs);
     const [photos, setPhotos] = useState<ClientPhoto[]>(mockPhotos);
     const [isDocModalOpen, setIsDocModalOpen] = useState(false);
@@ -75,8 +78,11 @@ const ClientProfileModal: React.FC<ClientProfileModalProps> = ({ client, isOpen,
             reader.readAsDataURL(file);
         }
     };
+
     const [isARMirrorOpen, setIsARMirrorOpen] = useState(false);
     const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+    const [isPrescribeModalOpen, setIsPrescribeModalOpen] = useState(false);
+    const [selectedPlan, setSelectedPlan] = useState<TreatmentPlan | null>(null);
 
     // --- BUILD REAL TIMELINE FROM APPOINTMENTS AND TRANSACTIONS ---
     const clientTimeline = useMemo(() => {
@@ -132,6 +138,11 @@ const ClientProfileModal: React.FC<ClientProfileModalProps> = ({ client, isOpen,
         ).length;
     }, [appointments, client.clientId]);
 
+    // Calculate Dynamic RFM
+    const rfm = useMemo(() => {
+        return calculateRFM(client, appointments, realLTV);
+    }, [client, appointments, realLTV]);
+
     const handleOpenAppointmentRecord = (timelineItem: any) => {
         if (timelineItem.type !== 'appointment') return;
 
@@ -144,7 +155,9 @@ const ClientProfileModal: React.FC<ClientProfileModalProps> = ({ client, isOpen,
         if (!record) {
             record = {
                 id: `record_${Date.now()}`,
+                organizationId: client.organizationId || 'org_demo',
                 appointmentId: appointmentId,
+
                 clientId: client.clientId,
                 clientName: client.name,
                 serviceId: 'serviceId' in timelineItem ? timelineItem.serviceId : 'unknown',
@@ -243,7 +256,14 @@ const ClientProfileModal: React.FC<ClientProfileModalProps> = ({ client, isOpen,
                             {client.name.charAt(0)}
                         </div>
                         <h2 className="text-xl font-bold text-diva-dark leading-tight">{client.name}</h2>
-                        <p className="text-sm text-gray-500 mt-1">Paciente desde 2022</p>
+
+                        {/* RFM Segment Badge */}
+                        <div className={`mt-2 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-1 ${rfm.segmentColor}`}>
+                            {rfm.segment === 'Champions' && <Crown size={12} />}
+                            {rfm.segmentLabel}
+                        </div>
+
+                        <p className="text-sm text-gray-500 mt-2">Paciente desde 2022</p>
                         <p className="text-xs text-diva-primary font-bold mt-1">{totalVisits} visitas realizadas</p>
                         <div className="flex gap-2 mt-3 flex-wrap justify-center">
                             {client.behaviorTags.map(tag => (
@@ -282,13 +302,27 @@ const ClientProfileModal: React.FC<ClientProfileModalProps> = ({ client, isOpen,
                             <p className="text-lg font-mono font-bold text-diva-dark">{formatCurrency(realLTV || client.lifetimeValue)}</p>
                         </div>
                         <div className="bg-white p-3 rounded-lg border border-diva-light/30 shadow-sm">
-                            <p className="text-xs text-gray-500">Score RFM</p>
-                            <div className="flex items-center">
-                                <div className="flex-1 bg-gray-200 h-2 rounded-full mr-2">
-                                    <div className="bg-diva-accent h-2 rounded-full" style={{ width: `${client.rfmScore}%` }}></div>
+                            <p className="text-xs text-gray-500 mb-2 font-bold flex justify-between items-center">
+                                Score RFM
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded ${rfm.segmentColor}`}>{rfm.score}/100</span>
+                            </p>
+
+                            {/* Bar 1: RFM Score */}
+                            <div className="flex items-center mb-1">
+                                <div className="flex-1 bg-gray-100 h-2.5 rounded-full mr-2 relative overflow-hidden">
+                                    <div className="bg-purple-600 h-full rounded-full transition-all duration-500" style={{ width: `${rfm.score}%` }}></div>
                                 </div>
-                                <span className="text-xs font-bold text-diva-accent">{client.rfmScore}</span>
+                                <span className="text-[10px] font-bold text-purple-700 min-w-[24px] text-right">{rfm.score}</span>
                             </div>
+
+                            {/* Bar 2: Loyalty / NPS */}
+                            <div className="flex items-center">
+                                <div className="flex-1 bg-gray-100 h-2.5 rounded-full mr-2 relative overflow-hidden">
+                                    <div className="bg-yellow-500 h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, (client.loyaltyPoints || 0) / 10)}%` }}></div>
+                                </div>
+                                <span className="text-[10px] font-bold text-yellow-600 min-w-[24px] text-right">{Math.min(100, Math.round((client.loyaltyPoints || 0) / 10))}</span>
+                            </div>
+                            <p className="text-[9px] text-gray-400 mt-1 text-right">Fidelidade (Pontos)</p>
                         </div>
                     </div>
 
@@ -367,12 +401,26 @@ const ClientProfileModal: React.FC<ClientProfileModalProps> = ({ client, isOpen,
                                 <span className="sm:hidden">Formulários</span>
                             </button>
                             <button
+                                onClick={() => setActiveTab('plans')}
+                                className={`px-3 md:px-4 h-full border-b-2 font-medium text-xs md:text-sm transition-colors whitespace-nowrap shrink-0 ${activeTab === 'plans' ? 'border-diva-primary text-diva-primary' : 'border-transparent text-gray-500 hover:text-diva-dark'}`}
+                            >
+                                <span className="hidden sm:inline">Planos de Tratamento</span>
+                                <span className="sm:hidden">Planos</span>
+                            </button>
+                            <button
                                 onClick={() => setIsSmartConsultationOpen(true)}
                                 className="ml-2 md:ml-4 px-3 md:px-4 py-1.5 bg-gradient-to-r from-diva-primary to-diva-accent text-white rounded-full text-xs font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2 animate-pulse shrink-0"
                             >
                                 <Sparkles size={14} />
-                                <span className="hidden sm:inline">Consulta IA</span>
+                                <span className="hidden sm:inline">IA</span>
                                 <span className="sm:hidden">IA</span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('app_view')}
+                                className={`ml-2 md:ml-2 px-3 md:px-4 h-full border-b-2 font-medium text-xs md:text-sm transition-colors whitespace-nowrap shrink-0 flex items-center gap-2 ${activeTab === 'app_view' ? 'border-diva-dark text-diva-dark' : 'border-transparent text-gray-500 hover:text-diva-dark'}`}
+                            >
+                                <Smartphone size={16} />
+                                <span className="hidden sm:inline">Visão do App</span>
                             </button>
                         </div>
                         <button onClick={onClose} className="hidden lg:block p-2 text-gray-400 hover:text-diva-dark hover:bg-gray-100 rounded-full transition-colors">
@@ -382,6 +430,112 @@ const ClientProfileModal: React.FC<ClientProfileModalProps> = ({ client, isOpen,
 
                     {/* Content Body */}
                     <div className="flex-1 overflow-y-auto p-3 md:p-8 bg-gray-50/50">
+
+                        {activeTab === 'app_view' && (
+                            <div className="flex justify-center items-start pt-4 pb-12">
+                                <div className="w-[300px] h-[600px] bg-black rounded-[40px] p-3 border-4 border-gray-800 shadow-2xl relative ring-4 ring-gray-200">
+                                    {/* Phone Screen */}
+                                    <div className="w-full h-full bg-white rounded-[32px] overflow-hidden flex flex-col relative">
+                                        {/* Status Bar */}
+                                        <div className="h-7 bg-diva-dark text-white text-[10px] flex justify-between items-center px-5 pt-1">
+                                            <span className="font-medium">9:41</span>
+                                            <div className="flex gap-1.5">
+                                                <div className="w-1.5 h-1.5 bg-white/40 rounded-full"></div>
+                                                <div className="w-1.5 h-1.5 bg-white/80 rounded-full"></div>
+                                                <div className="w-3 h-1.5 bg-white/80 rounded-full"></div>
+                                            </div>
+                                        </div>
+
+                                        {/* App Header */}
+                                        <div className="p-4 bg-diva-primary/5 border-b border-diva-primary/10 flex justify-between items-center pt-8 pb-4">
+                                            <div>
+                                                <h4 className="font-bold text-diva-dark text-sm">Olá, {client.name.split(' ')[0]} 👋</h4>
+                                                <p className="text-[10px] text-diva-primary font-bold bg-diva-primary/10 px-2 py-0.5 rounded-full inline-block mt-1">💎 Cliente Premium</p>
+                                            </div>
+                                            <div className="relative p-2 bg-white rounded-full shadow-sm">
+                                                <Bell size={18} className="text-diva-dark" />
+                                                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+                                            </div>
+                                        </div>
+
+                                        {/* Notifications List */}
+                                        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
+                                            <h5 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Notificações Recentes</h5>
+
+                                            {/* Mock Notifications */}
+                                            <div className="bg-white p-3 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.05)] border border-gray-100 relative group active:scale-95 transition-transform cursor-pointer">
+                                                <div className="flex gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
+                                                        <Megaphone size={14} />
+                                                    </div>
+                                                    <div>
+                                                        <h6 className="font-bold text-xs text-gray-800">Promoção Relâmpago!</h6>
+                                                        <p className="text-[10px] text-gray-500 leading-tight mt-1">
+                                                            Somente hoje! <b>20% OFF</b> em Drenagem Linfática. Toque para agendar.
+                                                        </p>
+                                                        <span className="text-[9px] text-gray-300 mt-2 block">Há 2 horas</span>
+                                                    </div>
+                                                </div>
+                                                <div className="absolute right-2 top-2 w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                                            </div>
+
+                                            <div className="bg-white p-3 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.05)] border border-gray-100 relative group active:scale-95 transition-transform cursor-pointer">
+                                                <div className="flex gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                                                        <Calendar size={14} />
+                                                    </div>
+                                                    <div>
+                                                        <h6 className="font-bold text-xs text-gray-800">Lembrete de Agendamento</h6>
+                                                        <p className="text-[10px] text-gray-500 leading-tight mt-1">
+                                                            Sua sessão de Laser é <b>amanhã às 14:00</b>.
+                                                        </p>
+                                                        <button className="mt-2 text-[10px] bg-blue-50 text-blue-600 font-bold px-2 py-1 rounded w-full">Confirmar Presença</button>
+                                                        <span className="text-[9px] text-gray-300 mt-2 block">Ontem</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-white p-3 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.05)] border border-gray-100 relative group active:scale-95 transition-transform cursor-pointer">
+                                                <div className="flex gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center shrink-0">
+                                                        <MessageCircle size={14} />
+                                                    </div>
+                                                    <div>
+                                                        <h6 className="font-bold text-xs text-gray-800">Pesquisa de Satisfação</h6>
+                                                        <p className="text-[10px] text-gray-500 leading-tight mt-1">
+                                                            Como foi seu atendimento com Dra. Julia?
+                                                        </p>
+                                                        <div className="flex gap-1 mt-2">
+                                                            {[1, 2, 3, 4, 5].map(s => <Star key={s} size={10} className="text-yellow-400 fill-current" />)}
+                                                        </div>
+                                                        <span className="text-[9px] text-gray-300 mt-2 block">3 dias atrás</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Bottom Nav */}
+                                        <div className="h-16 bg-white border-t border-gray-100 flex justify-around items-center px-4 pb-2">
+                                            <div className="flex flex-col items-center text-diva-primary gap-1">
+                                                <Home size={20} className="fill-current" />
+                                                <span className="text-[9px] font-bold">Início</span>
+                                            </div>
+                                            <div className="flex flex-col items-center text-gray-300 gap-1">
+                                                <Calendar size={20} />
+                                                <span className="text-[9px] font-medium">Agenda</span>
+                                            </div>
+                                            <div className="flex flex-col items-center text-gray-300 gap-1">
+                                                <User size={20} />
+                                                <span className="text-[9px] font-medium">Perfil</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Home Indicator */}
+                                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-1/3 h-1.5 bg-black/20 rounded-full"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {activeTab === 'timeline' && (
                             <div className="max-w-3xl mx-auto space-y-6">
@@ -434,12 +588,20 @@ const ClientProfileModal: React.FC<ClientProfileModalProps> = ({ client, isOpen,
                             <div className="max-w-4xl mx-auto space-y-6">
                                 <div className="flex justify-between items-center">
                                     <h3 className="text-lg font-bold text-diva-dark">Prontuário Eletrônico</h3>
-                                    <button
-                                        onClick={() => setIsSmartConsultationOpen(true)}
-                                        className="bg-diva-primary text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center hover:bg-diva-dark transition-colors"
-                                    >
-                                        <Sparkles size={16} className="mr-2" /> Nova Evolução (IA)
-                                    </button>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setIsPrescribeModalOpen(true)}
+                                            className="bg-white border border-diva-primary text-diva-primary px-4 py-2 rounded-lg text-sm font-bold flex items-center hover:bg-diva-primary hover:text-white transition-colors"
+                                        >
+                                            <ClipboardList size={16} className="mr-2" /> Prescrever Plano
+                                        </button>
+                                        <button
+                                            onClick={() => setIsSmartConsultationOpen(true)}
+                                            className="bg-diva-primary text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center hover:bg-diva-dark transition-colors"
+                                        >
+                                            <Sparkles size={16} className="mr-2" /> Nova Evolução (IA)
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-4">
@@ -754,6 +916,81 @@ const ClientProfileModal: React.FC<ClientProfileModalProps> = ({ client, isOpen,
                                 />
                             </div>
                         )}
+
+
+                        {activeTab === 'plans' && (
+                            <div className="space-y-6">
+                                <div className="flex justify-between items-center">
+                                    <h3 className="text-lg font-bold text-diva-dark">Planos de Tratamento</h3>
+                                    <button
+                                        onClick={() => setIsPrescribeModalOpen(true)}
+                                        className="bg-diva-primary text-white px-4 py-2 rounded-lg font-bold flex items-center hover:bg-diva-dark transition-colors"
+                                    >
+                                        <Plus size={16} className="mr-2" /> Novo Plano
+                                    </button>
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-4">
+                                    {treatmentPlans.filter(p => p.clientId === client.clientId).length > 0 ? (
+                                        treatmentPlans.filter(p => p.clientId === client.clientId).map(plan => (
+                                            <div
+                                                key={plan.id}
+                                                onClick={() => setSelectedPlan(plan)}
+                                                className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-diva-primary/50 transition-all cursor-pointer group"
+                                            >
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div>
+                                                        <h4 className="font-bold text-diva-dark text-lg group-hover:text-diva-primary transition-colors">{plan.name}</h4>
+                                                        <p className="text-sm text-gray-500">{new Date(plan.createdAt).toLocaleDateString()} • {plan.professionalName}</p>
+                                                    </div>
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase
+                                                        ${plan.status === 'completed' ? 'bg-gray-100 text-gray-600' :
+                                                            plan.status === 'closed' || plan.status === 'partially_paid' ? 'bg-green-100 text-green-700' :
+                                                                'bg-blue-100 text-blue-700'}`}>
+                                                        {plan.status === 'prescribed' ? 'Prescrito' :
+                                                            plan.status === 'negotiating' ? 'Em Negociação' :
+                                                                plan.status === 'closed' ? 'Fechado' : 'Concluído'}
+                                                    </span>
+                                                </div>
+
+                                                <div className="flex justify-between items-end mt-4">
+                                                    <div className="flex-1">
+                                                        <p className="text-xs text-gray-500 mb-1">Itens do Plano:</p>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {plan.items.slice(0, 3).map((item, idx) => (
+                                                                <span key={idx} className="bg-gray-50 border border-gray-100 px-2 py-1 rounded text-xs text-gray-700">
+                                                                    {item.quantity}x {item.serviceName}
+                                                                </span>
+                                                            ))}
+                                                            {plan.items.length > 3 && (
+                                                                <span className="text-xs text-gray-400 self-center">+{plan.items.length - 3} mais</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-xs text-gray-400">Valor Total</p>
+                                                        <p className="text-xl font-bold text-diva-dark">
+                                                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(plan.total)}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="text-center py-12 bg-gray-50 rounded-xl border-dashed border-2 border-gray-200">
+                                            <ClipboardList size={48} className="mx-auto text-gray-300 mb-3" />
+                                            <p className="text-gray-500 font-medium">Nenhum plano prescrito para este paciente.</p>
+                                            <button
+                                                onClick={() => setIsPrescribeModalOpen(true)}
+                                                className="mt-3 text-diva-primary font-bold text-sm hover:underline"
+                                            >
+                                                Prescrever Primeiro Plano
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -787,88 +1024,96 @@ const ClientProfileModal: React.FC<ClientProfileModalProps> = ({ client, isOpen,
             />
 
             {/* Transfer Unit Modal */}
-            {isTransferModalOpen && (
-                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white p-6 rounded-xl shadow-xl w-96 animate-in fade-in zoom-in duration-200">
-                        <h3 className="text-lg font-bold text-diva-dark mb-2">Transferir Paciente</h3>
-                        <p className="text-sm text-gray-500 mb-4">Selecione a unidade de destino para {client.name}. O histórico será mantido.</p>
+            {
+                isTransferModalOpen && (
+                    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                        <div className="bg-white p-6 rounded-xl shadow-xl w-96 animate-in fade-in zoom-in duration-200">
+                            <h3 className="text-lg font-bold text-diva-dark mb-2">Transferir Paciente</h3>
+                            <p className="text-sm text-gray-500 mb-4">Selecione a unidade de destino para {client.name}. O histórico será mantido.</p>
 
-                        <div className="space-y-3 mb-6">
-                            {units.filter(u => u.id !== client.unitId).map(unit => (
-                                <label key={unit.id} className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${targetUnitId === unit.id ? 'border-diva-primary bg-diva-light/10' : 'border-gray-200 hover:bg-gray-50'}`}>
-                                    <input
-                                        type="radio"
-                                        name="targetUnit"
-                                        value={unit.id}
-                                        checked={targetUnitId === unit.id}
-                                        onChange={(e) => setTargetUnitId(e.target.value)}
-                                        className="mr-3 text-diva-primary focus:ring-diva-primary"
-                                    />
-                                    <span className="text-sm font-medium text-diva-dark">{unit.name}</span>
-                                </label>
-                            ))}
-                        </div>
+                            <div className="space-y-3 mb-6">
+                                {units.filter(u => u.id !== client.unitId).map(unit => (
+                                    <label key={unit.id} className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${targetUnitId === unit.id ? 'border-diva-primary bg-diva-light/10' : 'border-gray-200 hover:bg-gray-50'}`}>
+                                        <input
+                                            type="radio"
+                                            name="targetUnit"
+                                            value={unit.id}
+                                            checked={targetUnitId === unit.id}
+                                            onChange={(e) => setTargetUnitId(e.target.value)}
+                                            className="mr-3 text-diva-primary focus:ring-diva-primary"
+                                        />
+                                        <span className="text-sm font-medium text-diva-dark">{unit.name}</span>
+                                    </label>
+                                ))}
+                            </div>
 
-                        <div className="flex justify-end gap-2">
-                            <button
-                                onClick={() => setIsTransferModalOpen(false)}
-                                className="px-4 py-2 text-gray-500 hover:text-gray-700 font-medium text-sm"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                onClick={handleTransferClient}
-                                disabled={!targetUnitId}
-                                className={`px-4 py-2 bg-diva-primary text-white rounded-lg font-bold text-sm shadow-md transition-colors ${!targetUnitId ? 'opacity-50 cursor-not-allowed' : 'hover:bg-diva-dark'}`}
-                            >
-                                Confirmar Transferência
-                            </button>
+                            <div className="flex justify-end gap-2">
+                                <button
+                                    onClick={() => setIsTransferModalOpen(false)}
+                                    className="px-4 py-2 text-gray-500 hover:text-gray-700 font-medium text-sm"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleTransferClient}
+                                    disabled={!targetUnitId}
+                                    className={`px-4 py-2 bg-diva-primary text-white rounded-lg font-bold text-sm shadow-md transition-colors ${!targetUnitId ? 'opacity-50 cursor-not-allowed' : 'hover:bg-diva-dark'}`}
+                                >
+                                    Confirmar Transferência
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Fill Form Modal */}
-            {selectedFormTemplate && (
-                <FillFormModal
-                    isOpen={isFillFormModalOpen}
-                    onClose={() => {
-                        setIsFillFormModalOpen(false);
-                        setSelectedFormTemplate(null);
-                    }}
-                    formTemplate={selectedFormTemplate}
-                    clientId={client.clientId}
-                    clientName={client.name}
-                    onSubmit={addFormResponse}
-                />
-            )}
+            {
+                selectedFormTemplate && (
+                    <FillFormModal
+                        isOpen={isFillFormModalOpen}
+                        onClose={() => {
+                            setIsFillFormModalOpen(false);
+                            setSelectedFormTemplate(null);
+                        }}
+                        formTemplate={selectedFormTemplate}
+                        clientId={client.clientId}
+                        clientName={client.name}
+                        onSubmit={addFormResponse}
+                    />
+                )
+            }
 
             {/* View Form Response Modal */}
-            {selectedFormResponse && (
-                <ViewFormResponseModal
-                    isOpen={isViewFormModalOpen}
-                    onClose={() => {
-                        setIsViewFormModalOpen(false);
-                        setSelectedFormResponse(null);
-                    }}
-                    formResponse={selectedFormResponse}
-                />
-            )}
+            {
+                selectedFormResponse && (
+                    <ViewFormResponseModal
+                        isOpen={isViewFormModalOpen}
+                        onClose={() => {
+                            setIsViewFormModalOpen(false);
+                            setSelectedFormResponse(null);
+                        }}
+                        formResponse={selectedFormResponse}
+                    />
+                )
+            }
 
             {/* Appointment Record Modal */}
-            {selectedAppointmentRecord && (
-                <AppointmentRecordModal
-                    isOpen={isAppointmentRecordModalOpen}
-                    onClose={() => {
-                        setIsAppointmentRecordModalOpen(false);
-                        setSelectedAppointmentRecord(null);
-                    }}
-                    record={selectedAppointmentRecord}
-                    formResponses={formResponses}
-                    products={products}
-                    onSave={handleSaveAppointmentRecord}
-                />
-            )}
+            {
+                selectedAppointmentRecord && (
+                    <AppointmentRecordModal
+                        isOpen={isAppointmentRecordModalOpen}
+                        onClose={() => {
+                            setIsAppointmentRecordModalOpen(false);
+                            setSelectedAppointmentRecord(null);
+                        }}
+                        record={selectedAppointmentRecord}
+                        formResponses={formResponses}
+                        products={products}
+                        onSave={handleSaveAppointmentRecord}
+                    />
+                )
+            }
 
             {/* Send Document WhatsApp Modal */}
             <SendDocumentWhatsAppModal
@@ -884,7 +1129,52 @@ const ClientProfileModal: React.FC<ClientProfileModalProps> = ({ client, isOpen,
                 onClose={() => setIsSmartConsultationOpen(false)}
                 client={client}
             />
-        </div>
+
+            {/* Treatment Plan Modals */}
+            {
+                isPrescribeModalOpen && (
+                    <PrescribePlanModal
+                        onClose={() => setIsPrescribeModalOpen(false)}
+                        initialClientName={client.name}
+                        initialClientId={client.clientId}
+                        onSave={(newPlan) => {
+                            const plan: TreatmentPlan = {
+                                id: `plan_${Date.now()}`,
+                                organizationId: 'org_demo',
+                                clientId: newPlan.clientId || client.clientId,
+                                clientName: newPlan.clientName || client.name,
+                                professionalId: 'prof_demo',
+                                professionalName: 'Dr(a). Atual',
+                                name: newPlan.name || 'Novo Plano',
+                                items: newPlan.items as any[] || [],
+                                status: 'prescribed',
+                                pipelineStage: 'Novo',
+                                discount: 0,
+                                subtotal: newPlan.total || 0,
+                                total: newPlan.total || 0,
+                                createdAt: new Date().toISOString(),
+                                updatedAt: new Date().toISOString()
+                            };
+                            addTreatmentPlan(plan);
+                            setIsPrescribeModalOpen(false);
+                        }}
+                    />
+                )
+            }
+
+            {
+                selectedPlan && (
+                    <PlanDetailsModal
+                        plan={selectedPlan}
+                        onClose={() => setSelectedPlan(null)}
+                        onUpdate={(updatedPlan) => {
+                            updateTreatmentPlan(updatedPlan);
+                            setSelectedPlan(updatedPlan);
+                        }}
+                    />
+                )
+            }
+        </div >
     );
 };
 

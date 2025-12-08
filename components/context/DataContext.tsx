@@ -1,6 +1,14 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { Client, SalesLead, ServiceAppointment, AppointmentStatus, LeadStage, Transaction, WaitlistItem, StaffMember, ServiceRoom, DataContextType, ServiceDefinition, BusinessConfig, NotificationConfig, Product, BusinessUnit, YieldRule, FormTemplate, FormResponse, AppointmentRecord, ClinicEvent, EventGuest, Partner, WebsiteConfig, User, UserRole, AppNotification, OpenVial, VialUsageLog, MarketingCampaign, AutomationRule, CustomerSegment, MembershipPlan, Subscription, ChatConversation, ChatMessage } from '../../types';
+import { Client, SalesLead, ServiceAppointment, AppointmentStatus, LeadStage, Transaction, WaitlistItem, StaffMember, OrganizationMember, ServiceRoom, DataContextType, ServiceDefinition, BusinessConfig, NotificationConfig, Product, BusinessUnit, YieldRule, FormTemplate, FormResponse, AppointmentRecord, ClinicEvent, EventGuest, Partner, WebsiteConfig, User, UserRole, AppNotification, OpenVial, VialUsageLog, MarketingCampaign, AutomationRule, CustomerSegment, MembershipPlan, Subscription, ChatConversation, ChatMessage, TreatmentPlan, TreatmentPlanTemplate, Supplier, BankAccount, FiscalRecord } from '../../types';
+import { MOCK_TREATMENT_PLANS, MOCK_TREATMENT_TEMPLATES } from '../../utils/mockTreatmentPlans';
 import { useToast } from '../ui/ToastContext';
+import { useOrganization } from './OrganizationContext';
+
+const initialSuppliers: Supplier[] = [
+  { id: 'sup1', organizationId: 'org_demo', name: 'DermoTech Labs', contact: '(11) 4444-5555', email: 'pedidos@dermotech.com', rating: 4.8, categories: ['Dermocosméticos'], active: true },
+  { id: 'sup2', organizationId: 'org_demo', name: 'MedHospitalar', contact: '(11) 3333-2222', email: 'vendas@med.com.br', rating: 4.2, categories: ['Descartáveis', 'Profissional'], active: true },
+  { id: 'sup3', organizationId: 'org_demo', name: 'VitaSkin Pro', contact: '(21) 9999-8888', email: 'comercial@vitaskin.com', rating: 5.0, categories: ['Home Care', 'Luxo'], active: true },
+];
 
 // --- HELPER FUNCTIONS ---
 const createUser = (role: UserRole): User => {
@@ -22,6 +30,7 @@ const createUser = (role: UserRole): User => {
 
   return {
     uid: `mock-${role}-id`,
+    organizationId: 'org_demo',
     email: `${role}@divaspa.com`,
     displayName: name,
     role: role,
@@ -44,45 +53,71 @@ const createUser = (role: UserRole): User => {
 // --- INITIAL MOCK DATA (Centralized) ---
 
 const initialClients: Client[] = [
-  { clientId: '1', userId: 'u1', name: 'Ana Silva', email: 'ana@example.com', phone: '(11) 99999-9999', rfmScore: 85, behaviorTags: ['VIP', 'Laser Perna'], lifetimeValue: 3500, lastContact: '2023-10-25', referralPoints: 150, loyaltyPoints: 300, unitId: 'u1' },
-  { clientId: '2', userId: 'u2', name: 'Beatriz Costa', email: 'bia@example.com', phone: '(11) 98888-8888', rfmScore: 40, behaviorTags: ['Novo Paciente'], lifetimeValue: 200, lastContact: '2023-10-20', referralPoints: 0, loyaltyPoints: 0, unitId: 'u2' },
-  { clientId: '3', userId: 'u3', name: 'Carla Dias', email: 'carla@example.com', phone: '(11) 97777-7777', rfmScore: 65, behaviorTags: ['Botox', 'Frequente'], lifetimeValue: 1200, lastContact: '2023-10-15', referralPoints: 50, loyaltyPoints: 100, unitId: 'u1' },
+  { clientId: '1', organizationId: 'org_demo', userId: 'u1', name: 'Ana Silva', email: 'ana@example.com', phone: '(11) 99999-9999', rfmScore: 85, behaviorTags: ['VIP', 'Laser Perna'], lifetimeValue: 3500, lastContact: '2023-10-25', referralPoints: 150, loyaltyPoints: 300, unitId: 'u1' },
+  { clientId: '2', organizationId: 'org_demo', userId: 'u2', name: 'Beatriz Costa', email: 'bia@example.com', phone: '(11) 98888-8888', rfmScore: 40, behaviorTags: ['Novo Paciente'], lifetimeValue: 200, lastContact: '2023-10-20', referralPoints: 0, loyaltyPoints: 0, unitId: 'u2' },
+  { clientId: '3', organizationId: 'org_demo', userId: 'u3', name: 'Carla Dias', email: 'carla@example.com', phone: '(11) 97777-7777', rfmScore: 65, behaviorTags: ['Botox', 'Frequente'], lifetimeValue: 1200, lastContact: '2023-10-15', referralPoints: 50, loyaltyPoints: 100, unitId: 'u1' },
 ];
 
 const initialLeads: SalesLead[] = [
-  { leadId: 'l1', name: 'Juliana Paes', contact: '(21) 9999-0000', stage: LeadStage.NEW, channelSource: 'instagram', lastActivity: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), notes: 'Interessada em pacote corporal' },
-  { leadId: 'l2', name: 'Fernanda Lima', contact: 'fernanda@mail.com', stage: LeadStage.CONTACTED, channelSource: 'whatsapp', lastActivity: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), notes: 'Agendou avaliação, falta confirmar' },
-  { leadId: 'l3', name: 'Mariana Ximenes', contact: 'mari@mail.com', stage: LeadStage.SCHEDULED, channelSource: 'referral', lastActivity: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), notes: 'Avaliação confirmada' },
-  { leadId: 'l4', name: 'Cláudia Raia', contact: 'claudia@mail.com', stage: LeadStage.CONVERTED, channelSource: 'website', lastActivity: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), notes: 'Fechou pacote 10 sessões' },
-  { leadId: 'l5', name: 'Patricia Pillar', contact: 'pat@mail.com', stage: LeadStage.NEW, channelSource: 'instagram', lastActivity: new Date(Date.now() - 5 * 60 * 1000).toISOString(), notes: 'Dúvida sobre Botox' },
-  { leadId: 'l8', name: 'João Oliveira', contact: '(11) 98888-7777', stage: LeadStage.NEW, channelSource: 'instagram', lastActivity: new Date().toISOString(), notes: 'Paciente com interesse em pacotes corporais' },
+  { leadId: 'l1', organizationId: 'org_demo', name: 'Juliana Paes', contact: '(21) 9999-0000', stage: LeadStage.NEW, channelSource: 'instagram', lastActivity: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), notes: 'Interessada em pacote corporal' },
+  { leadId: 'l2', organizationId: 'org_demo', name: 'Fernanda Lima', contact: 'fernanda@mail.com', stage: LeadStage.CONTACTED, channelSource: 'whatsapp', lastActivity: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), notes: 'Agendou avaliação, falta confirmar' },
+  { leadId: 'l3', organizationId: 'org_demo', name: 'Mariana Ximenes', contact: 'mari@mail.com', stage: LeadStage.SCHEDULED, channelSource: 'referral', lastActivity: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), notes: 'Avaliação confirmada' },
+  { leadId: 'l4', organizationId: 'org_demo', name: 'Cláudia Raia', contact: 'claudia@mail.com', stage: LeadStage.CONVERTED, channelSource: 'website', lastActivity: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), notes: 'Fechou pacote 10 sessões' },
+  { leadId: 'l5', organizationId: 'org_demo', name: 'Patricia Pillar', contact: 'pat@mail.com', stage: LeadStage.NEW, channelSource: 'instagram', lastActivity: new Date(Date.now() - 5 * 60 * 1000).toISOString(), notes: 'Dúvida sobre Botox' },
+  { leadId: 'l8', organizationId: 'org_demo', name: 'João Oliveira', contact: '(11) 98888-7777', stage: LeadStage.NEW, channelSource: 'instagram', lastActivity: new Date().toISOString(), notes: 'Paciente com interesse em pacotes corporais' },
 ];
 
 const initialAppointments: ServiceAppointment[] = [
-  { appointmentId: '1', clientId: '1', clientName: 'Ana Silva', staffId: 's1', staffName: 'Dra. Julia', roomId: 'Sala 01 - Laser', startTime: '2023-10-27T09:00:00', endTime: '2023-10-27T10:00:00', status: AppointmentStatus.CONFIRMED, serviceName: 'Depilação a Laser - Perna Inteira', price: 250, unitId: 'u1' },
-  { appointmentId: '2', clientId: '2', clientName: 'Beatriz Costa', staffId: 's2', staffName: 'Est. Carla', roomId: 'Sala 02 - Facial', startTime: '2023-10-27T10:30:00', endTime: '2023-10-27T11:30:00', status: AppointmentStatus.SCHEDULED, serviceName: 'Limpeza de Pele Profunda', price: 150, unitId: 'u2' },
-  { appointmentId: '3', clientId: '3', clientName: 'Carla Dias', staffId: 's1', staffName: 'Dra. Julia', roomId: 'Sala 01 - Laser', startTime: '2023-10-27T11:00:00', endTime: '2023-10-27T11:30:00', status: AppointmentStatus.COMPLETED, serviceName: 'Botox (3 Regiões)', price: 0, unitId: 'u1' },
-  { appointmentId: '4', clientId: '4', clientName: 'Diana Prince', staffId: 's3', staffName: 'Dra. Julia', roomId: 'Sala 03 - Corporal', startTime: '2023-10-27T14:00:00', endTime: '2023-10-27T15:30:00', status: AppointmentStatus.IN_PROGRESS, serviceName: 'Massagem Relaxante', price: 200, unitId: 'u3' },
-  { appointmentId: '5', clientId: '5', clientName: 'Fernanda Souza', staffId: 's1', staffName: 'Dra. Julia', roomId: 'Online (Tele)', startTime: '2023-10-27T16:00:00', endTime: '2023-10-27T16:30:00', status: AppointmentStatus.CONFIRMED, serviceName: 'Avaliação Facial Online', price: 100, unitId: 'u1' },
+  { appointmentId: '1', organizationId: 'org_demo', clientId: '1', clientName: 'Ana Silva', staffId: 's1', staffName: 'Dra. Julia', roomId: 'Sala 01 - Laser', startTime: '2023-10-27T09:00:00', endTime: '2023-10-27T10:00:00', status: AppointmentStatus.CONFIRMED, serviceName: 'Depilação a Laser - Perna Inteira', price: 250, unitId: 'u1' },
+  { appointmentId: '2', organizationId: 'org_demo', clientId: '2', clientName: 'Beatriz Costa', staffId: 's2', staffName: 'Est. Carla', roomId: 'Sala 02 - Facial', startTime: '2023-10-27T10:30:00', endTime: '2023-10-27T11:30:00', status: AppointmentStatus.SCHEDULED, serviceName: 'Limpeza de Pele Profunda', price: 150, unitId: 'u2' },
+  { appointmentId: '3', organizationId: 'org_demo', clientId: '3', clientName: 'Carla Dias', staffId: 's1', staffName: 'Dra. Julia', roomId: 'Sala 01 - Laser', startTime: '2023-10-27T11:00:00', endTime: '2023-10-27T11:30:00', status: AppointmentStatus.COMPLETED, serviceName: 'Botox (3 Regiões)', price: 0, unitId: 'u1' },
+  { appointmentId: '4', organizationId: 'org_demo', clientId: '4', clientName: 'Diana Prince', staffId: 's3', staffName: 'Dra. Julia', roomId: 'Sala 03 - Corporal', startTime: '2023-10-27T14:00:00', endTime: '2023-10-27T15:30:00', status: AppointmentStatus.IN_PROGRESS, serviceName: 'Massagem Relaxante', price: 200, unitId: 'u3' },
+  { appointmentId: '5', organizationId: 'org_demo', clientId: '5', clientName: 'Fernanda Souza', staffId: 's1', staffName: 'Dra. Julia', roomId: 'Online (Tele)', startTime: '2023-10-27T16:00:00', endTime: '2023-10-27T16:30:00', status: AppointmentStatus.CONFIRMED, serviceName: 'Avaliação Facial Online', price: 100, unitId: 'u1' },
 ];
 
 const initialTransactions: Transaction[] = [
-  { id: 't1', description: 'Pacote Laser - 10 Sessões', category: 'Serviços', amount: 2500, type: 'income', status: 'paid', date: '2023-10-26', unitId: 'u1' },
-  { id: 't2', description: 'Reposição de Estoque (Dermocosméticos)', category: 'Material', amount: 850, type: 'expense', status: 'paid', date: '2023-10-25', unitId: 'u2' },
-  { id: 't3', description: 'Manutenção Ar Condicionado', category: 'Manutenção', amount: 300, type: 'expense', status: 'pending', date: '2023-10-27', unitId: 'u2' },
-  { id: 't4', description: 'Venda Produto Home Care', category: 'Produtos', amount: 450, type: 'income', status: 'paid', date: '2023-10-26', unitId: 'u1' },
-  { id: 't5', description: 'Comissão Staff (Dra. Julia)', category: 'Comissão', amount: 1200, type: 'expense', status: 'pending', date: '2023-10-30', unitId: 'u1' },
-  { id: 't6', description: 'Botox Full Face', category: 'Serviços', amount: 1800, type: 'income', status: 'overdue', date: '2023-10-20', unitId: 'u1' },
+  { id: 't1', organizationId: 'org_demo', description: 'Pacote Laser - 10 Sessões', category: 'Serviços', amount: 2500, type: 'income', status: 'paid', date: '2023-10-26', unitId: 'u1', revenueType: 'service' },
+  { id: 't2', organizationId: 'org_demo', description: 'Reposição de Estoque (Dermocosméticos)', category: 'Material', amount: 850, type: 'expense', status: 'paid', date: '2023-10-25', unitId: 'u2' },
+  { id: 't3', organizationId: 'org_demo', description: 'Manutenção Ar Condicionado', category: 'Manutenção', amount: 300, type: 'expense', status: 'pending', date: '2023-10-27', unitId: 'u2' },
+  { id: 't4', organizationId: 'org_demo', description: 'Venda Produto Home Care', category: 'Produtos', amount: 450, type: 'income', status: 'paid', date: '2023-10-26', unitId: 'u1', revenueType: 'product' },
+  { id: 't5', organizationId: 'org_demo', description: 'Comissão Staff (Dra. Julia)', category: 'Comissão', amount: 1200, type: 'expense', status: 'pending', date: '2023-10-30', unitId: 'u1' },
+  { id: 't6', organizationId: 'org_demo', description: 'Botox Full Face', category: 'Serviços', amount: 1800, type: 'income', status: 'overdue', date: '2023-10-20', unitId: 'u1', revenueType: 'service' },
 ];
 
 const initialWaitlist: WaitlistItem[] = [
-  { id: 'w1', clientName: 'Fernanda Souza', service: 'Laser Full Body', preference: 'Qualquer horário tarde', priority: 'high' },
-  { id: 'w2', clientName: 'Mariana Ximenes', service: 'Botox', preference: 'Preferência Sala 01', priority: 'medium' },
+  { id: 'w1', organizationId: 'org_demo', clientName: 'Fernanda Souza', service: 'Laser Full Body', preference: 'Qualquer horário tarde', priority: 'high' },
+  { id: 'w2', organizationId: 'org_demo', clientName: 'Mariana Ximenes', service: 'Botox', preference: 'Preferência Sala 01', priority: 'medium' },
+];
+
+const initialMembers: OrganizationMember[] = [
+  {
+    id: 'mem_1',
+    organizationId: 'org_demo',
+    userId: 'user_admin',
+    name: 'Admin Demo',
+    email: 'admin@divaspa.com',
+    role: 'admin',
+    status: 'active',
+    invitedAt: '2023-01-01T00:00:00Z',
+    avatarUrl: 'https://i.pravatar.cc/150?u=admin'
+  },
+  {
+    id: 'mem_2',
+    organizationId: 'org_demo',
+    userId: 'u_staff1',
+    name: 'Dra. Julia Martins',
+    email: 'julia@divaspa.com',
+    role: 'staff',
+    status: 'active',
+    invitedAt: '2023-02-01T00:00:00Z',
+    avatarUrl: 'https://i.pravatar.cc/150?u=julia'
+  }
 ];
 
 const initialStaff: StaffMember[] = [
   {
     id: 's1',
+    organizationId: 'org_demo',
     userId: 'u_staff1',
     name: 'Dra. Julia Martins',
     role: 'Biomédica',
@@ -102,6 +137,7 @@ const initialStaff: StaffMember[] = [
   },
   {
     id: 's2',
+    organizationId: 'org_demo',
     userId: 'u_staff2',
     name: 'Carla Dias',
     role: 'Esteticista',
@@ -121,6 +157,7 @@ const initialStaff: StaffMember[] = [
   },
   {
     id: 's3',
+    organizationId: 'org_demo',
     userId: 'u_staff3',
     name: 'Fernanda Souza',
     role: 'Recepcionista',
@@ -142,6 +179,7 @@ const initialStaff: StaffMember[] = [
 const initialRooms: ServiceRoom[] = [
   {
     id: 'r1',
+    organizationId: 'org_demo',
     name: 'Sala 01 - Laser Master',
     type: 'treatment',
     status: 'occupied',
@@ -154,6 +192,7 @@ const initialRooms: ServiceRoom[] = [
   },
   {
     id: 'r2',
+    organizationId: 'org_demo',
     name: 'Sala 02 - Facial',
     type: 'treatment',
     status: 'available',
@@ -166,6 +205,7 @@ const initialRooms: ServiceRoom[] = [
   },
   {
     id: 'r3',
+    organizationId: 'org_demo',
     name: 'Sala 03 - Corporal',
     type: 'spa',
     status: 'cleaning',
@@ -177,6 +217,7 @@ const initialRooms: ServiceRoom[] = [
   },
   {
     id: 'r4',
+    organizationId: 'org_demo',
     name: 'Consultório A',
     type: 'consultation',
     status: 'maintenance',
@@ -185,6 +226,7 @@ const initialRooms: ServiceRoom[] = [
   },
   {
     id: 'r5',
+    organizationId: 'org_demo',
     name: 'Consultório B',
     type: 'consultation',
     status: 'available',
@@ -193,6 +235,7 @@ const initialRooms: ServiceRoom[] = [
   },
   {
     id: 'r6',
+    organizationId: 'org_demo',
     name: 'Online (Tele)',
     type: 'virtual',
     status: 'available',
@@ -203,20 +246,21 @@ const initialRooms: ServiceRoom[] = [
 ];
 
 const initialServices: ServiceDefinition[] = [
-  { id: '1', name: 'Depilação a Laser - Perna Inteira', category: 'laser', duration: 45, price: 250.00, active: true, loyaltyPoints: 50 },
-  { id: '2', name: 'Limpeza de Pele Profunda', category: 'esthetics', duration: 60, price: 180.00, active: true, loyaltyPoints: 30 },
-  { id: '3', name: 'Botox (3 Regiões)', category: 'injectables', duration: 30, price: 1200.00, active: true, loyaltyPoints: 200 },
-  { id: '4', name: 'Massagem Relaxante', category: 'spa', duration: 50, price: 150.00, active: true, loyaltyPoints: 20 },
+  { id: '1', organizationId: 'org_demo', name: 'Depilação a Laser - Perna Inteira', category: 'laser', duration: 45, price: 250.00, active: true, loyaltyPoints: 50 },
+  { id: '2', organizationId: 'org_demo', name: 'Limpeza de Pele Profunda', category: 'esthetics', duration: 60, price: 180.00, active: true, loyaltyPoints: 30 },
+  { id: '3', organizationId: 'org_demo', name: 'Botox (3 Regiões)', category: 'injectables', duration: 30, price: 1200.00, active: true, loyaltyPoints: 200 },
+  { id: '4', organizationId: 'org_demo', name: 'Massagem Relaxante', category: 'spa', duration: 50, price: 150.00, active: true, loyaltyPoints: 20 },
 ];
 
 const initialPartners: Partner[] = [
-  { id: 'p1', name: 'Bella Fitness', type: 'business', contact: '(11) 99999-1111', code: 'BELLA10', commissionRate: 10, clientDiscountRate: 5, active: true, totalReferred: 0, totalRevenue: 0, pendingPayout: 0, totalPaid: 0, pixKey: 'cnpj@bella.fit' },
-  { id: 'p2', name: 'Influencer Gabi', type: 'influencer', contact: '@gabistyle', code: 'GABI20', commissionRate: 15, clientDiscountRate: 10, active: true, totalReferred: 0, totalRevenue: 0, pendingPayout: 0, totalPaid: 0, pixKey: 'gabi@mail.com' },
+  { id: 'p1', organizationId: 'org_demo', name: 'Bella Fitness', type: 'business', contact: '(11) 99999-1111', code: 'BELLA10', commissionRate: 10, clientDiscountRate: 5, active: true, totalReferred: 0, totalRevenue: 0, pendingPayout: 0, totalPaid: 0, pixKey: 'cnpj@bella.fit' },
+  { id: 'p2', organizationId: 'org_demo', name: 'Influencer Gabi', type: 'influencer', contact: '@gabistyle', code: 'GABI20', commissionRate: 15, clientDiscountRate: 10, active: true, totalReferred: 0, totalRevenue: 0, pendingPayout: 0, totalPaid: 0, pixKey: 'gabi@mail.com' },
 ];
 
 const initialConversations: ChatConversation[] = [
   {
     id: 'c1',
+    organizationId: 'org_demo',
     clientId: 'cl1',
     clientName: 'Ana Silva',
     channel: 'whatsapp',
@@ -232,6 +276,7 @@ const initialConversations: ChatConversation[] = [
   },
   {
     id: 'c2',
+    organizationId: 'org_demo',
     clientId: 'cl2',
     clientName: 'Beatriz Costa',
     channel: 'instagram',
@@ -250,13 +295,14 @@ const initialConversations: ChatConversation[] = [
 ];
 
 const initialYieldRules: YieldRule[] = [
-  { id: 'yr1', name: 'Horário de Pico', type: 'surge_time', description: 'Aumento de 15% em horários nobres (18h-21h)', adjustmentPercentage: 15, condition: 'time_range:18:00-21:00', active: true },
-  { id: 'yr2', name: 'Última Hora', type: 'last_minute', description: 'Desconto de 20% para agendamentos no mesmo dia', adjustmentPercentage: -20, condition: 'booking_window:<24h', active: true },
+  { id: 'yr1', organizationId: 'org_demo', name: 'Horário de Pico', type: 'surge_time', description: 'Aumento de 15% em horários nobres (18h-21h)', adjustmentPercentage: 15, condition: 'time_range:18:00-21:00', active: true },
+  { id: 'yr2', organizationId: 'org_demo', name: 'Última Hora', type: 'last_minute', description: 'Desconto de 20% para agendamentos no mesmo dia', adjustmentPercentage: -20, condition: 'booking_window:<24h', active: true },
 ];
 
 const initialFormTemplates: FormTemplate[] = [
   {
     id: 'f1',
+    organizationId: 'org_demo',
     title: 'Anamnese Facial Padrão',
     type: 'anamnesis',
     active: true,
@@ -335,14 +381,15 @@ const initialWebsiteConfig: WebsiteConfig = {
 };
 
 const initialProducts: Product[] = [
-  { id: 'p1', name: 'Kit Pós-Laser Calmante', description: 'Loção hidratante e gel refrescante.', price: 189.90, costPrice: 85.00, category: 'homecare', stock: 15, stockByUnit: { 'u1': 10, 'u2': 5 }, minStockLevel: 20, loyaltyPoints: 20 },
-  { id: 'p2', name: 'Pacote 10 Sessões - Axila', description: 'Tratamento completo.', price: 890.00, category: 'treatment_package', loyaltyPoints: 100 },
-  { id: 'p3', name: 'Sérum Vitamina C 20%', description: 'Antioxidante potente.', price: 245.00, costPrice: 110.00, category: 'homecare', stock: 8, stockByUnit: { 'u1': 3, 'u2': 5 }, minStockLevel: 10, loyaltyPoints: 25 },
+  { id: 'p1', organizationId: 'org_demo', name: 'Kit Pós-Laser Calmante', description: 'Loção hidratante e gel refrescante.', price: 189.90, costPrice: 85.00, category: 'homecare', stock: 15, stockByUnit: { 'u1': 10, 'u2': 5 }, minStockLevel: 20, loyaltyPoints: 20 },
+  { id: 'p2', organizationId: 'org_demo', name: 'Pacote 10 Sessões - Axila', description: 'Tratamento completo.', price: 890.00, category: 'treatment_package', loyaltyPoints: 100 },
+  { id: 'p3', organizationId: 'org_demo', name: 'Sérum Vitamina C 20%', description: 'Antioxidante potente.', price: 245.00, costPrice: 110.00, category: 'homecare', stock: 8, stockByUnit: { 'u1': 3, 'u2': 5 }, minStockLevel: 10, loyaltyPoints: 25 },
 ];
 
 const initialUnits: BusinessUnit[] = [
   {
     id: 'u1',
+    organizationId: 'org_demo',
     name: 'Diva Jardins (Matriz)',
     location: 'São Paulo, SP',
     managerName: 'Ana G.',
@@ -355,6 +402,7 @@ const initialUnits: BusinessUnit[] = [
   },
   {
     id: 'u2',
+    organizationId: 'org_demo',
     name: 'Diva Moema',
     location: 'São Paulo, SP',
     managerName: 'Carlos R.',
@@ -367,6 +415,7 @@ const initialUnits: BusinessUnit[] = [
   },
   {
     id: 'u3',
+    organizationId: 'org_demo',
     name: 'Diva Leblon',
     location: 'Rio de Janeiro, RJ',
     managerName: 'Mariana X.',
@@ -379,6 +428,7 @@ const initialUnits: BusinessUnit[] = [
   },
   {
     id: 'u4',
+    organizationId: 'org_demo',
     name: 'Diva Savassi',
     location: 'Belo Horizonte, MG',
     managerName: 'Fernanda S.',
@@ -394,6 +444,7 @@ const initialUnits: BusinessUnit[] = [
 const initialEvents: ClinicEvent[] = [
   {
     id: 'ev1',
+    organizationId: 'org_demo',
     title: 'Laser Day - Novembro',
     date: '2023-11-15',
     time: '09:00 - 19:00',
@@ -414,6 +465,7 @@ const initialEvents: ClinicEvent[] = [
   },
   {
     id: 'ev2',
+    organizationId: 'org_demo',
     title: 'Workshop Skincare & Glow',
     date: '2023-11-20',
     time: '14:00 - 17:00',
@@ -431,6 +483,7 @@ const initialEvents: ClinicEvent[] = [
   },
   {
     id: 'ev3',
+    organizationId: 'org_demo',
     title: 'Botox Day Outubro',
     date: '2023-10-10',
     time: '09:00 - 18:00',
@@ -458,8 +511,8 @@ const initialGuests: EventGuest[] = [
 const initialTaskCategories = ['Admin', 'Manutenção', 'Limpeza', 'Compras', 'Contato'];
 
 const initialVials: OpenVial[] = [
-  { id: 'v1', productId: 'prod_botox', productName: 'Toxina Botulínica A (Botox)', batchNumber: 'L-8892', openedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), expiresAfterOpen: 72, initialUnits: 100, remainingUnits: 60, openedBy: 'Dra. Julia' },
-  { id: 'v2', productId: 'prod_dysport', productName: 'Dysport 300U', batchNumber: 'D-5521', openedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), expiresAfterOpen: 72, initialUnits: 300, remainingUnits: 120, openedBy: 'Dra. Julia' },
+  { id: 'v1', organizationId: 'org_demo', productId: 'prod_botox', productName: 'Toxina Botulínica A (Botox)', batchNumber: 'L-8892', openedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), expiresAfterOpen: 72, initialUnits: 100, remainingUnits: 60, openedBy: 'Dra. Julia' },
+  { id: 'v2', organizationId: 'org_demo', productId: 'prod_dysport', productName: 'Dysport 300U', batchNumber: 'D-5521', openedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), expiresAfterOpen: 72, initialUnits: 300, remainingUnits: 120, openedBy: 'Dra. Julia' },
 ];
 
 const initialVialUsageLogs: VialUsageLog[] = [
@@ -469,6 +522,7 @@ const initialVialUsageLogs: VialUsageLog[] = [
 const initialCampaigns: MarketingCampaign[] = [
   {
     id: 'c1',
+    organizationId: 'org_demo',
     name: 'Promoção Relâmpago: Botox Week',
     channel: 'whatsapp',
     segmentId: 's1',
@@ -477,6 +531,7 @@ const initialCampaigns: MarketingCampaign[] = [
   },
   {
     id: 'c2',
+    organizationId: 'org_demo',
     name: 'Lançamento: Protocolo Verão',
     channel: 'email',
     segmentId: 's1',
@@ -487,27 +542,27 @@ const initialCampaigns: MarketingCampaign[] = [
 ];
 
 const initialAutomations: AutomationRule[] = [
-  { id: 'a1', name: 'Mensagem de Aniversário', trigger: 'birthday', action: 'send_message', active: true },
-  { id: 'a2', name: 'Reativação Pós-60 dias', trigger: 'inactive_30d', action: 'send_message', active: true },
-  { id: 'a3', name: 'Lembrete de Retoque Botox', trigger: 'post_service', action: 'create_task', active: false },
-  { id: 'a4', name: 'Alerta: Leads Novos sem Contato (24h)', trigger: 'lead_stale_24h', action: 'notify_team', active: true },
+  { id: 'auto1', organizationId: 'org_demo', name: 'Feliz Aniversário', trigger: 'birthday', action: 'send_message', active: true },
+  { id: 'auto2', organizationId: 'org_demo', name: 'Reativação 30d', trigger: 'inactive_30d', action: 'send_message', active: true },
+  { id: 'auto3', organizationId: 'org_demo', name: 'Pós-Venda Laser', trigger: 'post_service', action: 'create_task', active: false },
+  { id: 'auto4', organizationId: 'org_demo', name: 'Alerta Lead Frio', trigger: 'lead_stale_24h', action: 'notify_team', active: true },
 ];
 
 const initialSegments: CustomerSegment[] = [
-  { id: 's1', name: 'Clientes VIP (LTV > 5k)', count: 120, description: 'Clientes com alto gasto vitalício.' },
-  { id: 's2', name: 'Novos Clientes (30 dias)', count: 45, description: 'Clientes que vieram no último mês.' },
-  { id: 's3', name: 'Clientes Inativos - Último Contato há 6 Meses', count: 89, description: 'Última Visita > 180 dias' },
+  { id: 's1', organizationId: 'org_demo', name: 'VIPs (Gasto > 5k)', count: 45, description: 'Clientes com alto ticket médio' },
+  { id: 's2', organizationId: 'org_demo', name: 'Aniversariantes Mês', count: 12, description: 'Aniversário em Novembro' },
+  { id: 's3', organizationId: 'org_demo', name: 'Inativos (60d)', count: 89, description: 'Sem visitas há 60 dias' },
 ];
 
 const initialMembershipPlans: MembershipPlan[] = [
-  { id: 'p1', name: 'Diva Silver', price: 99.90, billingCycle: 'monthly', benefits: ['1 Limpeza de Pele/mês', '5% OFF em Produtos'], activeMembers: 145, colorHex: '#94a3b8' },
-  { id: 'p2', name: 'Diva Gold', price: 249.90, billingCycle: 'monthly', benefits: ['1 Laser Área P/mês', '10% OFF em Produtos', 'Gift Card Aniversário'], activeMembers: 89, colorHex: '#BF784E' },
-  { id: 'p3', name: 'Diva Diamond', price: 499.90, billingCycle: 'monthly', benefits: ['Laser Full Body', '20% OFF em Produtos', 'Agendamento Prioritário'], activeMembers: 32, colorHex: '#14808C' },
+  { id: 'mp1', organizationId: 'org_demo', name: 'Diva Prime', price: 99.90, billingCycle: 'monthly', benefits: ['10% OFF em Laser', 'Agendamento Prioritário'], activeMembers: 15, colorHex: '#D4AF37' },
+  { id: 'mp2', organizationId: 'org_demo', name: 'Diva Elite', price: 199.90, billingCycle: 'monthly', benefits: ['20% OFF em Tudo', 'Consultas Grátis'], activeMembers: 5, colorHex: '#000000' },
+  { id: 'mp3', organizationId: 'org_demo', name: 'Club Botox', price: 990.00, billingCycle: 'yearly', benefits: ['3 Aplicações/ano', 'Retoque Incluso'], activeMembers: 20, colorHex: '#7C3AED' },
 ];
 
 const initialSubscriptions: Subscription[] = [
-  { id: 'sub1', clientId: 'c1', clientName: 'Ana Silva', planId: 'p2', status: 'active', nextBillingDate: '2023-11-15', paymentMethod: 'Mastercard •••• 4242' },
-  { id: 'sub2', clientId: 'c2', clientName: 'Beatriz Costa', planId: 'p1', status: 'overdue', nextBillingDate: '2023-10-10', paymentMethod: 'Visa •••• 8899' },
+  { id: 'sub1', organizationId: 'org_demo', clientId: 'c1', clientName: 'Fernanda Lima', planId: 'mp1', status: 'active', nextBillingDate: '2023-11-25', paymentMethod: 'Credit Card' },
+  { id: 'sub2', organizationId: 'org_demo', clientId: 'c2', clientName: 'Juliana Paes', planId: 'mp2', status: 'overdue', nextBillingDate: '2023-11-20', paymentMethod: 'Credit Card' },
 ];
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -521,6 +576,9 @@ export const useData = () => {
 };
 
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { organization } = useOrganization();
+  const currentOrgId = organization?.id || 'org_demo';
+
   // Helper for Persistence
   const loadState = <T,>(key: string, fallback: T): T => {
     const stored = localStorage.getItem(key);
@@ -532,6 +590,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [appointments, setAppointments] = useState<ServiceAppointment[]>(() => loadState('appointments', initialAppointments));
   const [transactions, setTransactions] = useState<Transaction[]>(() => loadState('transactions', initialTransactions));
   const [waitlist, setWaitlist] = useState<WaitlistItem[]>(() => loadState('waitlist', initialWaitlist));
+  const [members, setMembers] = useState<OrganizationMember[]>(() => loadState('members', initialMembers));
   const [staff, setStaff] = useState<StaffMember[]>(() => loadState('staff', initialStaff));
   const [rooms, setRooms] = useState<ServiceRoom[]>(() => loadState('rooms', initialRooms));
   const [taskCategories, setTaskCategories] = useState<string[]>(() => loadState('taskCategories', initialTaskCategories));
@@ -542,12 +601,16 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [segments, setSegments] = useState<CustomerSegment[]>(() => loadState('segments', initialSegments));
   const [membershipPlans, setMembershipPlans] = useState<MembershipPlan[]>(() => loadState('membershipPlans', initialMembershipPlans));
   const [subscriptions, setSubscriptions] = useState<Subscription[]>(() => loadState('subscriptions', initialSubscriptions));
+  // Treatment Plans
+  const [treatmentPlans, setTreatmentPlans] = useState<TreatmentPlan[]>(() => loadState('treatmentPlans', MOCK_TREATMENT_PLANS));
+  const [treatmentTemplates, setTreatmentTemplates] = useState<TreatmentPlanTemplate[]>(() => loadState('treatmentTemplates', MOCK_TREATMENT_TEMPLATES));
   const [services, setServices] = useState<ServiceDefinition[]>(() => loadState('services', initialServices));
   const [partners, setPartners] = useState<Partner[]>(() => loadState('partners', initialPartners));
   const [businessConfig, setBusinessConfig] = useState<BusinessConfig>(() => loadState('businessConfig', initialBusinessConfig));
   const [notificationConfig, setNotificationConfig] = useState<NotificationConfig>(() => loadState('notificationConfig', initialNotificationConfig));
   const [websiteConfig, setWebsiteConfig] = useState<WebsiteConfig>(() => loadState('websiteConfig', initialWebsiteConfig));
   const [products, setProducts] = useState<Product[]>(() => loadState('products', initialProducts));
+  const [suppliers, setSuppliers] = useState<Supplier[]>(() => loadState('suppliers', initialSuppliers));
   const [yieldRules, setYieldRules] = useState<YieldRule[]>(() => loadState('yieldRules', initialYieldRules));
   const [formTemplates, setFormTemplates] = useState<FormTemplate[]>(() => loadState('formTemplates', initialFormTemplates));
   const [formResponses, setFormResponses] = useState<FormResponse[]>(() => loadState('formResponses', []));
@@ -559,6 +622,15 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [notifications, setNotifications] = useState<AppNotification[]>(() => loadState('notifications', initialNotifications));
   const [currentUser, setCurrentUser] = useState<User | null>(() => loadState('currentUser', null));
 
+  // Accounts & Fiscal
+  const initialAccounts: BankAccount[] = [
+    { id: 'acc1', organizationId: 'org_demo', name: 'Caixa Físico / Gaveta', type: 'cash', balance: 0, color: '#10B981', icon: 'wallet' },
+    { id: 'acc2', organizationId: 'org_demo', name: 'Banco Itaú - PJ', type: 'bank', balance: 0, color: '#f59e0b', icon: 'building' },
+    { id: 'acc3', organizationId: 'org_demo', name: 'Maquininha Stone', type: 'card_machine', balance: 0, color: '#14b8a6', icon: 'credit-card' }
+  ];
+  const [accounts, setAccounts] = useState<BankAccount[]>(() => loadState('accounts', initialAccounts));
+  const [fiscalRecords, setFiscalRecords] = useState<FiscalRecord[]>(() => loadState('fiscalRecords', []));
+
   const { addToast } = useToast();
 
   // Persistence Effects
@@ -567,6 +639,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => localStorage.setItem('appointments', JSON.stringify(appointments)), [appointments]);
   useEffect(() => localStorage.setItem('transactions', JSON.stringify(transactions)), [transactions]);
   useEffect(() => localStorage.setItem('waitlist', JSON.stringify(waitlist)), [waitlist]);
+  useEffect(() => localStorage.setItem('members', JSON.stringify(members)), [members]);
   useEffect(() => localStorage.setItem('staff', JSON.stringify(staff)), [staff]);
   useEffect(() => localStorage.setItem('rooms', JSON.stringify(rooms)), [rooms]);
   useEffect(() => localStorage.setItem('taskCategories', JSON.stringify(taskCategories)), [taskCategories]);
@@ -591,6 +664,11 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     localStorage.setItem('diva_subscriptions', JSON.stringify(subscriptions));
   }, [subscriptions]);
+  useEffect(() => localStorage.setItem('treatmentPlans', JSON.stringify(treatmentPlans)), [treatmentPlans]);
+  useEffect(() => localStorage.setItem('treatmentTemplates', JSON.stringify(treatmentTemplates)), [treatmentTemplates]);
+  useEffect(() => localStorage.setItem('suppliers', JSON.stringify(suppliers)), [suppliers]);
+  useEffect(() => localStorage.setItem('accounts', JSON.stringify(accounts)), [accounts]);
+  useEffect(() => localStorage.setItem('fiscalRecords', JSON.stringify(fiscalRecords)), [fiscalRecords]);
 
   // Communication State
   const [conversations, setConversations] = useState<ChatConversation[]>(() => {
@@ -631,11 +709,13 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const createConversation = (conversation: ChatConversation) => {
-    setConversations(prev => [...prev, conversation]);
+    const newConv: ChatConversation = { ...conversation, organizationId: currentOrgId };
+    setConversations(prev => [...prev, newConv]);
   };
 
-  const addClient = (client: Client) => {
-    setClients(prev => [client, ...prev]);
+  const addClient = (client: Omit<Client, 'organizationId'>) => {
+    const newClient: Client = { ...client, organizationId: currentOrgId };
+    setClients(prev => [newClient, ...prev]);
     addToast(`Paciente ${client.name} cadastrado com sucesso!`, 'success');
   };
 
@@ -643,8 +723,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setClients(prev => prev.map(c => c.clientId === clientId ? { ...c, ...data } : c));
   };
 
-  const addLead = (lead: SalesLead) => {
-    setLeads(prev => [lead, ...prev]);
+  const addLead = (lead: Omit<SalesLead, 'organizationId'>) => {
+    const newLead: SalesLead = { ...lead, organizationId: currentOrgId };
+    setLeads(prev => [newLead, ...prev]);
     addToast(`Lead ${lead.name} adicionado ao funil!`, 'success');
   };
 
@@ -665,8 +746,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     addToast('Lead removido.', 'info');
   };
 
-  const addAppointment = (appt: ServiceAppointment) => {
-    setAppointments(prev => [...prev, appt]);
+  const addAppointment = (appt: Omit<ServiceAppointment, 'organizationId'>) => {
+    const newAppt: ServiceAppointment = { ...appt, organizationId: currentOrgId };
+    setAppointments(prev => [...prev, newAppt]);
     addToast('Agendamento criado com sucesso!', 'success');
   };
 
@@ -705,6 +787,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           if (appt.price > 0) {
             const transaction: Transaction = {
               id: `t_${Date.now()}_${appt.appointmentId}`,
+              organizationId: currentOrgId,
               description: `${appt.serviceName} - ${appt.clientName}`,
               category: 'Serviços',
               amount: appt.price,
@@ -712,7 +795,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               status: 'paid',
               date: new Date().toISOString().split('T')[0],
               unitId: appt.unitId,
-              relatedAppointmentId: appt.appointmentId
+              relatedAppointmentId: appt.appointmentId,
+              revenueType: 'service'
             };
             setTransactions(prev => [transaction, ...prev]);
             addToast(`Receita de ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(appt.price)} registrada!`, 'success');
@@ -728,13 +812,20 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setAppointments(prev => prev.filter(a => a.appointmentId !== id));
   };
 
-  const addTransaction = (transaction: Transaction) => {
-    setTransactions(prev => [transaction, ...prev]);
-    addToast('Transação registrada com sucesso!', 'success');
+  const addTransaction = (transaction: Omit<Transaction, 'organizationId'>) => {
+    const newTransaction: Transaction = { ...transaction, organizationId: currentOrgId };
+    setTransactions(prev => [newTransaction, ...prev]);
+    addToast('Transação adicionada!', 'success');
   };
 
-  const addToWaitlist = (item: WaitlistItem) => {
-    setWaitlist(prev => [item, ...prev]);
+  const updateTransaction = (id: string, updates: Partial<Transaction>) => {
+    setTransactions(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+    addToast('Transação atualizada!', 'success');
+  };
+
+  const addToWaitlist = (item: Omit<WaitlistItem, 'organizationId'>) => {
+    const newItem: WaitlistItem = { ...item, organizationId: currentOrgId };
+    setWaitlist(prev => [newItem, ...prev]);
     addToast(`${item.clientName} adicionado à lista de espera.`, 'info');
   };
 
@@ -752,14 +843,29 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     addToast('Equipamentos da sala atualizados com sucesso!', 'success');
   };
 
-  const addRoom = (room: ServiceRoom) => {
-    setRooms(prev => [...prev, room]);
-    addToast('Nova sala adicionada ao mapa.', 'success');
+  const addRoom = (room: Omit<ServiceRoom, 'organizationId'>) => {
+    const newRoom: ServiceRoom = { ...room, organizationId: currentOrgId };
+    setRooms(prev => [...prev, newRoom]);
+    addToast('Sala adicionada!', 'success');
   };
 
   const removeRoom = (id: string) => {
     setRooms(prev => prev.filter(r => r.id !== id));
-    addToast('Sala removida.', 'warning');
+    addToast('Sala removida.', 'info');
+  };
+
+  const toggleRoom = (roomId: string) => {
+    setRooms(prev => prev.map(r => {
+      if (r.id === roomId) {
+        // Toggle logic: If maintenance -> available, else -> maintenance
+        return {
+          ...r,
+          status: r.status === 'maintenance' ? 'available' : 'maintenance'
+        };
+      }
+      return r;
+    }));
+    addToast('Status da sala alterado.', 'info');
   };
 
   const addTaskCategory = (category: string) => {
@@ -776,8 +882,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     addToast(`Categoria '${category}' removida.`, 'info');
   };
 
-  const addStaff = (newStaff: StaffMember) => {
-    setStaff(prev => [...prev, newStaff]);
+  const addStaff = (newStaff: Omit<StaffMember, 'organizationId'>) => {
+    const staffWithOrg: StaffMember = { ...newStaff, organizationId: currentOrgId };
+    setStaff(prev => [...prev, staffWithOrg]);
     addToast('Colaborador adicionado!', 'success');
   };
 
@@ -788,12 +895,39 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const removeStaff = (id: string) => {
     setStaff(prev => prev.filter(s => s.id !== id));
-    addToast('Colaborador removido.', 'info');
+    addToast('Profissional removido.', 'info');
+  };
+
+  // Team Logic
+  const inviteMember = (email: string, role: string, name: string) => {
+    const newMember: OrganizationMember = {
+      id: `mem_${Date.now()}`,
+      organizationId: currentOrgId,
+      email,
+      name,
+      role: role as UserRole, // Cast for now
+      status: 'invited',
+      invitedAt: new Date().toISOString(),
+      avatarUrl: `https://ui-avatars.com/api/?name=${name}&background=random`
+    };
+    setMembers(prev => [...prev, newMember]);
+    addToast(`Convite enviado para ${email}`, 'success');
+  };
+
+  const updateMemberRole = (memberId: string, role: string) => {
+    setMembers(prev => prev.map(m => m.id === memberId ? { ...m, role: role as UserRole } : m));
+    addToast('Permissões atualizadas.', 'success');
+  };
+
+  const removeMember = (memberId: string) => {
+    setMembers(prev => prev.filter(m => m.id !== memberId));
+    addToast('Membro removido da equipe.', 'info');
   };
 
   // Services Logic
-  const addService = (service: ServiceDefinition) => {
-    setServices(prev => [...prev, service]);
+  const addService = (service: Omit<ServiceDefinition, 'organizationId'>) => {
+    const newService: ServiceDefinition = { ...service, organizationId: currentOrgId };
+    setServices(prev => [...prev, newService]);
     addToast('Serviço adicionado ao catálogo.', 'success');
   };
 
@@ -812,8 +946,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Partners Logic
-  const addPartner = (partner: Partner) => {
-    setPartners(prev => [...prev, partner]);
+  const addPartner = (partner: Omit<Partner, 'organizationId'>) => {
+    const newPartner: Partner = { ...partner, organizationId: currentOrgId };
+    setPartners(prev => [...prev, newPartner]);
     addToast('Novo parceiro cadastrado com sucesso!', 'success');
   };
 
@@ -892,8 +1027,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Yield Rules Logic
-  const addYieldRule = (rule: YieldRule) => {
-    setYieldRules(prev => [...prev, rule]);
+  const addYieldRule = (rule: Omit<YieldRule, 'organizationId'>) => {
+    const newRule: YieldRule = { ...rule, organizationId: currentOrgId };
+    setYieldRules(prev => [...prev, newRule]);
     addToast('Regra de preço criada.', 'success');
   };
 
@@ -908,8 +1044,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Form Templates Logic
-  const addFormTemplate = (template: FormTemplate) => {
-    setFormTemplates(prev => [...prev, template]);
+  const addFormTemplate = (template: Omit<FormTemplate, 'organizationId'>) => {
+    const newTemplate: FormTemplate = { ...template, organizationId: currentOrgId };
+    setFormTemplates(prev => [...prev, newTemplate]);
     addToast('Formulário criado.', 'success');
   };
 
@@ -924,8 +1061,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Form Responses Logic
-  const addFormResponse = (response: FormResponse) => {
-    setFormResponses(prev => [response, ...prev]);
+  const addFormResponse = (response: Omit<FormResponse, 'organizationId'>) => {
+    const newResponse: FormResponse = { ...response, organizationId: currentOrgId };
+    setFormResponses(prev => [newResponse, ...prev]);
     addToast('Formulário preenchido com sucesso.', 'success');
   };
 
@@ -935,7 +1073,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Appointment Records Logic
   const addAppointmentRecord = (record: AppointmentRecord) => {
-    setAppointmentRecords(prev => [...prev, record]);
+    const newRecord: AppointmentRecord = { ...record, organizationId: currentOrgId };
+    setAppointmentRecords(prev => [...prev, newRecord]);
   };
 
   const updateAppointmentRecord = (id: string, data: Partial<AppointmentRecord>) => {
@@ -947,8 +1086,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return appointmentRecords.find(r => r.appointmentId === appointmentId);
   };
 
-  const addEvent = (event: ClinicEvent) => {
-    setEvents(prev => [event, ...prev]);
+  const addEvent = (event: Omit<ClinicEvent, 'organizationId'>) => {
+    const newEvent: ClinicEvent = { ...event, organizationId: currentOrgId };
+    setEvents(prev => [newEvent, ...prev]);
     addToast('Evento criado com sucesso!', 'success');
   };
 
@@ -991,8 +1131,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Pharmacy Logic
-  const addVial = (vial: OpenVial) => {
-    setVials(prev => [vial, ...prev]);
+  const addVial = (vial: Omit<OpenVial, 'organizationId'>) => {
+    const newVial: OpenVial = { ...vial, organizationId: currentOrgId };
+    setVials(prev => [newVial, ...prev]);
     addToast('Frasco aberto registrado!', 'success');
   };
 
@@ -1019,8 +1160,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Marketing Logic
-  const addCampaign = (campaign: MarketingCampaign) => {
-    setCampaigns(prev => [...prev, campaign]);
+  const addCampaign = (campaign: Omit<MarketingCampaign, 'organizationId'>) => {
+    const newCampaign: MarketingCampaign = { ...campaign, organizationId: currentOrgId };
+    setCampaigns(prev => [...prev, newCampaign]);
     addToast('Campanha criada!', 'success');
   };
   const updateCampaign = (id: string, data: Partial<MarketingCampaign>) => {
@@ -1032,9 +1174,23 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     addToast('Campanha removida.', 'info');
   };
 
-  const addAutomation = (automation: AutomationRule) => {
-    setAutomations(prev => [...prev, automation]);
+  const addAutomation = (automation: Omit<AutomationRule, 'organizationId'>) => {
+    const newAuto: AutomationRule = { ...automation, organizationId: currentOrgId };
+    setAutomations(prev => [...prev, newAuto]);
     addToast('Automação criada!', 'success');
+  };
+
+  // Treatment Plans Logic
+  const addTreatmentPlan = (plan: TreatmentPlan) => {
+    setTreatmentPlans(prev => [plan, ...prev]);
+    addToast('Plano de tratamento criado!', 'success');
+  };
+  const updateTreatmentPlan = (plan: TreatmentPlan) => {
+    setTreatmentPlans(prev => prev.map(p => p.id === plan.id ? plan : p));
+  };
+  const addTreatmentTemplate = (template: TreatmentPlanTemplate) => {
+    setTreatmentTemplates(prev => [template, ...prev]);
+    addToast('Modelo de plano salvo!', 'success');
   };
   const updateAutomation = (id: string, data: Partial<AutomationRule>) => {
     setAutomations(prev => prev.map(a => a.id === id ? { ...a, ...data } : a));
@@ -1045,8 +1201,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     addToast('Automação removida.', 'info');
   };
 
-  const addSegment = (segment: CustomerSegment) => {
-    setSegments(prev => [...prev, segment]);
+  const addSegment = (segment: Omit<CustomerSegment, 'organizationId'>) => {
+    const newSegment: CustomerSegment = { ...segment, organizationId: currentOrgId };
+    setSegments(prev => [...prev, newSegment]);
     addToast('Segmento criado!', 'success');
   };
   const updateSegment = (id: string, data: Partial<CustomerSegment>) => {
@@ -1059,8 +1216,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Loyalty Logic
-  const addMembershipPlan = (plan: MembershipPlan) => {
-    setMembershipPlans(prev => [...prev, plan]);
+  const addMembershipPlan = (plan: Omit<MembershipPlan, 'organizationId'>) => {
+    const newPlan: MembershipPlan = { ...plan, organizationId: currentOrgId };
+    setMembershipPlans(prev => [...prev, newPlan]);
     addToast('Plano de assinatura criado!', 'success');
   };
   const updateMembershipPlan = (id: string, data: Partial<MembershipPlan>) => {
@@ -1072,8 +1230,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     addToast('Plano removido.', 'info');
   };
 
-  const addSubscription = (sub: Subscription) => {
-    setSubscriptions(prev => [...prev, sub]);
+  const addSubscription = (sub: Omit<Subscription, 'organizationId'>) => {
+    const newSub: Subscription = { ...sub, organizationId: currentOrgId };
+    setSubscriptions(prev => [...prev, newSub]);
     addToast('Assinatura criada!', 'success');
   };
   const updateSubscription = (id: string, data: Partial<Subscription>) => {
@@ -1085,20 +1244,82 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     addToast('Assinatura cancelada.', 'info');
   };
 
+  const addSupplier = (supplier: Omit<Supplier, 'organizationId'>) => {
+    const newSupplier: Supplier = { ...supplier, organizationId: currentOrgId };
+    setSuppliers(prev => [newSupplier, ...prev]);
+    addToast('Fornecedor cadastrado com sucesso!', 'success');
+  };
+
+  const updateSupplier = (id: string, data: Partial<Supplier>) => {
+    setSuppliers(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
+    addToast('Fornecedor atualizado.', 'success');
+  };
+
+  const removeSupplier = (id: string) => {
+    setSuppliers(prev => prev.filter(s => s.id !== id));
+    addToast('Fornecedor removido.', 'info');
+  };
+
+  // Accounts & Fiscal Logic
+  const addAccount = (account: BankAccount) => {
+    setAccounts(prev => [...prev, account]);
+  };
+  const updateAccount = (id: string, data: Partial<BankAccount>) => {
+    setAccounts(prev => prev.map(a => a.id === id ? { ...a, ...data } : a));
+  };
+
+  const addFiscalRecord = (record: FiscalRecord) => {
+    setFiscalRecords(prev => [...prev, record]);
+    // Link to transaction? It's already linked by ID usually
+  };
+  const updateFiscalRecord = (id: string, data: Partial<FiscalRecord>) => {
+    setFiscalRecords(prev => prev.map(f => f.id === id ? { ...f, ...data } : f));
+  };
+
+  // Filter Data by Organization
+  const filteredClients = clients.filter(c => c.organizationId === currentOrgId);
+  const filteredLeads = leads.filter(l => l.organizationId === currentOrgId);
+  const filteredAppointments = appointments.filter(a => a.organizationId === currentOrgId);
+  const filteredTransactions = transactions.filter(t => t.organizationId === currentOrgId);
+  const filteredWaitlist = waitlist.filter(w => w.organizationId === currentOrgId);
+  const filteredStaff = staff.filter(s => s.organizationId === currentOrgId);
+  const filteredRooms = rooms.filter(r => r.organizationId === currentOrgId);
+  const filteredServices = services.filter(s => s.organizationId === currentOrgId);
+  const filteredProducts = products.filter(p => p.organizationId === currentOrgId);
+  const filteredPartners = partners.filter(p => p.organizationId === currentOrgId);
+  const filteredYieldRules = yieldRules.filter(y => y.organizationId === currentOrgId);
+  const filteredMembers = members.filter(m => m.organizationId === currentOrgId);
+  const filteredFormTemplates = formTemplates.filter(f => f.organizationId === currentOrgId);
+  const filteredFormResponses = formResponses.filter(f => f.organizationId === currentOrgId);
+  const filteredAppointmentRecords = appointmentRecords.filter(r => r.organizationId === currentOrgId);
+  const filteredUnits = units.filter(u => u.organizationId === currentOrgId);
+  const filteredEvents = events.filter(e => e.organizationId === currentOrgId);
+  const filteredVials = vials.filter(v => v.organizationId === currentOrgId);
+  const filteredCampaigns = campaigns.filter(c => c.organizationId === currentOrgId);
+  const filteredAutomations = automations.filter(a => a.organizationId === currentOrgId);
+  const filteredSegments = segments.filter(s => s.organizationId === currentOrgId);
+  const filteredMembershipPlans = membershipPlans.filter(m => m.organizationId === currentOrgId);
+  const filteredSubscriptions = subscriptions.filter(s => s.organizationId === currentOrgId);
+  const filteredSuppliers = suppliers.filter(s => s.organizationId === currentOrgId);
+  const filteredAccounts = accounts.filter(a => a.organizationId === currentOrgId);
+  const filteredFiscalRecords = fiscalRecords.filter(f => f.organizationId === currentOrgId);
+  const filteredConversations = conversations.filter(c => c.organizationId === currentOrgId);
+  const filteredVialUsageLogs = vialUsageLogs.filter(log => filteredVials.some(v => v.id === log.vialId));
+
   return (
     <DataContext.Provider value={{
-      clients,
-      leads,
-      appointments,
-      transactions,
-      waitlist,
-      staff,
-      rooms,
+      clients: filteredClients,
+      leads: filteredLeads,
+      appointments: filteredAppointments,
+      transactions: filteredTransactions,
+      waitlist: filteredWaitlist,
+      staff: filteredStaff,
+      rooms: filteredRooms,
       taskCategories,
-      services,
+      services: filteredServices,
       businessConfig,
       notificationConfig,
-      products,
+      products: filteredProducts,
       addClient,
       updateClient,
       addLead,
@@ -1110,22 +1331,31 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       updateAppointmentStatus,
       deleteAppointment,
       addTransaction,
+      updateTransaction,
       addToWaitlist,
       removeFromWaitlist,
       updateRoomStatus,
       updateRoomEquipments,
       addRoom,
       removeRoom,
+      toggleRoom,
       addTaskCategory,
       removeTaskCategory,
       addStaff,
       updateStaff,
       removeStaff,
+
+      // Members
+      members: filteredMembers,
+      inviteMember,
+      updateMemberRole,
+      removeMember,
+
       addService,
       toggleService,
       deleteService,
       updateService,
-      partners,
+      partners: filteredPartners,
       addPartner,
       updatePartner,
       updateBusinessConfig,
@@ -1136,60 +1366,75 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       login,
       logout,
       updateUser,
-      yieldRules,
+      yieldRules: filteredYieldRules,
       addYieldRule,
       updateYieldRule,
       deleteYieldRule,
-      formTemplates,
+      formTemplates: filteredFormTemplates,
       addFormTemplate,
       updateFormTemplate,
       deleteFormTemplate,
-      formResponses,
+      formResponses: filteredFormResponses,
       addFormResponse,
       getClientFormResponses,
-      appointmentRecords,
+      appointmentRecords: filteredAppointmentRecords,
       addAppointmentRecord,
       updateAppointmentRecord,
       getAppointmentRecord,
-      units,
+      units: filteredUnits,
       addUnit,
       updateUnit,
       removeUnit,
       selectedUnitId,
       setSelectedUnitId,
-      events,
+      events: filteredEvents,
       addEvent,
       updateEvent,
       guests,
       addGuest,
       updateGuest,
-      vials,
+
+      // Accounts & Fiscal
+      accounts: filteredAccounts,
+      addAccount,
+      updateAccount,
+
+      fiscalRecords: filteredFiscalRecords,
+      addFiscalRecord,
+      updateFiscalRecord,
+
+      vials: filteredVials,
       addVial,
       updateVial,
       removeVial,
-      vialUsageLogs,
+      vialUsageLogs: filteredVialUsageLogs,
       addVialUsageLog,
-      campaigns,
+      campaigns: filteredCampaigns,
       addCampaign,
       updateCampaign,
       removeCampaign,
-      automations,
+      automations: filteredAutomations,
       addAutomation,
       updateAutomation,
       removeAutomation,
-      segments,
+      segments: filteredSegments,
       addSegment,
       updateSegment,
       removeSegment,
-      membershipPlans,
+      membershipPlans: filteredMembershipPlans,
       addMembershipPlan,
       updateMembershipPlan,
       removeMembershipPlan,
-      subscriptions,
+      subscriptions: filteredSubscriptions,
       addSubscription,
       updateSubscription,
       cancelSubscription,
-      conversations,
+      suppliers: filteredSuppliers,
+      addSupplier,
+      updateSupplier,
+      removeSupplier,
+
+      conversations: filteredConversations,
       addMessage,
       markConversationAsRead,
       createConversation,
@@ -1197,7 +1442,14 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       addNotification,
       markAsRead,
       markAllAsRead,
-      updateProductStock
+      updateProductStock,
+
+      // Treatment Plans Export
+      treatmentPlans,
+      treatmentTemplates,
+      addTreatmentPlan,
+      updateTreatmentPlan,
+      addTreatmentTemplate
     }}>
       {children}
     </DataContext.Provider>
