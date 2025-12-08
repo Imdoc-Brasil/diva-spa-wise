@@ -77,8 +77,8 @@ const ScrollToTop = () => {
 const AppContent: React.FC = () => {
     const { currentUser: user, login, logout } = useData();
 
-    const handleRoleSwitch = (newRole: UserRole) => {
-        login(newRole);
+    const handleRoleSwitch = (newRole: UserRole, realUser?: any) => {
+        login(newRole, realUser);
     };
 
     return (

@@ -3,8 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { UserRole } from '../types';
 import { Lock, Mail, ArrowRight, User, Shield, Stethoscope, Sparkles, CheckCircle, ChevronRight } from 'lucide-react';
 
+import { supabase } from '../services/supabase';
+
 interface LoginPageProps {
-    onLogin: (role: UserRole) => void;
+    onLogin: (role: UserRole, realUser?: any) => void;
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
@@ -45,16 +47,64 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         }
     };
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedRole) return;
 
+        // Demo Emails Bypass
+        const demoEmails = ['admin@imdoc.com', 'dra.julia@imdoc.com', 'dra.julia@divaspa.com', 'client@imdoc.com', 'financeiro@imdoc.com', 'ana.silva@gmail.com'];
+
+        if (selectedRole && demoEmails.includes(email)) {
+            setIsLoading(true);
+            setTimeout(() => {
+                onLogin(selectedRole);
+                setIsLoading(false);
+            }, 1500);
+            return;
+        }
+
+        // Real Supabase Login
         setIsLoading(true);
-        // Simulate API delay
-        setTimeout(() => {
-            onLogin(selectedRole);
+        try {
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password
+            });
+
+            if (error) throw error;
+
+            if (data.user) {
+                // Fetch Profile
+                const { data: profile } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
+                const p = profile as any;
+
+                // Determine Role
+                let roleEnum = UserRole.ADMIN;
+                if (p?.role === 'staff') roleEnum = UserRole.STAFF;
+                if (p?.role === 'client') roleEnum = UserRole.CLIENT;
+
+                // Map to App User
+                const appUser = {
+                    uid: data.user.id,
+                    organizationId: p?.organization_id || 'org_demo',
+                    email: data.user.email || '',
+                    displayName: p?.full_name || 'User',
+                    role: roleEnum,
+                    photoURL: p?.avatar_url,
+                    profileData: {
+                        phoneNumber: '',
+                        bio: '',
+                        preferences: { notifications: { email: true, push: true, whatsapp: false }, theme: 'light', language: 'pt-BR', twoFactorEnabled: false }
+                    }
+                };
+
+                onLogin(roleEnum, appUser);
+            }
+        } catch (error: any) {
+            console.error('Login error:', error);
+            alert('Erro ao entrar: ' + error.message);
+        } finally {
             setIsLoading(false);
-        }, 1500);
+        }
     };
 
     // Shared Card Component for visual consistency

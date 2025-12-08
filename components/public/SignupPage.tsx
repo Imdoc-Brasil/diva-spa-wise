@@ -5,6 +5,7 @@ import { SUBSCRIPTION_PLANS } from '../../utils/subscriptionPlans';
 import { Organization, OrganizationType, SaaSPlan, SaaSSubscriber } from '../../types';
 import { useData } from '../context/DataContext';
 import { Building, CreditCard, ChevronRight, Check, ArrowLeft, Shield, User, Lock, Mail } from 'lucide-react';
+import { supabase } from '../../services/supabase';
 
 const SignupPage: React.FC = () => {
     const navigate = useNavigate();
@@ -60,49 +61,70 @@ const SignupPage: React.FC = () => {
         else navigate('/sales');
     };
 
+
     const handleSignup = async () => {
         setIsProcessing(true);
 
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 2500));
+        try {
+            // 1. Sign Up User (Auth)
+            const { data: authData, error: authError } = await supabase.auth.signUp({
+                email: userEmail,
+                password: userPassword,
+                options: {
+                    data: {
+                        full_name: userName,
+                        avatar_url: '' // Optional
+                    }
+                }
+            });
 
-        // In a real app, this would create the User and the Organization via API
-        // Here we will simulate a successful signup and auto-login
+            if (authError) throw authError;
 
-        // Create Subscriber in Master CRM
-        const planEnum = selectedPlanId === 'starter' ? SaaSPlan.START :
-            selectedPlanId === 'professional' ? SaaSPlan.GROWTH : SaaSPlan.EMPIRE;
+            if (authData.user) {
+                // 2. Create Organization
+                // Convert Plan ID to Enum? Or store as string. The SQL schema might not enforce enum strictly yet.
+                const { data: org, error: orgError } = await (supabase.from('organizations') as any).insert([
+                    {
+                        name: orgName,
+                        slug: orgSlug,
+                        primary_color: '#9333ea',
+                        subscription_status: 'trial'
+                        // Add plan details if schema supports it
+                    }
+                ])
+                    .select()
+                    .single();
 
-        const price = billingCycle === 'monthly'
-            ? (SUBSCRIPTION_PLANS.find(p => p.id === selectedPlanId)?.pricing.monthly || 0)
-            : (SUBSCRIPTION_PLANS.find(p => p.id === selectedPlanId)?.pricing.yearly || 0) / 12;
+                if (orgError) throw orgError;
 
-        const newSubscriber: SaaSSubscriber = {
-            id: `org_${Date.now()}`,
-            clinicName: orgName,
-            adminName: userName,
-            adminEmail: userEmail,
-            adminPhone: '(00) 00000-0000', // Mock
-            plan: planEnum,
-            status: 'active',
-            mrr: Math.round(price),
-            joinedAt: new Date().toISOString(),
-            nextBillingDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // 14 days trial
-            usersCount: 1,
-            smsBalance: 50 // Trial balance
-        };
+                // 3. Link Profile to Organization
+                // Profile is created by Trigger, update it.
+                if (org) {
+                    const { error: profileError } = await (supabase.from('profiles') as any).update({
+                        organization_id: org.id,
+                        role: 'owner'
+                    }).eq('id', authData.user.id);
 
-        if (addSaaSSubscriber) {
-            addSaaSSubscriber(newSubscriber);
+                    if (profileError) throw profileError;
+                }
+
+                // 4. Auto Login (Logic handled by Supabase Session usually, but we need to tell App state)
+                // We redirect to Login or Dashboard.
+                // If email confirmation is ON, we can't login yet.
+                if (!authData.session) {
+                    alert('Conta criada! Verifique seu email para confirmar antes de entrar.');
+                    navigate('/');
+                } else {
+                    // Session active
+                    navigate('/?welcome=true');
+                }
+            }
+        } catch (error: any) {
+            console.error('Signup Error:', error);
+            alert('Erro ao criar conta: ' + (error.message || 'Tente novamente.'));
+        } finally {
+            setIsProcessing(false);
         }
-
-        // Mock Login as Admin
-        // In reality, we would create a new user object, but for this demo, we can just switch role to ADMIN
-        // and redirect to dashboard.
-        // login('ADMIN'); // This comes from DataContext, usually expects UserRole
-
-        // Redirect
-        navigate('/?welcome=true');
     };
 
     return (

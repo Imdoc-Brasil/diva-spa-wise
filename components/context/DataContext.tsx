@@ -1160,10 +1160,15 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const login = (role: UserRole) => {
-    const newUser = createUser(role);
-    setCurrentUser(newUser);
-    addToast(`Bem-vindo(a), ${newUser.displayName}!`, 'success');
+  const login = (role: UserRole, realUser?: User) => {
+    if (realUser) {
+      setCurrentUser(realUser);
+      addToast(`Bem-vindo de volta!`, 'success');
+    } else {
+      const newUser = createUser(role);
+      setCurrentUser(newUser);
+      addToast(`Bem-vindo(a), ${newUser.displayName}!`, 'success');
+    }
   };
 
   const logout = () => {

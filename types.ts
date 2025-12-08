@@ -1463,7 +1463,7 @@ export interface DataContextType {
     deleteYieldRule: (id: string) => void;
     updateUser: (data: Partial<User>) => void;
     currentUser: User | null;
-    login: (role: UserRole) => void;
+    login: (role: UserRole, realUser?: User) => void;
     logout: () => void;
     formTemplates: FormTemplate[];
     addFormTemplate: (template: Omit<FormTemplate, 'organizationId'>) => void;
