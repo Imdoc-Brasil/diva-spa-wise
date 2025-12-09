@@ -549,9 +549,9 @@ const AppContent: React.FC = () => {
                         } />
                     </>
                 ) : (
-                    // Show Public Page (Landing) at root, and specific login route
+                    // Show Sales Page (Landing) at root, and specific login route
                     <>
-                        <Route path="/" element={<PublicPage />} />
+                        <Route path="/" element={<SalesPage />} />
                         <Route path="/login" element={<LoginPage onLogin={login} />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
                     </>
