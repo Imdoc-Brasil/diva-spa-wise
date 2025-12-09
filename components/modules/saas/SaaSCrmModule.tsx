@@ -197,17 +197,30 @@ const SaaSCrmModule: React.FC = () => {
                                     >
                                         <div className="flex justify-between items-start mb-3">
                                             {getPlanBadge(lead.planInterest)}
-                                            <button className="text-slate-600 hover:text-white transition-colors"><MoreHorizontal size={16} /></button>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); }}
+                                                className="text-slate-600 hover:text-white transition-colors"
+                                            >
+                                                <MoreHorizontal size={16} />
+                                            </button>
                                         </div>
 
                                         <h4 className="font-bold text-white text-lg leading-tight mb-1">{lead.clinicName}</h4>
                                         <p className="text-sm text-slate-400 mb-4">{lead.name}</p>
 
                                         <div className="flex items-center gap-3 mb-4">
-                                            <a href={`tel:${lead.phone}`} className="p-2 rounded-lg bg-slate-700/50 text-slate-400 hover:bg-green-500/20 hover:text-green-400 transition-colors">
+                                            <a
+                                                href={`tel:${lead.phone}`}
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="p-2 rounded-lg bg-slate-700/50 text-slate-400 hover:bg-green-500/20 hover:text-green-400 transition-colors"
+                                            >
                                                 <Phone size={14} />
                                             </a>
-                                            <a href={`mailto:${lead.email}`} className="p-2 rounded-lg bg-slate-700/50 text-slate-400 hover:bg-blue-500/20 hover:text-blue-400 transition-colors">
+                                            <a
+                                                href={`mailto:${lead.email}`}
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="p-2 rounded-lg bg-slate-700/50 text-slate-400 hover:bg-blue-500/20 hover:text-blue-400 transition-colors"
+                                            >
                                                 <Mail size={14} />
                                             </a>
                                         </div>

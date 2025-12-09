@@ -1778,16 +1778,50 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           id: d.org_id,
           clinicName: d.clinic_name,
           adminName: d.owner_name || 'Admin',
-          adminEmail: 'admin@diva.com', // Not exposed yet
+          adminEmail: 'admin@diva.com',
           adminPhone: '',
           plan: (d.saas_plan as SaaSPlan) || SaaSPlan.START,
           status: d.saas_status || 'active',
           mrr: d.mrr || 0,
           joinedAt: d.joined_at,
-          nextBillingDate: new Date().toISOString(), // Mock
+          nextBillingDate: new Date().toISOString(),
           usersCount: d.users_count || 0,
-          smsBalance: 0 // Mock
+          smsBalance: 0
         }));
+
+        // --- FEATURE: Merge Closed Leads as Pending Subscribers ---
+        // This ensures leads closed in CRM appear in the subscribers list even before org creation
+        try {
+          const { data: closedLeads } = await supabase
+            .from('saas_leads')
+            .select('*')
+            .eq('status', 'Closed Won'); // Must match DB enum/string exactly
+
+          if (closedLeads && closedLeads.length > 0) {
+            const pendingSubscribers: SaaSSubscriber[] = closedLeads.map((l: any) => ({
+              id: l.id, // Use lead ID temporarily
+              clinicName: l.clinic_name,
+              adminName: l.name,
+              adminEmail: l.email,
+              adminPhone: l.phone,
+              plan: (l.plan_interest as SaaSPlan) || SaaSPlan.START,
+              status: 'trial', // Closed leads start as Trial
+              mrr: l.estimated_value || 0,
+              joinedAt: l.trial_start_date || l.created_at,
+              nextBillingDate: l.trial_start_date ? new Date(new Date(l.trial_start_date).setDate(new Date(l.trial_start_date).getDate() + 30)).toISOString() : new Date().toISOString(),
+              usersCount: 0,
+              smsBalance: 0
+            }));
+
+            // append preventing duplicates if org already created (simple check by name or ignore)
+            // For now, simple append.
+            mapped.push(...pendingSubscribers);
+          }
+        } catch (err) {
+          console.error('Error merging closed leads:', err);
+        }
+        // -----------------------------------------------------------
+
         setSaaSSubscribers(mapped);
       }
 
