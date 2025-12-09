@@ -423,7 +423,99 @@ const SaaSCrmModule: React.FC = () => {
                     </div>
                 </div>
             )}
-            {/* CLOSE DEAL MODAL */}
+            {/* VIEW / EDIT LEAD MODAL */}
+            {viewLead && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-2xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+                        <button
+                            onClick={() => setViewLead(null)}
+                            className="absolute top-4 right-4 text-slate-400 hover:text-white"
+                        >
+                            <XCircle size={24} />
+                        </button>
+
+                        <div className="flex items-center justify-between mb-8">
+                            <div>
+                                <h3 className="text-2xl font-bold text-white mb-1">{viewLead.clinicName}</h3>
+                                <p className="text-slate-400 flex items-center gap-2">
+                                    <span className={`w-2 h-2 rounded-full ${viewLead.stage === SaaSLeadStage.CLOSED_WON ? 'bg-green-500' : 'bg-yellow-500'}`}></span>
+                                    {viewLead.name}
+                                </p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-xs text-slate-500 uppercase font-bold mb-1">Valor Estimado</p>
+                                <p className="text-xl font-bold text-emerald-400">R$ {viewLead.estimatedValue}</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                            <div className="space-y-4">
+                                <h4 className="font-bold text-white border-b border-white/10 pb-2 mb-4">Contato</h4>
+                                <div className="flex items-center gap-3 text-slate-300">
+                                    <Phone size={18} className="text-slate-500" /> {viewLead.phone}
+                                </div>
+                                <div className="flex items-center gap-3 text-slate-300">
+                                    <Mail size={18} className="text-slate-500" /> {viewLead.email}
+                                </div>
+                                <div className="flex items-center gap-3 text-slate-300">
+                                    <DollarSign size={18} className="text-slate-500" /> Plano: <span className="capitalize text-yellow-500 font-bold">{viewLead.planInterest}</span>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <h4 className="font-bold text-white border-b border-white/10 pb-2 mb-4">Endereço & Legal</h4>
+                                {viewLead.legalName && (
+                                    <div className="text-sm">
+                                        <p className="text-xs text-slate-500 uppercase">Razão Social</p>
+                                        <p className="text-slate-300">{viewLead.legalName}</p>
+                                    </div>
+                                )}
+                                {viewLead.cnpj && (
+                                    <div className="text-sm">
+                                        <p className="text-xs text-slate-500 uppercase">CNPJ</p>
+                                        <p className="text-slate-300">{viewLead.cnpj}</p>
+                                    </div>
+                                )}
+                                {viewLead.address && (
+                                    <div className="text-sm">
+                                        <p className="text-xs text-slate-500 uppercase">Endereço</p>
+                                        <p className="text-slate-300">
+                                            {viewLead.address}, {viewLead.number} {viewLead.complement && `- ${viewLead.complement}`}<br />
+                                            {viewLead.neighborhood} - {viewLead.city}/{viewLead.state}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-3 border-t border-white/10 pt-6">
+                            {viewLead.stage !== SaaSLeadStage.CLOSED_WON && (
+                                <button
+                                    onClick={() => {
+                                        setClosingLead(viewLead);
+                                        setClosingData({
+                                            plan: viewLead.planInterest,
+                                            paymentMethod: 'credit_card',
+                                            recurrence: 'monthly'
+                                        });
+                                        // Keep viewLead open underneath or close it? Let's keep it but maybe we should close it to avoid clutter
+                                        // For better UX, let's close viewLead when opening closingLead
+                                        setViewLead(null);
+                                    }}
+                                    className="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded-lg font-bold transition-colors"
+                                >
+                                    Marcar como Fechado (Assinante)
+                                </button>
+                            )}
+                            {viewLead.stage === SaaSLeadStage.CLOSED_WON && (
+                                <span className="text-green-500 font-bold flex items-center gap-2">
+                                    <CheckCircle size={20} /> Venda Já Realizada
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
             {closingLead && (
                 <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[60] flex items-center justify-center p-4">
                     <div className="bg-slate-900 border border-emerald-500/30 rounded-2xl w-full max-w-lg p-8 shadow-2xl relative">
