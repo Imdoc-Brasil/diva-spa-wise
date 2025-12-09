@@ -90,7 +90,10 @@ const SalesPage: React.FC = () => {
                         {saasAppConfig?.showPricing && (
                             <button onClick={() => scrollToSection('pricing')} className="hover:text-white transition-colors">Planos</button>
                         )}
-                        <button className="bg-white text-slate-900 px-6 py-2 rounded-full hover:bg-slate-100 transition-colors font-bold">
+                        <button
+                            onClick={() => navigate('/login')}
+                            className="bg-white text-slate-900 px-6 py-2 rounded-full hover:bg-slate-100 transition-colors font-bold"
+                        >
                             Entrar
                         </button>
                     </div>
