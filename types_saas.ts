@@ -22,6 +22,7 @@ export interface SaaSLead {
     id: string;
     name: string; // Nome do lead (pessoa)
     clinicName: string; // Nome da clínica (empresa)
+    legalName?: string; // Razão Social
     email: string;
     phone: string;
     stage: SaaSLeadStage;
@@ -31,6 +32,8 @@ export interface SaaSLead {
     notes?: string;
     estimatedValue?: number; // Preço do plano estimado
     nextAction?: string; // "Ligar amanhã", "Enviar contrato"
+    cnpj?: string; // For invoice
+    address?: string; // For invoice
     createdAt: string;
     updatedAt: string;
 }

@@ -41,8 +41,48 @@ const SaaSCrmModule: React.FC = () => {
         }
     };
 
+    const [showNewLeadModal, setShowNewLeadModal] = useState(false);
+    const [newLeadData, setNewLeadData] = useState<Partial<SaaSLead>>({
+        name: '',
+        clinicName: '',
+        email: '',
+        phone: '',
+        planInterest: SaaSPlan.GROWTH,
+        stage: SaaSLeadStage.NEW,
+        estimatedValue: 0
+    });
+
+    const handleCreateLead = () => {
+        if (!newLeadData.name || !newLeadData.clinicName || !newLeadData.email || !newLeadData.phone) {
+            addToast('Preencha Nome, Clínica, Email e Telefone.', 'error');
+            return;
+        }
+
+        addSaaSLead({
+            id: `temp_${Date.now()}`,
+            name: newLeadData.name,
+            clinicName: newLeadData.clinicName,
+            legalName: newLeadData.legalName,
+            email: newLeadData.email,
+            phone: newLeadData.phone,
+            planInterest: newLeadData.planInterest as SaaSPlan,
+            stage: SaaSLeadStage.NEW,
+            source: 'outbound',
+            status: 'active',
+            notes: '',
+            cnpj: newLeadData.cnpj,
+            address: newLeadData.address,
+            estimatedValue: newLeadData.estimatedValue || 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        });
+
+        setShowNewLeadModal(false);
+        setNewLeadData({ name: '', clinicName: '', legalName: '', email: '', phone: '', planInterest: SaaSPlan.GROWTH, estimatedValue: 0, cnpj: '', address: '' });
+    };
+
     return (
-        <div className="h-full flex flex-col">
+        <div className="h-full flex flex-col relative">
             {/* Toolbar */}
             <div className="flex justify-between items-center mb-8">
                 <div>
@@ -60,7 +100,10 @@ const SaaSCrmModule: React.FC = () => {
                             className="pl-10 pr-4 py-2 bg-slate-800 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:border-yellow-500 outline-none w-64 transition-colors"
                         />
                     </div>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold rounded-lg transition-colors">
+                    <button
+                        onClick={() => setShowNewLeadModal(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold rounded-lg transition-colors"
+                    >
                         <Plus size={20} /> Novo Lead
                     </button>
                 </div>
@@ -105,7 +148,7 @@ const SaaSCrmModule: React.FC = () => {
                                             </span>
                                         </div>
 
-                                        {/* Quick Actions overlay on hover (Optional, simplified to discrete buttons for now) */}
+                                        {/* Quick Actions overlay on hover */}
                                         <div className="absolute inset-x-0 bottom-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-t from-slate-900 via-slate-900 to-transparent flex justify-center gap-2">
                                             {lead.stage !== SaaSLeadStage.CLOSED_WON && (
                                                 <button
@@ -128,6 +171,122 @@ const SaaSCrmModule: React.FC = () => {
                     ))}
                 </div>
             </div>
+
+            {/* NEW LEAD MODAL */}
+            {showNewLeadModal && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
+                        <button
+                            onClick={() => setShowNewLeadModal(false)}
+                            className="absolute top-4 right-4 text-slate-400 hover:text-white"
+                        >
+                            <XCircle size={24} />
+                        </button>
+
+                        <h3 className="text-xl font-bold text-white mb-6">Novo Lead</h3>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Nome do Contato</label>
+                                <input
+                                    className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
+                                    value={newLeadData.name}
+                                    onChange={e => setNewLeadData({ ...newLeadData, name: e.target.value })}
+                                    placeholder="Ex: Dra. Ana"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Nome da Clínica</label>
+                                <input
+                                    className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
+                                    value={newLeadData.clinicName}
+                                    onChange={e => setNewLeadData({ ...newLeadData, clinicName: e.target.value })}
+                                    placeholder="Ex: Clínica Real"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Razão Social (Opcional)</label>
+                                <input
+                                    className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
+                                    value={newLeadData.legalName || ''}
+                                    onChange={e => setNewLeadData({ ...newLeadData, legalName: e.target.value })}
+                                    placeholder="Ex: Irecê Atividades Médicas LTDA"
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Email</label>
+                                    <input
+                                        className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
+                                        value={newLeadData.email}
+                                        onChange={e => setNewLeadData({ ...newLeadData, email: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Telefone</label>
+                                    <input
+                                        className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
+                                        value={newLeadData.phone}
+                                        onChange={e => setNewLeadData({ ...newLeadData, phone: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">CNPJ (Opcional)</label>
+                                    <input
+                                        className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
+                                        value={newLeadData.cnpj || ''}
+                                        onChange={e => setNewLeadData({ ...newLeadData, cnpj: e.target.value })}
+                                        placeholder="00.000.000/0000-00"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Endereço (Opcional)</label>
+                                    <input
+                                        className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
+                                        value={newLeadData.address || ''}
+                                        onChange={e => setNewLeadData({ ...newLeadData, address: e.target.value })}
+                                        placeholder="Rua, Número, Cidade"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Plano de Interesse</label>
+                                    <select
+                                        className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none appearance-none"
+                                        value={newLeadData.planInterest}
+                                        onChange={e => setNewLeadData({ ...newLeadData, planInterest: e.target.value as SaaSPlan })}
+                                    >
+                                        <option value={SaaSPlan.START}>Start</option>
+                                        <option value={SaaSPlan.GROWTH}>Growth</option>
+                                        <option value={SaaSPlan.EMPIRE}>Empire</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Valor Estimado (R$)</label>
+                                    <input
+                                        type="number"
+                                        className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
+                                        value={newLeadData.estimatedValue}
+                                        onChange={e => setNewLeadData({ ...newLeadData, estimatedValue: Number(e.target.value) })}
+                                    />
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={handleCreateLead}
+                                className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3 rounded-lg mt-4 transition-colors"
+                            >
+                                Criar Lead
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

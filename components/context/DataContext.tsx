@@ -886,14 +886,161 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setConversations(prev => [...prev, newConv]);
   };
 
-  const addClient = (client: Omit<Client, 'organizationId'>) => {
-    const newClient: Client = { ...client, organizationId: currentOrgId };
-    setClients(prev => [newClient, ...prev]);
-    addToast(`Paciente ${client.name} cadastrado com sucesso!`, 'success');
+  // --- SUPABASE INTEGRATION: CLIENTS ---
+  useEffect(() => {
+    if (currentOrgId !== 'org_demo') {
+      fetchClients();
+      fetchAppointments(); // Add this call
+    }
+  }, [currentOrgId]);
+
+  const fetchClients = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('organization_id', currentOrgId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (data) {
+        const mappedClients: Client[] = data.map((d: any) => ({
+          clientId: d.id,
+          organizationId: d.organization_id,
+          userId: d.id, // Fallback
+          name: d.name,
+          email: d.email || '',
+          phone: d.phone || '',
+          cpf: d.cpf,
+          birthDate: d.birth_date,
+          notes: d.notes,
+          // Defaults for fields not yet in DB
+          rfmScore: 0,
+          behaviorTags: [],
+          lifetimeValue: 0,
+          referralPoints: 0,
+          loyaltyPoints: 0
+        }));
+        setClients(mappedClients);
+      }
+    } catch (error) {
+      console.error('Error fetching clients:', error);
+      addToast('Erro ao carregar pacientes.', 'error');
+    }
   };
 
-  const updateClient = (clientId: string, data: Partial<Client>) => {
+  const addClient = async (client: Omit<Client, 'organizationId'>) => {
+    // 1. Optimistic Update (Local)
+    const tempId = crypto.randomUUID();
+    const newClient: Client = { ...client, organizationId: currentOrgId, clientId: tempId };
+    setClients(prev => [newClient, ...prev]);
+
+    // 2. Supabase Insert
+    if (currentOrgId !== 'org_demo') {
+      try {
+        const { data, error } = await (supabase
+          .from('clients') as any)
+          .insert([{
+            organization_id: currentOrgId,
+            name: client.name,
+            email: client.email,
+            phone: client.phone,
+            cpf: client.cpf,
+            birth_date: client.birthDate,
+            notes: client.notes
+          }])
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        // 3. Update Local with Real ID
+        if (data) {
+          setClients(prev => prev.map(c => c.clientId === tempId ? { ...c, clientId: data.id } : c));
+          addToast(`Paciente ${client.name} salvo na nuvem!`, 'success');
+        }
+      } catch (error: any) {
+        console.error('Error saving client:', error);
+        addToast('Erro ao salvar no banco de dados.', 'error');
+        // Revert? For now, keep local to avoid data loss for user
+      }
+    } else {
+      addToast(`Paciente ${client.name} cadastrado (Demo)!`, 'success');
+    }
+  };
+
+  const updateClient = async (clientId: string, data: Partial<Client>) => {
+    // 1. Optimistic Update
     setClients(prev => prev.map(c => c.clientId === clientId ? { ...c, ...data } : c));
+
+    // 2. Supabase Update
+    if (currentOrgId !== 'org_demo') {
+      try {
+        const updates: any = {};
+        if (data.name) updates.name = data.name;
+        if (data.email) updates.email = data.email;
+        if (data.phone) updates.phone = data.phone;
+        if (data.cpf) updates.cpf = data.cpf;
+        if (data.birthDate) updates.birth_date = data.birthDate;
+        if (data.notes) updates.notes = data.notes;
+
+        if (Object.keys(updates).length > 0) {
+          const { error } = await (supabase
+            .from('clients') as any)
+            .update(updates)
+            .eq('id', clientId);
+
+          if (error) throw error;
+          addToast('Paciente atualizado.', 'success');
+        }
+      } catch (error) {
+        console.error('Error updating client:', error);
+        addToast('Erro ao atualizar online.', 'warning');
+      }
+    }
+  }
+
+
+  // --- REAL AGENDAS (Supabase) ---
+  const fetchAppointments = async () => {
+    if (currentOrgId === 'org_demo') return; // Keep mock data for demo
+
+    try {
+      const { data, error } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('organization_id', currentOrgId);
+
+      if (error) throw error;
+
+      if (data) {
+        // Map Supabase to App Type
+        const realAppointments: ServiceAppointment[] = data.map((d: any) => ({
+          appointmentId: d.id,
+          organizationId: d.organization_id,
+          clientId: d.client_id || 'unknown', // Fallback
+          clientName: d.client_name,
+          staffId: d.staff_id || 'unknown',
+          staffName: d.staff_name,
+          roomId: d.room_id || 'Sala Padrão',
+          startTime: d.start_time,
+          endTime: d.end_time,
+          status: d.status as AppointmentStatus,
+          serviceName: d.service_name || 'Consulta',
+          price: d.price || 0,
+          unitId: d.unit_id,
+          serviceId: d.service_id, // Extra field if needed
+          notes: d.notes
+        }));
+
+        setAppointments(realAppointments);
+        console.log('📅 Agendas carregadas:', realAppointments.length);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar agendamentos:', error);
+      addToast('Erro ao sincronizar agenda.', 'error');
+    }
   };
 
   const addLead = (lead: Omit<SalesLead, 'organizationId'>) => {
@@ -919,21 +1066,90 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     addToast('Lead removido.', 'info');
   };
 
-  const addAppointment = (appt: Omit<ServiceAppointment, 'organizationId'>) => {
-    const newAppt: ServiceAppointment = { ...appt, organizationId: currentOrgId };
+  const addAppointment = async (appt: Omit<ServiceAppointment, 'organizationId'>) => {
+    // 1. Optimistic
+    const tempId = crypto.randomUUID();
+    const newAppt: ServiceAppointment = { ...appt, organizationId: currentOrgId, appointmentId: tempId };
     setAppointments(prev => [...prev, newAppt]);
-    addToast('Agendamento criado com sucesso!', 'success');
+
+    // 2. Supabase
+    if (currentOrgId !== 'org_demo') {
+      try {
+        const { data, error } = await (supabase
+          .from('appointments') as any)
+          .insert([{
+            organization_id: currentOrgId,
+            client_id: appt.clientId,
+            client_name: appt.clientName,
+            staff_id: appt.staffId,
+            staff_name: appt.staffName,
+            room_id: appt.roomId,
+            start_time: appt.startTime,
+            end_time: appt.endTime,
+            status: appt.status,
+            service_name: appt.serviceName,
+            price: appt.price,
+            unit_id: appt.unitId,
+            service_id: appt.serviceId
+          }] as any)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        // 3. Update ID
+        if (data) {
+          setAppointments(prev => prev.map(a => a.appointmentId === tempId ? { ...a, appointmentId: data.id } : a));
+          addToast('Agendamento salvo na nuvem!', 'success');
+        }
+
+      } catch (error: any) {
+        console.error('Erro ao salvar agendamento:', error);
+        addToast('Erro ao salvar na nuvem: ' + error.message, 'error');
+      }
+    } else {
+      addToast('Agendamento criado (Demo)!', 'success');
+    }
   };
 
-  const updateAppointment = (updatedAppt: ServiceAppointment) => {
+  const updateAppointment = async (updatedAppt: ServiceAppointment) => {
+    // 1. Optimistic
     setAppointments(prev => prev.map(a =>
       a.appointmentId === updatedAppt.appointmentId ? updatedAppt : a
     ));
+
+    // 2. Supabase
+    if (currentOrgId !== 'org_demo') {
+      try {
+        const { error } = await (supabase
+          .from('appointments') as any)
+          .update({
+            start_time: updatedAppt.startTime,
+            end_time: updatedAppt.endTime,
+            status: updatedAppt.status,
+            room_id: updatedAppt.roomId, // Mapping correctly to snake_case
+            staff_id: updatedAppt.staffId,
+            staff_name: updatedAppt.staffName,
+            price: updatedAppt.price
+          } as any)
+          .eq('id', updatedAppt.appointmentId);
+
+        if (error) throw error;
+        addToast('Agenda atualizada.', 'success');
+      } catch (error) {
+        console.error('Update error:', error);
+        // Revert logic could go here
+      }
+    }
   };
 
-  const updateAppointmentStatus = (id: string, status: AppointmentStatus) => {
+  const updateAppointmentStatus = async (id: string, status: AppointmentStatus) => {
+    let apptToUpdate: ServiceAppointment | undefined;
+
     setAppointments(prev => {
       const appt = prev.find(a => a.appointmentId === id);
+      if (appt) apptToUpdate = appt;
+
       if (status === AppointmentStatus.COMPLETED && appt) {
         // Logic to award Loyalty Points
         const service = services.find(s => s.name === appt.serviceName);
@@ -978,11 +1194,31 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       return prev.map(a => a.appointmentId === id ? { ...a, status } : a);
     });
+
+    // Supabase Update
+    if (currentOrgId !== 'org_demo' && apptToUpdate) {
+      await (supabase.from('appointments') as any).update({ status }).eq('id', id);
+    }
+
     addToast(`Status do agendamento atualizado para: ${status}`, 'info');
   };
 
-  const deleteAppointment = (id: string) => {
+  const deleteAppointment = async (id: string) => {
+    // 1. Optimistic
     setAppointments(prev => prev.filter(a => a.appointmentId !== id));
+
+    // 2. Supabase
+    if (currentOrgId !== 'org_demo') {
+      const { error } = await supabase.from('appointments').delete().eq('id', id);
+      if (error) {
+        console.error('Delete error:', error);
+        addToast('Erro ao apagar da nuvem.', 'error');
+      } else {
+        addToast('Agendamento removido.', 'info');
+      }
+    } else {
+      addToast('Agendamento removido (Local).', 'info');
+    }
   };
 
   const addTransaction = (transaction: Omit<Transaction, 'organizationId'>) => {
@@ -1481,8 +1717,12 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         email: lead.email,
         phone: lead.phone,
         clinic_name: lead.clinicName,
+        legal_name: lead.legalName,
         plan_interest: lead.planInterest,
-        status: 'new'
+        status: 'new',
+        estimated_value: lead.estimatedValue,
+        cnpj: lead.cnpj,
+        address: lead.address
       });
       if (error) {
         console.error('Supabase Error:', error);
@@ -1495,8 +1735,123 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const updateSaaSLead = (id: string, data: Partial<SaaSLead>) => {
+  const fetchSaaSSubscribers = async () => {
+    if (!supabase) return;
+
+    try {
+      // Try to fetch real subscribers using the RPC function we created
+      const { data, error } = await supabase.rpc('get_saas_subscribers');
+
+      if (error) {
+        console.error('Error fetching subscribers (RPC):', error);
+        // Fallback: If RPC not exists, try to fetch organizations directly (might fail due to RLS if not owner)
+        const { data: orgs, error: orgError } = await supabase.from('organizations').select('*');
+        if (orgError) throw orgError;
+
+        if (orgs) {
+          const mapped: SaaSSubscriber[] = orgs.map((o: any) => ({
+            id: o.id,
+            clinicName: o.name,
+            adminName: 'Admin', // Placeholder
+            adminEmail: 'admin@' + o.slug + '.com',
+            adminPhone: '',
+            plan: o.saas_plan || SaaSPlan.START,
+            status: o.saas_status || 'active',
+            mrr: o.mrr || 0,
+            joinedAt: o.created_at,
+            nextBillingDate: new Date().toISOString(),
+            usersCount: 1,
+            smsBalance: 0
+          }));
+          setSaaSSubscribers(mapped);
+        }
+      } else if (data) {
+        const mapped: SaaSSubscriber[] = (data as any[]).map((d: any) => ({
+          id: d.org_id,
+          clinicName: d.clinic_name,
+          adminName: d.owner_name || 'Admin',
+          adminEmail: 'admin@diva.com', // Not exposed yet
+          adminPhone: '',
+          plan: (d.saas_plan as SaaSPlan) || SaaSPlan.START,
+          status: d.saas_status || 'active',
+          mrr: d.mrr || 0,
+          joinedAt: d.joined_at,
+          nextBillingDate: new Date().toISOString(), // Mock
+          usersCount: d.users_count || 0,
+          smsBalance: 0 // Mock
+        }));
+        setSaaSSubscribers(mapped);
+      }
+
+    } catch (e) {
+      console.error('Failed to load SaaS Subscribers:', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchSaaSSubscribers();
+    fetchSaaSLeads();
+  }, [currentOrgId]);
+
+  const fetchSaaSLeads = async () => {
+    if (!supabase) return;
+    try {
+      const { data, error } = await (supabase.from('saas_leads') as any).select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      if (data) {
+        const mapped: SaaSLead[] = data.map((d: any) => ({
+          id: d.id,
+          name: d.name,
+          clinicName: d.clinic_name,
+          legalName: d.legal_name,
+          email: d.email,
+          phone: d.phone,
+          stage: d.status as SaaSLeadStage, // Map 'status' db column to 'stage' app prop
+          planInterest: d.plan_interest as SaaSPlan,
+          source: d.source,
+          status: 'active', // 'status' in app type is active/inactive, 'stage' is the pipeline step
+          notes: d.notes,
+          estimatedValue: d.estimated_value || 0,
+          cnpj: d.cnpj,
+          address: d.address,
+          createdAt: d.created_at,
+          updatedAt: d.updated_at
+        }));
+        setSaaSLeads(mapped);
+      }
+    } catch (error) {
+      console.error('Error fetching SaaS Leads:', error);
+    }
+  };
+
+  const updateSaaSLead = async (id: string, data: Partial<SaaSLead>) => {
+    // 1. Optimistic
     setSaaSLeads(prev => prev.map(l => l.id === id ? { ...l, ...data } : l));
+
+    // 2. Supabase
+    if (supabase) {
+      const updates: any = {};
+      if (data.stage) updates.status = data.stage; // App 'stage' maps to DB 'status' column (enum)
+      if (data.name) updates.name = data.name;
+      if (data.notes) updates.notes = data.notes;
+      if (data.estimatedValue) updates.estimated_value = data.estimatedValue;
+      if (data.cnpj) updates.cnpj = data.cnpj;
+      if (data.address) updates.address = data.address;
+      if (data.legalName) updates.legal_name = data.legalName;
+
+      if (Object.keys(updates).length > 0) {
+        const { error } = await (supabase.from('saas_leads') as any)
+          .update(updates)
+          .eq('id', id);
+
+        if (error) {
+          console.error('Error updating SaaS Lead:', error);
+          addToast('Erro ao atualizar lead na nuvem.', 'error');
+        } else {
+          addToast('Lead atualizado.', 'success');
+        }
+      }
+    }
   };
 
   const addSaaSSubscriber = (sub: SaaSSubscriber) => {

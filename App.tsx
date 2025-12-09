@@ -549,8 +549,12 @@ const AppContent: React.FC = () => {
                         } />
                     </>
                 ) : (
-                    // Show Login Page for any route if not authenticated (except public ones)
-                    <Route path="*" element={<LoginPage onLogin={login} />} />
+                    // Show Public Page (Landing) at root, and specific login route
+                    <>
+                        <Route path="/" element={<PublicPage />} />
+                        <Route path="/login" element={<LoginPage onLogin={login} />} />
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                    </>
                 )}
 
                 {/* Public Routes (Accessible without login) */}

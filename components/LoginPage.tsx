@@ -64,43 +64,69 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
         // Real Supabase Login
         setIsLoading(true);
+        console.log('🔄 Attempting Supabase Login...', email);
+
         try {
             const { data, error } = await supabase.auth.signInWithPassword({
                 email,
                 password
             });
 
-            if (error) throw error;
+            if (error) {
+                console.error('❌ Auth Error:', error);
+                throw error;
+            }
+
+            console.log('✅ Auth Success. User:', data.user?.id);
 
             if (data.user) {
                 // Fetch Profile
-                const { data: profile } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
+                console.log('🔄 Fetching Profile...');
+                const { data: profile, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', data.user.id)
+                    .single();
+
+                if (profileError) console.warn('⚠️ Profile fetch warning (continuing anyway):', profileError);
+                console.log('✅ Profile Result:', profile);
+
                 const p = profile as any;
 
                 // Determine Role
                 let roleEnum = UserRole.ADMIN;
                 if (p?.role === 'staff') roleEnum = UserRole.STAFF;
                 if (p?.role === 'client') roleEnum = UserRole.CLIENT;
+                // Explicitly handle 'owner' as ADMIN
+                if (p?.role === 'owner') roleEnum = UserRole.ADMIN;
 
-                // Map to App User
+                // Map to App User with STRONG fallbacks
                 const appUser = {
                     uid: data.user.id,
                     organizationId: p?.organization_id || 'org_demo',
                     email: data.user.email || '',
-                    displayName: p?.full_name || 'User',
+                    displayName: p?.full_name || data.user.email?.split('@')[0] || 'User',
                     role: roleEnum,
-                    photoURL: p?.avatar_url,
+                    photoURL: p?.avatar_url || undefined,
                     profileData: {
-                        phoneNumber: '',
+                        phoneNumber: p?.phone || '',
                         bio: '',
-                        preferences: { notifications: { email: true, push: true, whatsapp: false }, theme: 'light', language: 'pt-BR', twoFactorEnabled: false }
+                        preferences: {
+                            notifications: { email: true, push: true, whatsapp: false },
+                            theme: 'light',
+                            language: 'pt-BR',
+                            twoFactorEnabled: false
+                        }
                     }
                 };
+
+                console.log('🚀 Final App User Object:', appUser);
+                console.log('👉 Calling onLogin()...');
 
                 onLogin(roleEnum, appUser);
             }
         } catch (error: any) {
-            console.error('Login error:', error);
+            console.error('Login error full catch:', error);
             alert('Erro ao entrar: ' + error.message);
         } finally {
             setIsLoading(false);

@@ -7,20 +7,25 @@ import NewServiceModal from '../modals/NewServiceModal';
 import { useToast } from '../ui/ToastContext';
 import { maskPhone } from '../../utils/masks';
 
+// ... (imports)
+import { populateDemoData } from '../../utils/demoData';
+import { supabase } from '../../services/supabase';
+import { useOrganization } from '../context/OrganizationContext';
+import { DatabaseZap } from 'lucide-react'; // Icon for the button
+
 // Mock Inventory for Protocol Builder (In real app, this comes from products context)
-// Using local mock here as "products" in context might be sales products, not internal inventory
 const mockInventory: Product[] = [
-    { id: 'p6', name: 'Gel Condutor Neutro', price: 0, costPrice: 0.05, category: 'professional_use', description: 'Custo por ml' },
-    { id: 'inv1', name: 'Luvas de Procedimento (Par)', price: 0, costPrice: 1.50, category: 'professional_use', description: 'Unidade' },
-    { id: 'inv2', name: 'Máscara Descartável', price: 0, costPrice: 0.80, category: 'professional_use', description: 'Unidade' },
-    { id: 'inv3', name: 'Emoliente Facial (g)', price: 0, costPrice: 0.40, category: 'professional_use', description: 'Custo por grama' },
-    { id: 'inv4', name: 'Toxina Botulínica (Unidade)', price: 0, costPrice: 15.00, category: 'professional_use', description: 'Custo por UI' },
+    { id: 'p6', organizationId: 'org_demo', name: 'Gel Condutor Neutro', price: 0, costPrice: 0.05, category: 'professional_use', description: 'Custo por ml' },
+    { id: 'inv1', organizationId: 'org_demo', name: 'Luvas de Procedimento (Par)', price: 0, costPrice: 1.50, category: 'professional_use', description: 'Unidade' },
+    { id: 'inv2', organizationId: 'org_demo', name: 'Máscara Descartável', price: 0, costPrice: 0.80, category: 'professional_use', description: 'Unidade' },
+    { id: 'inv3', organizationId: 'org_demo', name: 'Emoliente Facial (g)', price: 0, costPrice: 0.40, category: 'professional_use', description: 'Custo por grama' },
+    { id: 'inv4', organizationId: 'org_demo', name: 'Toxina Botulínica (Unidade)', price: 0, costPrice: 15.00, category: 'professional_use', description: 'Custo por UI' },
 ];
 
-// Mock Forms and Yield Rules (Keeping mocked for now as per request scope to focus on Services/Business)
+// Mock Forms and Yield Rules
 const mockForms: FormTemplate[] = [
     {
-        id: 'f1', title: 'Anamnese Facial Padrão', type: 'anamnesis', active: true, createdAt: '2023-09-01',
+        id: 'f1', organizationId: 'org_demo', title: 'Anamnese Facial Padrão', type: 'anamnesis', active: true, createdAt: '2023-09-01',
         fields: [
             { id: 'field1', type: 'section_header', label: 'Dados Pessoais', required: false, width: 'full' },
             { id: 'field2', type: 'text', label: 'Profissão', required: false, width: 'full' },
@@ -30,7 +35,7 @@ const mockForms: FormTemplate[] = [
 ];
 
 const mockYieldRules: YieldRule[] = [
-    { id: 'yr1', name: 'Horário Nobre (Prime Time)', type: 'surge_time', description: 'Aumento de preço em horários de alta procura.', adjustmentPercentage: 15, condition: 'Seg-Sex | 18:00 - 21:00', active: true },
+    { id: 'yr1', organizationId: 'org_demo', name: 'Horário Nobre (Prime Time)', type: 'surge_time', description: 'Aumento de preço em horários de alta procura.', adjustmentPercentage: 15, condition: 'Seg-Sex | 18:00 - 21:00', active: true },
 ];
 
 const demandData = [
@@ -39,6 +44,7 @@ const demandData = [
 ];
 
 const SettingsModule: React.FC = () => {
+    const { organization } = useOrganization();
     const {
         services, addService, toggleService, deleteService, updateService,
         taskCategories, addTaskCategory, removeTaskCategory,
@@ -54,6 +60,40 @@ const SettingsModule: React.FC = () => {
 
     // Unit Config State
     const currentUnit = units.find(u => u.id === selectedUnitId);
+
+    const ImportDemoDataButton = () => {
+        const [loading, setLoading] = useState(false);
+
+        const handleImport = async () => {
+            if (!organization) return;
+            if (!confirm('Isso irá criar 5 pacientes de exemplo no banco de dados da sua clínica. Continuar?')) return;
+
+            setLoading(true);
+            const result = await populateDemoData(supabase, organization.id);
+            setLoading(false);
+
+            if (result.success) {
+                addToast(result.message, 'success');
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                addToast(result.message, 'error');
+            }
+        };
+
+        if (organization?.slug === 'demo') return null;
+
+        return (
+            <button
+                onClick={handleImport}
+                disabled={loading}
+                className="bg-purple-100 text-purple-700 border border-purple-200 px-4 py-3 rounded-lg font-bold flex items-center hover:bg-purple-200 transition-all"
+            >
+                <DatabaseZap size={18} className={`mr-2 ${loading ? 'animate-pulse' : ''}`} />
+                {loading ? 'Importando...' : 'Importar Dados Exemplo'}
+            </button>
+        );
+    };
+
     const [localUnitConfig, setLocalUnitConfig] = useState({
         name: '',
         phone: '',
@@ -194,6 +234,7 @@ const SettingsModule: React.FC = () => {
     const createNewForm = () => {
         const newForm: FormTemplate = {
             id: `form_${Date.now()}`,
+            organizationId: organization?.id || 'org_demo',
             title: 'Novo Formulário',
             type: 'anamnesis',
             active: true,
@@ -213,6 +254,7 @@ const SettingsModule: React.FC = () => {
         const condition = prompt('Condição (ex: time_range:18:00-21:00)') || '';
         const newRule: YieldRule = {
             id: `yr${Date.now()}`,
+            organizationId: organization?.id || 'org_demo',
             name,
             type,
             description,
@@ -470,7 +512,27 @@ const SettingsModule: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div className="flex justify-end pt-4">
+                                <div className="flex justify-end pt-4 gap-4">
+                                    <button
+                                        onClick={async () => {
+                                            if (confirm('Deseja importar 5 pacientes de exemplo para sua clínica?')) {
+                                                const { populateDemoData } = await import('../../utils/demoData');
+                                                const { supabase } = await import('../../services/supabase');
+                                                // We need the org ID. Since we are in a module, we can try to get it from context or pass it.
+                                                // Assuming we can access the current unit's orgId or just rely on the one in context.
+                                                // For now, let's grab it from the currentUnit if available, or fetch it.
+                                                // A safer way is to use the hook, but we can't use hooks inside callback.
+                                                // Let's use the unit's org id if plausible, or getting it from local storage as fallback/hack or strict context.
+                                                // Actually, let's add the hook at top level.
+                                            }
+                                            // See below for the real implementation inside the component body
+                                        }}
+                                        className="hidden"
+                                    >
+                                    </button>
+
+                                    <ImportDemoDataButton />
+
                                     <button
                                         onClick={handleSaveBusiness}
                                         className="bg-diva-primary text-white px-6 py-3 rounded-lg font-bold flex items-center hover:bg-diva-dark shadow-md transition-all"
