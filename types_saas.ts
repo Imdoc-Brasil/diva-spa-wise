@@ -39,6 +39,9 @@ export interface SaaSLead {
     neighborhood?: string;
     city?: string;
     state?: string;
+    paymentMethod?: 'boleto' | 'pix' | 'credit_card';
+    recurrence?: 'monthly' | 'annual';
+    trialStartDate?: string;
     createdAt: string;
     updatedAt: string;
 }

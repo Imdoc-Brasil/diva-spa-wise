@@ -1727,7 +1727,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         complement: lead.complement,
         neighborhood: lead.neighborhood,
         city: lead.city,
-        state: lead.state
+        state: lead.state,
+        payment_method: lead.paymentMethod,
+        recurrence: lead.recurrence,
+        trial_start_date: lead.trialStartDate
       });
       if (error) {
         console.error('Supabase Error:', error);
@@ -1824,6 +1827,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           neighborhood: d.neighborhood,
           city: d.city,
           state: d.state,
+          paymentMethod: d.payment_method,
+          recurrence: d.recurrence,
+          trialStartDate: d.trial_start_date,
           createdAt: d.created_at,
           updatedAt: d.updated_at
         }));
@@ -1852,6 +1858,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (data.neighborhood) updates.neighborhood = data.neighborhood;
       if (data.city) updates.city = data.city;
       if (data.state) updates.state = data.state;
+      if (data.paymentMethod) updates.payment_method = data.paymentMethod;
+      if (data.recurrence) updates.recurrence = data.recurrence;
+      if (data.trialStartDate) updates.trial_start_date = data.trialStartDate;
       if (data.legalName) updates.legal_name = data.legalName;
 
       if (Object.keys(updates).length > 0) {

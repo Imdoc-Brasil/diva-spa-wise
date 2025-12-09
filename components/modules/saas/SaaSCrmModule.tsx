@@ -43,6 +43,33 @@ const SaaSCrmModule: React.FC = () => {
 
     const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
     const [viewLead, setViewLead] = useState<SaaSLead | null>(null);
+    const [closingLead, setClosingLead] = useState<SaaSLead | null>(null);
+
+    const [closingData, setClosingData] = useState({
+        plan: SaaSPlan.GROWTH,
+        paymentMethod: 'credit_card' as 'credit_card' | 'boleto' | 'pix',
+        recurrence: 'monthly' as 'monthly' | 'annual'
+    });
+
+    const handleConfirmClose = () => {
+        if (!closingLead) return;
+
+        updateSaaSLead(closingLead.id, {
+            stage: SaaSLeadStage.CLOSED_WON,
+            planInterest: closingData.plan,
+            paymentMethod: closingData.paymentMethod,
+            recurrence: closingData.recurrence,
+            trialStartDate: new Date().toISOString()
+        });
+
+        addToast(
+            'Venda Confirmada! 🎉 Email de boas-vindas e link de pagamento enviados. Trial de 30 dias iniciado.',
+            'success'
+        );
+
+        setClosingLead(null);
+        setViewLead(null);
+    };
 
     const [showNewLeadModal, setShowNewLeadModal] = useState(false);
     const [newLeadData, setNewLeadData] = useState<Partial<SaaSLead>>({
@@ -378,6 +405,115 @@ const SaaSCrmModule: React.FC = () => {
                                 className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3 rounded-lg mt-4 transition-colors"
                             >
                                 Criar Lead
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* CLOSE DEAL MODAL */}
+            {closingLead && (
+                <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[60] flex items-center justify-center p-4">
+                    <div className="bg-slate-900 border border-emerald-500/30 rounded-2xl w-full max-w-lg p-8 shadow-2xl relative">
+                        <button
+                            onClick={() => setClosingLead(null)}
+                            className="absolute top-4 right-4 text-slate-400 hover:text-white"
+                        >
+                            <XCircle size={24} />
+                        </button>
+
+                        <div className="text-center mb-8">
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 mb-4">
+                                <CheckCircle size={32} />
+                            </div>
+                            <h3 className="text-2xl font-bold text-white">Fechar Venda</h3>
+                            <p className="text-slate-400">Configure os detalhes da assinatura para <strong>{closingLead.clinicName}</strong>.</p>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Plano Escolhido</label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {[SaaSPlan.START, SaaSPlan.GROWTH, SaaSPlan.EMPIRE].map((plan) => (
+                                        <button
+                                            key={plan}
+                                            onClick={() => setClosingData({ ...closingData, plan })}
+                                            className={`py-2 px-3 rounded-lg border text-sm font-bold transition-all ${closingData.plan === plan
+                                                ? 'bg-emerald-600 border-emerald-500 text-white'
+                                                : 'bg-slate-800 border-white/10 text-slate-400 hover:border-emerald-500/50'
+                                                }`}
+                                        >
+                                            {plan.toUpperCase()}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Forma de Pagamento</label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <button
+                                        onClick={() => setClosingData({ ...closingData, paymentMethod: 'credit_card' })}
+                                        className={`py-2 px-3 rounded-lg border text-sm font-bold transition-all ${closingData.paymentMethod === 'credit_card'
+                                            ? 'bg-blue-600 border-blue-500 text-white'
+                                            : 'bg-slate-800 border-white/10 text-slate-400 active:scale-95'
+                                            }`}
+                                    >
+                                        Cartão
+                                    </button>
+                                    <button
+                                        onClick={() => setClosingData({ ...closingData, paymentMethod: 'pix' })}
+                                        className={`py-2 px-3 rounded-lg border text-sm font-bold transition-all ${closingData.paymentMethod === 'pix'
+                                            ? 'bg-emerald-600 border-emerald-500 text-white'
+                                            : 'bg-slate-800 border-white/10 text-slate-400 active:scale-95'
+                                            }`}
+                                    >
+                                        Pix
+                                    </button>
+                                    <button
+                                        onClick={() => setClosingData({ ...closingData, paymentMethod: 'boleto' })}
+                                        className={`py-2 px-3 rounded-lg border text-sm font-bold transition-all ${closingData.paymentMethod === 'boleto'
+                                            ? 'bg-yellow-600 border-yellow-500 text-white'
+                                            : 'bg-slate-800 border-white/10 text-slate-400 active:scale-95'
+                                            }`}
+                                    >
+                                        Boleto
+                                    </button>
+                                </div>
+                            </div>
+
+                            {closingData.paymentMethod === 'credit_card' && (
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Recorrência</label>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <button
+                                            onClick={() => setClosingData({ ...closingData, recurrence: 'monthly' })}
+                                            className={`p-3 rounded-lg border text-left transition-all ${closingData.recurrence === 'monthly'
+                                                ? 'bg-slate-700 border-white text-white'
+                                                : 'bg-slate-800 border-white/10 text-slate-400'
+                                                }`}
+                                        >
+                                            <span className="block font-bold">Mensal</span>
+                                            <span className="text-xs opacity-70">Sem desconto</span>
+                                        </button>
+                                        <button
+                                            onClick={() => setClosingData({ ...closingData, recurrence: 'annual' })}
+                                            className={`p-3 rounded-lg border text-left transition-all relative overflow-hidden ${closingData.recurrence === 'annual'
+                                                ? 'bg-gradient-to-br from-yellow-600 to-orange-600 border-yellow-400 text-white'
+                                                : 'bg-slate-800 border-white/10 text-slate-400'
+                                                }`}
+                                        >
+                                            <span className="block font-bold">Anual</span>
+                                            <span className="text-xs opacity-90 text-yellow-200">Com Desconto 🎉</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            <button
+                                onClick={handleConfirmClose}
+                                className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-4 rounded-xl text-lg shadow-lg hover:shadow-emerald-500/20 transition-all mt-4"
+                            >
+                                Confirmar Venda e Enviar Acesso
                             </button>
                         </div>
                     </div>
