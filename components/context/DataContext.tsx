@@ -1722,7 +1722,12 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         status: 'new',
         estimated_value: lead.estimatedValue,
         cnpj: lead.cnpj,
-        address: lead.address
+        address: lead.address,
+        number: lead.number,
+        complement: lead.complement,
+        neighborhood: lead.neighborhood,
+        city: lead.city,
+        state: lead.state
       });
       if (error) {
         console.error('Supabase Error:', error);
@@ -1814,6 +1819,11 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           estimatedValue: d.estimated_value || 0,
           cnpj: d.cnpj,
           address: d.address,
+          number: d.number,
+          complement: d.complement,
+          neighborhood: d.neighborhood,
+          city: d.city,
+          state: d.state,
           createdAt: d.created_at,
           updatedAt: d.updated_at
         }));
@@ -1837,6 +1847,11 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (data.estimatedValue) updates.estimated_value = data.estimatedValue;
       if (data.cnpj) updates.cnpj = data.cnpj;
       if (data.address) updates.address = data.address;
+      if (data.number) updates.number = data.number;
+      if (data.complement) updates.complement = data.complement;
+      if (data.neighborhood) updates.neighborhood = data.neighborhood;
+      if (data.city) updates.city = data.city;
+      if (data.state) updates.state = data.state;
       if (data.legalName) updates.legal_name = data.legalName;
 
       if (Object.keys(updates).length > 0) {

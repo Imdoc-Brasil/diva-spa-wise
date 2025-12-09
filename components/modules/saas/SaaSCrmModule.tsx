@@ -41,6 +41,9 @@ const SaaSCrmModule: React.FC = () => {
         }
     };
 
+    const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
+    const [viewLead, setViewLead] = useState<SaaSLead | null>(null);
+
     const [showNewLeadModal, setShowNewLeadModal] = useState(false);
     const [newLeadData, setNewLeadData] = useState<Partial<SaaSLead>>({
         name: '',
@@ -49,7 +52,13 @@ const SaaSCrmModule: React.FC = () => {
         phone: '',
         planInterest: SaaSPlan.GROWTH,
         stage: SaaSLeadStage.NEW,
-        estimatedValue: 0
+        estimatedValue: 0,
+        address: '',
+        number: '',
+        complement: '',
+        neighborhood: '',
+        city: '',
+        state: ''
     });
 
     const handleCreateLead = () => {
@@ -72,13 +81,22 @@ const SaaSCrmModule: React.FC = () => {
             notes: '',
             cnpj: newLeadData.cnpj,
             address: newLeadData.address,
+            number: newLeadData.number,
+            complement: newLeadData.complement,
+            neighborhood: newLeadData.neighborhood,
+            city: newLeadData.city,
+            state: newLeadData.state,
             estimatedValue: newLeadData.estimatedValue || 0,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         });
 
         setShowNewLeadModal(false);
-        setNewLeadData({ name: '', clinicName: '', legalName: '', email: '', phone: '', planInterest: SaaSPlan.GROWTH, estimatedValue: 0, cnpj: '', address: '' });
+        setNewLeadData({
+            name: '', clinicName: '', legalName: '', email: '', phone: '',
+            planInterest: SaaSPlan.GROWTH, estimatedValue: 0, cnpj: '',
+            address: '', number: '', complement: '', neighborhood: '', city: '', state: ''
+        });
     };
 
     return (
@@ -114,16 +132,42 @@ const SaaSCrmModule: React.FC = () => {
                 <div className="flex gap-6 h-full min-w-max">
                     {columns.map(col => (
                         <div key={col.id} className="w-80 flex flex-col shrink-0">
-                            <div className={`flex justify-between items-center mb-4 px-1 py-2 border-b-2 ${col.color}`}>
+                            <div
+                                className={`flex justify-between items-center mb-4 px-1 py-2 border-b-2 ${col.color}`}
+                                onDragOver={(e) => e.preventDefault()}
+                                onDrop={(e) => {
+                                    e.preventDefault();
+                                    if (draggedLeadId) {
+                                        handleMove(draggedLeadId, col.id);
+                                        setDraggedLeadId(null);
+                                    }
+                                }}
+                            >
                                 <h3 className="font-bold text-slate-200 uppercase tracking-wide text-sm">{col.title}</h3>
                                 <span className="text-xs text-slate-500 font-mono bg-slate-800 px-2 py-1 rounded">
                                     {filteredLeads.filter(l => l.stage === col.id).length}
                                 </span>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-hide">
+                            <div
+                                className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-hide"
+                                onDragOver={(e) => e.preventDefault()}
+                                onDrop={(e) => {
+                                    e.preventDefault();
+                                    if (draggedLeadId) {
+                                        handleMove(draggedLeadId, col.id);
+                                        setDraggedLeadId(null);
+                                    }
+                                }}
+                            >
                                 {filteredLeads.filter(l => l.stage === col.id).map(lead => (
-                                    <div key={lead.id} className="bg-slate-800 border border-white/5 p-4 rounded-xl hover:border-yellow-500/50 transition-colors group cursor-pointer relative shadow-lg">
+                                    <div
+                                        key={lead.id}
+                                        draggable
+                                        onDragStart={(e) => setDraggedLeadId(lead.id)}
+                                        onClick={() => setViewLead(lead)}
+                                        className="bg-slate-800 border border-white/5 p-4 rounded-xl hover:border-yellow-500/50 transition-colors group cursor-pointer relative shadow-lg active:cursor-grabbing hover:scale-[1.02] transform duration-200"
+                                    >
                                         <div className="flex justify-between items-start mb-3">
                                             {getPlanBadge(lead.planInterest)}
                                             <button className="text-slate-600 hover:text-white transition-colors"><MoreHorizontal size={16} /></button>
@@ -243,12 +287,64 @@ const SaaSCrmModule: React.FC = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Endereço (Opcional)</label>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Logradouro / Rua</label>
                                     <input
                                         className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
                                         value={newLeadData.address || ''}
                                         onChange={e => setNewLeadData({ ...newLeadData, address: e.target.value })}
-                                        placeholder="Rua, Número, Cidade"
+                                        placeholder="Av. Paulista"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-4">
+                                <div className="col-span-1">
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Número</label>
+                                    <input
+                                        className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
+                                        value={newLeadData.number || ''}
+                                        onChange={e => setNewLeadData({ ...newLeadData, number: e.target.value })}
+                                        placeholder="1234"
+                                    />
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Complemento</label>
+                                    <input
+                                        className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
+                                        value={newLeadData.complement || ''}
+                                        onChange={e => setNewLeadData({ ...newLeadData, complement: e.target.value })}
+                                        placeholder="Sala 101"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Bairro</label>
+                                    <input
+                                        className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
+                                        value={newLeadData.neighborhood || ''}
+                                        onChange={e => setNewLeadData({ ...newLeadData, neighborhood: e.target.value })}
+                                        placeholder="Centro"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Cidade</label>
+                                    <input
+                                        className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
+                                        value={newLeadData.city || ''}
+                                        onChange={e => setNewLeadData({ ...newLeadData, city: e.target.value })}
+                                        placeholder="São Paulo"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Estado</label>
+                                    <input
+                                        className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
+                                        value={newLeadData.state || ''}
+                                        onChange={e => setNewLeadData({ ...newLeadData, state: e.target.value })}
+                                        placeholder="SP"
+                                        maxLength={2}
                                     />
                                 </div>
                             </div>

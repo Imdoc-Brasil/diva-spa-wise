@@ -33,7 +33,12 @@ export interface SaaSLead {
     estimatedValue?: number; // Preço do plano estimado
     nextAction?: string; // "Ligar amanhã", "Enviar contrato"
     cnpj?: string; // For invoice
-    address?: string; // For invoice
+    address?: string; // Logradouro
+    number?: string;
+    complement?: string;
+    neighborhood?: string;
+    city?: string;
+    state?: string;
     createdAt: string;
     updatedAt: string;
 }
