@@ -1848,7 +1848,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           legalName: d.legal_name,
           email: d.email,
           phone: d.phone,
-          stage: d.status as SaaSLeadStage, // Map 'status' db column to 'stage' app prop
+          stage: (d.status ? (d.status.charAt(0).toUpperCase() + d.status.slice(1)) : 'New') as SaaSLeadStage,
           planInterest: d.plan_interest as SaaSPlan,
           source: d.source,
           status: 'active', // 'status' in app type is active/inactive, 'stage' is the pipeline step
