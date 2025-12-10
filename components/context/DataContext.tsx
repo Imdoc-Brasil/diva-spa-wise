@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { Client, SalesLead, ServiceAppointment, AppointmentStatus, LeadStage, Transaction, WaitlistItem, StaffMember, OrganizationMember, ServiceRoom, DataContextType, ServiceDefinition, BusinessConfig, NotificationConfig, Product, BusinessUnit, YieldRule, FormTemplate, FormResponse, AppointmentRecord, ClinicEvent, EventGuest, Partner, WebsiteConfig, SaaSAppConfig, User, UserRole, AppNotification, OpenVial, VialUsageLog, MarketingCampaign, AutomationRule, CustomerSegment, MembershipPlan, Subscription, ChatConversation, ChatMessage, TreatmentPlan, TreatmentPlanTemplate, Supplier, BankAccount, FiscalRecord, SaaSLead, SaaSSubscriber, SaaSLeadStage, SaaSPlan } from '../../types';
+import { Client, SalesLead, ServiceAppointment, AppointmentStatus, LeadStage, Transaction, WaitlistItem, StaffMember, OrganizationMember, ServiceRoom, DataContextType, ServiceDefinition, BusinessConfig, NotificationConfig, Product, BusinessUnit, YieldRule, FormTemplate, FormResponse, AppointmentRecord, ClinicEvent, EventGuest, Partner, WebsiteConfig, SaaSAppConfig, User, UserRole, AppNotification, OpenVial, VialUsageLog, MarketingCampaign, AutomationRule, CustomerSegment, MembershipPlan, Subscription, ChatConversation, ChatMessage, TreatmentPlan, TreatmentPlanTemplate, Supplier, BankAccount, FiscalRecord, SaaSLead, SaaSSubscriber, SaaSLeadStage, SaaSPlan, SaaSTask, SaaSTaskType } from '../../types';
 import { MOCK_TREATMENT_PLANS, MOCK_TREATMENT_TEMPLATES } from '../../utils/mockTreatmentPlans';
 import { useToast } from '../ui/ToastContext';
 import { useOrganization } from './OrganizationContext';
 import { supabase } from '../../services/supabase';
+
+
 
 const initialSuppliers: Supplier[] = [
   { id: 'sup1', organizationId: 'org_demo', name: 'DermoTech Labs', contact: '(11) 4444-5555', email: 'pedidos@dermotech.com', rating: 4.8, categories: ['Dermocosméticos'], active: true },
@@ -732,8 +734,10 @@ export const useData = () => {
 };
 
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(createUser(UserRole.ADMIN));
   const { organization } = useOrganization();
   const currentOrgId = organization?.id || 'org_demo';
+  const { addToast } = useToast();
 
   // Helper for Persistence
   const loadState = <T,>(key: string, fallback: T): T => {
@@ -788,7 +792,6 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [accounts, setAccounts] = useState<BankAccount[]>(() => loadState('accounts', initialAccounts));
   const [fiscalRecords, setFiscalRecords] = useState<FiscalRecord[]>(() => loadState('fiscalRecords', []));
 
-  const { addToast } = useToast();
 
   // Persistence Effects
   useEffect(() => localStorage.setItem('clients', JSON.stringify(clients)), [clients]);
@@ -1045,7 +1048,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const addLead = (lead: Omit<SalesLead, 'organizationId'>) => {
     const newLead: SalesLead = { ...lead, organizationId: currentOrgId };
-    setLeads(prev => [newLead, ...prev]);
+    setLeads(prev => [...prev, newLead]);
     addToast(`Lead ${lead.name} adicionado ao funil!`, 'success');
   };
 
@@ -1091,7 +1094,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             price: appt.price,
             unit_id: appt.unitId,
             service_id: appt.serviceId
-          }] as any)
+          }])
           .select()
           .single();
 
@@ -1131,7 +1134,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             staff_id: updatedAppt.staffId,
             staff_name: updatedAppt.staffName,
             price: updatedAppt.price
-          } as any)
+          })
           .eq('id', updatedAppt.appointmentId);
 
         if (error) throw error;
@@ -1209,7 +1212,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // 2. Supabase
     if (currentOrgId !== 'org_demo') {
-      const { error } = await supabase.from('appointments').delete().eq('id', id);
+      const { error } = await (supabase.from('appointments') as any).delete().eq('id', id);
       if (error) {
         console.error('Delete error:', error);
         addToast('Erro ao apagar da nuvem.', 'error');
@@ -1223,7 +1226,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const addTransaction = (transaction: Omit<Transaction, 'organizationId'>) => {
     const newTransaction: Transaction = { ...transaction, organizationId: currentOrgId };
-    setTransactions(prev => [newTransaction, ...prev]);
+    setTransactions(prev => [...prev, newTransaction]);
     addToast('Transação adicionada!', 'success');
   };
 
@@ -1389,7 +1392,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         key: 'saas_landing_config',
         value: newConfig,
         updated_at: new Date().toISOString()
-      });
+      }, { onConflict: 'key' });
       addToast('Configuração salva na Nuvem! ☁️', 'success');
     } else {
       addToast('Configuração salva (Local)', 'success');
@@ -1491,7 +1494,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Form Responses Logic
   const addFormResponse = (response: Omit<FormResponse, 'organizationId'>) => {
     const newResponse: FormResponse = { ...response, organizationId: currentOrgId };
-    setFormResponses(prev => [newResponse, ...prev]);
+    setFormResponses(prev => [...prev, newResponse]);
     addToast('Formulário preenchido com sucesso.', 'success');
   };
 
@@ -1547,7 +1550,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       timestamp: 'Agora',
       read: false
     };
-    setNotifications(prev => [newNotification, ...prev]);
+    setNotifications(prev => [...prev, newNotification]);
   };
 
   const markAsRead = (id: string) => {
@@ -1728,6 +1731,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         neighborhood: lead.neighborhood,
         city: lead.city,
         state: lead.state,
+        zip_code: lead.zipCode,
         payment_method: lead.paymentMethod,
         recurrence: lead.recurrence,
         trial_start_date: lead.trialStartDate
@@ -1740,6 +1744,60 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     } else {
       addToast('Lead SaaS registrado com sucesso!', 'success');
+    }
+  };
+
+  // Tasks Logic
+  const addSaaSTask = async (task: Omit<SaaSTask, 'id'>) => {
+    // Optimistic Update
+    const newTask = { ...task, id: `temp_${Date.now()}` };
+    setSaaSLeads(prev => prev.map(lead => {
+      if (lead.id === task.leadId) {
+        return { ...lead, tasks: [...(lead.tasks || []), newTask] };
+      }
+      return lead;
+    }));
+
+    if (supabase) {
+      const { data, error } = await (supabase.from('saas_tasks') as any).insert({
+        lead_id: task.leadId,
+        title: task.title,
+        type: task.type,
+        due_date: task.dueDate,
+        is_completed: task.isCompleted
+      }).select().single();
+
+      if (error) {
+        console.error('Error adding task:', error);
+      } else if (data) {
+        // Replace temp ID
+        setSaaSLeads(prev => prev.map(lead => {
+          if (lead.id === task.leadId) {
+            return {
+              ...lead,
+              tasks: lead.tasks?.map(t => t.id === newTask.id ? { ...t, id: data.id } : t)
+            };
+          }
+          return lead;
+        }));
+      }
+    }
+  };
+
+  const toggleSaaSTask = async (taskId: string, leadId: string, currentStatus: boolean) => {
+    // Optimistic
+    setSaaSLeads(prev => prev.map(lead => {
+      if (lead.id === leadId) {
+        return {
+          ...lead,
+          tasks: lead.tasks?.map(t => t.id === taskId ? { ...t, isCompleted: !currentStatus } : t)
+        };
+      }
+      return lead;
+    }));
+
+    if (supabase) {
+      await (supabase.from('saas_tasks') as any).update({ is_completed: !currentStatus }).eq('id', taskId);
     }
   };
 
@@ -1838,7 +1896,13 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const fetchSaaSLeads = async () => {
     if (!supabase) return;
     try {
-      const { data, error } = await (supabase.from('saas_leads') as any).select('*').order('created_at', { ascending: false });
+      const { data, error } = await (supabase.from('saas_leads') as any)
+        .select(`
+            *,
+            saas_tasks (*)
+        `)
+        .order('created_at', { ascending: false });
+
       if (error) throw error;
       if (data) {
         const mapped: SaaSLead[] = data.map((d: any) => ({
@@ -1851,7 +1915,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           stage: (d.status ? (d.status.charAt(0).toUpperCase() + d.status.slice(1)) : 'New') as SaaSLeadStage,
           planInterest: d.plan_interest as SaaSPlan,
           source: d.source,
-          status: 'active', // 'status' in app type is active/inactive, 'stage' is the pipeline step
+          status: 'active',
           notes: d.notes,
           estimatedValue: d.estimated_value || 0,
           cnpj: d.cnpj,
@@ -1861,9 +1925,18 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           neighborhood: d.neighborhood,
           city: d.city,
           state: d.state,
+          zipCode: d.zip_code,
           paymentMethod: d.payment_method,
           recurrence: d.recurrence,
           trialStartDate: d.trial_start_date,
+          tasks: d.saas_tasks ? d.saas_tasks.map((t: any) => ({
+            id: t.id,
+            leadId: t.lead_id,
+            title: t.title,
+            type: t.type,
+            dueDate: t.due_date,
+            isCompleted: t.is_completed
+          })) : [],
           createdAt: d.created_at,
           updatedAt: d.updated_at
         }));
@@ -1892,6 +1965,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (data.neighborhood) updates.neighborhood = data.neighborhood;
       if (data.city) updates.city = data.city;
       if (data.state) updates.state = data.state;
+      if (data.zipCode) updates.zip_code = data.zipCode;
       if (data.paymentMethod) updates.payment_method = data.paymentMethod;
       if (data.recurrence) updates.recurrence = data.recurrence;
       if (data.trialStartDate) updates.trial_start_date = data.trialStartDate;
@@ -2091,11 +2165,17 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // SaaS Master Backoffice
       saasLeads,
+      saasSubscribers,
       addSaaSLead,
       updateSaaSLead,
-      saasSubscribers,
+      addSaaSTask,
+      toggleSaaSTask,
       addSaaSSubscriber,
       updateSaaSSubscriber,
+
+      // Auth & Users
+      // user is now defined via useAuth()
+      user,
 
       conversations: filteredConversations,
       addMessage,

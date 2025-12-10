@@ -8,7 +8,7 @@ import {
 import { useToast } from '../../ui/ToastContext';
 
 const SaaSCrmModule: React.FC = () => {
-    const { saasLeads, updateSaaSLead, addSaaSLead } = useData();
+    const { saasLeads, updateSaaSLead, addSaaSLead, addSaaSTask, toggleSaaSTask } = useData();
     const { addToast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -299,11 +299,12 @@ const SaaSCrmModule: React.FC = () => {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Email</label>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">CEP</label>
                                     <input
                                         className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
-                                        value={newLeadData.email}
-                                        onChange={e => setNewLeadData({ ...newLeadData, email: e.target.value })}
+                                        value={newLeadData.zipCode || ''}
+                                        onChange={e => setNewLeadData({ ...newLeadData, zipCode: e.target.value })}
+                                        placeholder="00000-000"
                                     />
                                 </div>
                                 <div>
@@ -314,6 +315,14 @@ const SaaSCrmModule: React.FC = () => {
                                         onChange={e => setNewLeadData({ ...newLeadData, phone: e.target.value })}
                                     />
                                 </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Email</label>
+                                <input
+                                    className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
+                                    value={newLeadData.email}
+                                    onChange={e => setNewLeadData({ ...newLeadData, email: e.target.value })}
+                                />
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
@@ -426,92 +435,213 @@ const SaaSCrmModule: React.FC = () => {
             {/* VIEW / EDIT LEAD MODAL */}
             {viewLead && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-2xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+                    <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-5xl h-[85vh] flex shadow-2xl relative overflow-hidden">
                         <button
                             onClick={() => setViewLead(null)}
-                            className="absolute top-4 right-4 text-slate-400 hover:text-white"
+                            className="absolute top-4 right-4 text-slate-400 hover:text-white z-10"
                         >
                             <XCircle size={24} />
                         </button>
 
-                        <div className="flex items-center justify-between mb-8">
-                            <div>
-                                <h3 className="text-2xl font-bold text-white mb-1">{viewLead.clinicName}</h3>
-                                <p className="text-slate-400 flex items-center gap-2">
-                                    <span className={`w-2 h-2 rounded-full ${viewLead.stage === SaaSLeadStage.CLOSED_WON ? 'bg-green-500' : 'bg-yellow-500'}`}></span>
-                                    {viewLead.name}
-                                </p>
+                        {/* LEFT COLUMN: Lead Profile & Details */}
+                        <div className="w-1/3 border-r border-white/10 p-6 overflow-y-auto bg-slate-900/50">
+                            <div className="text-center mb-6">
+                                <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center text-3xl font-bold mb-3 ${viewLead.stage === SaaSLeadStage.CLOSED_WON ? 'bg-green-500/20 text-green-500' : 'bg-yellow-500/20 text-yellow-500'}`}>
+                                    {viewLead.clinicName.charAt(0)}
+                                </div>
+                                <h3 className="text-xl font-bold text-white leading-tight">{viewLead.clinicName}</h3>
+                                <p className="text-slate-400 text-sm">{viewLead.name}</p>
+
+                                <div className="mt-3 flex justify-center">
+                                    {getPlanBadge(viewLead.planInterest)}
+                                </div>
                             </div>
-                            <div className="text-right">
-                                <p className="text-xs text-slate-500 uppercase font-bold mb-1">Valor Estimado</p>
-                                <p className="text-xl font-bold text-emerald-400">R$ {viewLead.estimatedValue}</p>
+
+                            <div className="space-y-6">
+                                {/* Contact Info */}
+                                <div>
+                                    <h4 className="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center gap-2">
+                                        <Phone size={12} /> Contato
+                                    </h4>
+                                    <div className="space-y-3">
+                                        <div className="bg-slate-800/50 p-2 rounded-lg border border-white/5">
+                                            <label className="text-[10px] text-slate-500 block">Email</label>
+                                            <input
+                                                className="bg-transparent text-slate-300 w-full text-sm outline-none border-b border-transparent focus:border-yellow-500/50 transition-colors"
+                                                value={viewLead.email}
+                                                onChange={(e) => updateSaaSLead(viewLead.id, { email: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="bg-slate-800/50 p-2 rounded-lg border border-white/5">
+                                            <label className="text-[10px] text-slate-500 block">Telefone</label>
+                                            <input
+                                                className="bg-transparent text-slate-300 w-full text-sm outline-none border-b border-transparent focus:border-yellow-500/50 transition-colors"
+                                                value={viewLead.phone}
+                                                onChange={(e) => updateSaaSLead(viewLead.id, { phone: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Address Info */}
+                                <div>
+                                    <h4 className="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center gap-2">
+                                        <DollarSign size={12} /> Endereço
+                                    </h4>
+                                    <div className="space-y-2">
+                                        <input
+                                            placeholder="CEP"
+                                            className="bg-slate-800/50 text-slate-300 w-full text-sm p-2 rounded border border-white/5 outline-none focus:border-yellow-500/50"
+                                            value={viewLead.zipCode || ''}
+                                            onChange={(e) => updateSaaSLead(viewLead.id, { zipCode: e.target.value })}
+                                        />
+                                        <input
+                                            placeholder="Logradouro"
+                                            className="bg-slate-800/50 text-slate-300 w-full text-sm p-2 rounded border border-white/5 outline-none focus:border-yellow-500/50"
+                                            value={viewLead.address || ''}
+                                            onChange={(e) => updateSaaSLead(viewLead.id, { address: e.target.value })}
+                                        />
+                                        <div className="flex gap-2">
+                                            <input
+                                                placeholder="Número"
+                                                className="bg-slate-800/50 text-slate-300 w-1/3 text-sm p-2 rounded border border-white/5 outline-none focus:border-yellow-500/50"
+                                                value={viewLead.number || ''}
+                                                onChange={(e) => updateSaaSLead(viewLead.id, { number: e.target.value })}
+                                            />
+                                            <input
+                                                placeholder="Comp."
+                                                className="bg-slate-800/50 text-slate-300 w-2/3 text-sm p-2 rounded border border-white/5 outline-none focus:border-yellow-500/50"
+                                                value={viewLead.complement || ''}
+                                                onChange={(e) => updateSaaSLead(viewLead.id, { complement: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <input
+                                                placeholder="Cidade"
+                                                className="bg-slate-800/50 text-slate-300 w-2/3 text-sm p-2 rounded border border-white/5 outline-none focus:border-yellow-500/50"
+                                                value={viewLead.city || ''}
+                                                onChange={(e) => updateSaaSLead(viewLead.id, { city: e.target.value })}
+                                            />
+                                            <input
+                                                placeholder="UF"
+                                                className="bg-slate-800/50 text-slate-300 w-1/3 text-sm p-2 rounded border border-white/5 outline-none focus:border-yellow-500/50"
+                                                value={viewLead.state || ''}
+                                                onChange={(e) => updateSaaSLead(viewLead.id, { state: e.target.value })}
+                                                maxLength={2}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Close Deal Button */}
+                                <div className="pt-4 mt-4 border-t border-white/10">
+                                    {viewLead.stage !== SaaSLeadStage.CLOSED_WON ? (
+                                        <button
+                                            onClick={() => {
+                                                setClosingLead(viewLead);
+                                                setClosingData({
+                                                    plan: viewLead.planInterest,
+                                                    paymentMethod: 'credit_card',
+                                                    recurrence: 'monthly'
+                                                });
+                                                setViewLead(null);
+                                            }}
+                                            className="w-full bg-green-600 hover:bg-green-500 text-white py-3 rounded-lg font-bold transition-colors shadow-lg shadow-green-900/20 flex items-center justify-center gap-2"
+                                        >
+                                            <CheckCircle size={18} /> Fechar Venda
+                                        </button>
+                                    ) : (
+                                        <div className="bg-green-900/20 border border-green-500/30 p-3 rounded-lg text-center">
+                                            <span className="text-green-400 font-bold flex items-center justify-center gap-2">
+                                                <CheckCircle size={16} /> Venda Realizada
+                                            </span>
+                                            <p className="text-xs text-green-300 mt-1">Cliente já é assinante.</p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                            <div className="space-y-4">
-                                <h4 className="font-bold text-white border-b border-white/10 pb-2 mb-4">Contato</h4>
-                                <div className="flex items-center gap-3 text-slate-300">
-                                    <Phone size={18} className="text-slate-500" /> {viewLead.phone}
-                                </div>
-                                <div className="flex items-center gap-3 text-slate-300">
-                                    <Mail size={18} className="text-slate-500" /> {viewLead.email}
-                                </div>
-                                <div className="flex items-center gap-3 text-slate-300">
-                                    <DollarSign size={18} className="text-slate-500" /> Plano: <span className="capitalize text-yellow-500 font-bold">{viewLead.planInterest}</span>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                <h4 className="font-bold text-white border-b border-white/10 pb-2 mb-4">Endereço & Legal</h4>
-                                {viewLead.legalName && (
-                                    <div className="text-sm">
-                                        <p className="text-xs text-slate-500 uppercase">Razão Social</p>
-                                        <p className="text-slate-300">{viewLead.legalName}</p>
-                                    </div>
-                                )}
-                                {viewLead.cnpj && (
-                                    <div className="text-sm">
-                                        <p className="text-xs text-slate-500 uppercase">CNPJ</p>
-                                        <p className="text-slate-300">{viewLead.cnpj}</p>
-                                    </div>
-                                )}
-                                {viewLead.address && (
-                                    <div className="text-sm">
-                                        <p className="text-xs text-slate-500 uppercase">Endereço</p>
-                                        <p className="text-slate-300">
-                                            {viewLead.address}, {viewLead.number} {viewLead.complement && `- ${viewLead.complement}`}<br />
-                                            {viewLead.neighborhood} - {viewLead.city}/{viewLead.state}
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end gap-3 border-t border-white/10 pt-6">
-                            {viewLead.stage !== SaaSLeadStage.CLOSED_WON && (
-                                <button
-                                    onClick={() => {
-                                        setClosingLead(viewLead);
-                                        setClosingData({
-                                            plan: viewLead.planInterest,
-                                            paymentMethod: 'credit_card',
-                                            recurrence: 'monthly'
-                                        });
-                                        // Keep viewLead open underneath or close it? Let's keep it but maybe we should close it to avoid clutter
-                                        // For better UX, let's close viewLead when opening closingLead
-                                        setViewLead(null);
-                                    }}
-                                    className="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded-lg font-bold transition-colors"
-                                >
-                                    Marcar como Fechado (Assinante)
+                        {/* RIGHT COLUMN: Follow Up & Tasks */}
+                        <div className="w-2/3 flex flex-col bg-slate-900">
+                            {/* Tabs Header */}
+                            <div className="flex border-b border-white/10">
+                                <button className="px-6 py-4 text-sm font-bold text-yellow-500 border-b-2 border-yellow-500 bg-white/5">
+                                    Follow Up & Tarefas
                                 </button>
-                            )}
-                            {viewLead.stage === SaaSLeadStage.CLOSED_WON && (
-                                <span className="text-green-500 font-bold flex items-center gap-2">
-                                    <CheckCircle size={20} /> Venda Já Realizada
-                                </span>
-                            )}
+                                <button className="px-6 py-4 text-sm font-bold text-slate-400 hover:text-white transition-colors">
+                                    Histórico (Em Breve)
+                                </button>
+                            </div>
+
+                            <div className="flex-1 p-6 overflow-y-auto space-y-8">
+                                {/* NOTES SECTION */}
+                                <div>
+                                    <h4 className="font-bold text-white mb-3 flex items-center gap-2">
+                                        <span className="w-1 h-4 bg-yellow-500 rounded-full"></span>
+                                        Observações
+                                    </h4>
+                                    <textarea
+                                        className="w-full h-32 bg-slate-800 border border-white/10 rounded-xl p-4 text-slate-300 focus:border-yellow-500 outline-none resize-none transition-colors"
+                                        placeholder="Escreva notas sobre a negociação..."
+                                        value={viewLead.notes || ''}
+                                        onChange={(e) => updateSaaSLead(viewLead.id, { notes: e.target.value })}
+                                    />
+                                    <p className="text-xs text-slate-500 mt-2 text-right">Alterações salvas automaticamente.</p>
+                                </div>
+
+                                {/* TASKS SECTION */}
+                                <div>
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h4 className="font-bold text-white flex items-center gap-2">
+                                            <span className="w-1 h-4 bg-purple-500 rounded-full"></span>
+                                            Próximas Tarefas
+                                        </h4>
+                                        <button
+                                            onClick={() => {
+                                                // Quick Add Task Logic
+                                                const title = prompt("Nova Tarefa:");
+                                                if (title) {
+                                                    addSaaSTask({
+                                                        title,
+                                                        leadId: viewLead.id,
+                                                        type: 'reminder',
+                                                        dueDate: new Date().toISOString(),
+                                                        isCompleted: false
+                                                    });
+                                                }
+                                            }}
+                                            className="text-xs bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg transition-colors border border-white/10"
+                                        >
+                                            + Nova Tarefa
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        {(viewLead.tasks || []).length === 0 && (
+                                            <p className="text-sm text-slate-500 italic py-4">Nenhuma tarefa agendada.</p>
+                                        )}
+                                        {viewLead.tasks && [...viewLead.tasks].sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()).map(task => (
+                                            <div key={task.id} className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${task.isCompleted ? 'bg-slate-900 border-white/5 opacity-50' : 'bg-slate-800 border-white/10 hover:border-purple-500/50'}`}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={task.isCompleted}
+                                                    onChange={() => toggleSaaSTask(task.id, viewLead.id, task.isCompleted)}
+                                                    className="w-4 h-4 rounded border-slate-600 text-purple-600 focus:ring-purple-500 bg-slate-700"
+                                                />
+                                                <div className="flex-1">
+                                                    <p className={`text-sm font-medium ${task.isCompleted ? 'text-slate-500 line-through' : 'text-white'}`}>
+                                                        {task.title}
+                                                    </p>
+                                                    <p className="text-xs text-slate-500">
+                                                        {new Date(task.dueDate).toLocaleDateString()} • <span className="capitalize">{task.type}</span>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

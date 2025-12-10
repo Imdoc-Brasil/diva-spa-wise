@@ -42,8 +42,21 @@ export interface SaaSLead {
     paymentMethod?: 'boleto' | 'pix' | 'credit_card';
     recurrence?: 'monthly' | 'annual';
     trialStartDate?: string;
+    zipCode?: string;
+    tasks?: SaaSTask[];
     createdAt: string;
     updatedAt: string;
+}
+
+export type SaaSTaskType = 'call' | 'meeting' | 'email' | 'reminder' | 'demo';
+
+export interface SaaSTask {
+    id: string;
+    leadId: string;
+    title: string;
+    type: SaaSTaskType;
+    dueDate: string;
+    isCompleted: boolean;
 }
 
 export interface SaaSSubscriber {

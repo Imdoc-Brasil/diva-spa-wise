@@ -1,6 +1,6 @@
 export * from './types_financial';
 export * from './types_financial';
-import { SaaSLead, SaaSSubscriber } from './types_saas';
+import { SaaSLead, SaaSSubscriber, SaaSTask, SaaSTaskType } from './types_saas';
 export * from './types_saas';
 // ============================================
 // MULTI-TENANT SAAS - ORGANIZATION & SUBSCRIPTION
@@ -1496,6 +1496,11 @@ export interface DataContextType {
     saasSubscribers: SaaSSubscriber[];
     addSaaSSubscriber: (sub: SaaSSubscriber) => void;
     updateSaaSSubscriber: (id: string, data: Partial<SaaSSubscriber>) => void;
+    addSaaSTask: (task: Omit<SaaSTask, 'id'>) => void;
+    toggleSaaSTask: (taskId: string, leadId: string, currentStatus: boolean) => void;
+
+    // Auth & User
+    user: User | null;
 
     // Accounts & Fiscal
     accounts: BankAccount[];
