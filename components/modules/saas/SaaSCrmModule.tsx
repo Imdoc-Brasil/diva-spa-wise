@@ -1513,7 +1513,11 @@ const SaaSCrmModule: React.FC = () => {
                                                 <input
                                                     className="bg-transparent text-slate-300 w-full text-sm outline-none border-b border-transparent focus:border-yellow-500/50 transition-colors"
                                                     value={viewLead.email}
-                                                    onChange={(e) => updateSaaSLead(viewLead.id, { email: e.target.value })}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        setViewLead(prev => prev ? ({ ...prev, email: val }) : null);
+                                                        updateSaaSLead(viewLead.id, { email: val });
+                                                    }}
                                                 />
                                             </div>
                                             <div className="bg-slate-800/50 p-2 rounded-lg border border-white/5">
@@ -1521,7 +1525,11 @@ const SaaSCrmModule: React.FC = () => {
                                                 <input
                                                     className="bg-transparent text-slate-300 w-full text-sm outline-none border-b border-transparent focus:border-yellow-500/50 transition-colors"
                                                     value={viewLead.phone}
-                                                    onChange={(e) => updateSaaSLead(viewLead.id, { phone: e.target.value })}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        setViewLead(prev => prev ? ({ ...prev, phone: val }) : null);
+                                                        updateSaaSLead(viewLead.id, { phone: val });
+                                                    }}
                                                 />
                                             </div>
                                         </div>
@@ -1537,26 +1545,42 @@ const SaaSCrmModule: React.FC = () => {
                                                 placeholder="CEP"
                                                 className="bg-slate-800/50 text-slate-300 w-full text-sm p-2 rounded border border-white/5 outline-none focus:border-yellow-500/50"
                                                 value={viewLead.zipCode || ''}
-                                                onChange={(e) => updateSaaSLead(viewLead.id, { zipCode: e.target.value })}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    setViewLead(prev => prev ? ({ ...prev, zipCode: val }) : null);
+                                                    updateSaaSLead(viewLead.id, { zipCode: val });
+                                                }}
                                             />
                                             <input
                                                 placeholder="Logradouro"
                                                 className="bg-slate-800/50 text-slate-300 w-full text-sm p-2 rounded border border-white/5 outline-none focus:border-yellow-500/50"
                                                 value={viewLead.address || ''}
-                                                onChange={(e) => updateSaaSLead(viewLead.id, { address: e.target.value })}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    setViewLead(prev => prev ? ({ ...prev, address: val }) : null);
+                                                    updateSaaSLead(viewLead.id, { address: val });
+                                                }}
                                             />
                                             <div className="flex gap-2">
                                                 <input
                                                     placeholder="Número"
                                                     className="bg-slate-800/50 text-slate-300 w-1/3 text-sm p-2 rounded border border-white/5 outline-none focus:border-yellow-500/50"
                                                     value={viewLead.number || ''}
-                                                    onChange={(e) => updateSaaSLead(viewLead.id, { number: e.target.value })}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        setViewLead(prev => prev ? ({ ...prev, number: val }) : null);
+                                                        updateSaaSLead(viewLead.id, { number: val });
+                                                    }}
                                                 />
                                                 <input
                                                     placeholder="Comp."
                                                     className="bg-slate-800/50 text-slate-300 w-2/3 text-sm p-2 rounded border border-white/5 outline-none focus:border-yellow-500/50"
                                                     value={viewLead.complement || ''}
-                                                    onChange={(e) => updateSaaSLead(viewLead.id, { complement: e.target.value })}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        setViewLead(prev => prev ? ({ ...prev, complement: val }) : null);
+                                                        updateSaaSLead(viewLead.id, { complement: val });
+                                                    }}
                                                 />
                                             </div>
                                             <div className="flex gap-2">
@@ -1564,13 +1588,21 @@ const SaaSCrmModule: React.FC = () => {
                                                     placeholder="Cidade"
                                                     className="bg-slate-800/50 text-slate-300 w-2/3 text-sm p-2 rounded border border-white/5 outline-none focus:border-yellow-500/50"
                                                     value={viewLead.city || ''}
-                                                    onChange={(e) => updateSaaSLead(viewLead.id, { city: e.target.value })}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        setViewLead(prev => prev ? ({ ...prev, city: val }) : null);
+                                                        updateSaaSLead(viewLead.id, { city: val });
+                                                    }}
                                                 />
                                                 <input
                                                     placeholder="UF"
                                                     className="bg-slate-800/50 text-slate-300 w-1/3 text-sm p-2 rounded border border-white/5 outline-none focus:border-yellow-500/50"
                                                     value={viewLead.state || ''}
-                                                    onChange={(e) => updateSaaSLead(viewLead.id, { state: e.target.value })}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        setViewLead(prev => prev ? ({ ...prev, state: val }) : null);
+                                                        updateSaaSLead(viewLead.id, { state: val });
+                                                    }}
                                                     maxLength={2}
                                                 />
                                             </div>
