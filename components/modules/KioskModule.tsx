@@ -10,6 +10,7 @@ import { useToast } from '../ui/ToastContext';
 // Mock Pending Form based on types created in SettingsModule
 const mockPendingForm: FormTemplate = {
     id: 'f_kiosk',
+    organizationId: 'org_demo',
     title: 'Anamnese Facial Obrigatória',
     type: 'anamnesis',
     active: true,

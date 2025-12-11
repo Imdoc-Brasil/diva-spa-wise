@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { Client, SalesLead, ServiceAppointment, AppointmentStatus, LeadStage, Transaction, WaitlistItem, StaffMember, OrganizationMember, ServiceRoom, DataContextType, ServiceDefinition, BusinessConfig, NotificationConfig, Product, BusinessUnit, YieldRule, FormTemplate, FormResponse, AppointmentRecord, ClinicEvent, EventGuest, Partner, WebsiteConfig, SaaSAppConfig, User, UserRole, AppNotification, OpenVial, VialUsageLog, MarketingCampaign, AutomationRule, CustomerSegment, MembershipPlan, Subscription, ChatConversation, ChatMessage, TreatmentPlan, TreatmentPlanTemplate, Supplier, BankAccount, FiscalRecord, SaaSLead, SaaSSubscriber, SaaSLeadStage, SaaSPlan, SaaSTask, SaaSTaskType } from '../../types';
+import { Client, SalesLead, ServiceAppointment, AppointmentStatus, LeadStage, Transaction, WaitlistItem, StaffMember, OrganizationMember, ServiceRoom, DataContextType, ServiceDefinition, BusinessConfig, NotificationConfig, Product, BusinessUnit, YieldRule, FormTemplate, FormResponse, AppointmentRecord, ClinicEvent, EventGuest, Partner, WebsiteConfig, SaaSAppConfig, User, UserRole, AppNotification, OpenVial, VialUsageLog, MarketingCampaign, AutomationRule, CustomerSegment, MembershipPlan, Subscription, ChatConversation, ChatMessage, TreatmentPlan, TreatmentPlanTemplate, Supplier, BankAccount, FiscalRecord, SaaSLead, SaaSSubscriber, SaaSLeadStage, SaaSPlan, SaaSTask, SaaSTaskType, ImplementationProject, SupportTicket, FeatureRequest, ImplementationStage, SupportTicketStatus, SupportTicketPriority, FeatureRequestStatus, FeatureRequestImpact } from '../../types';
 import { MOCK_TREATMENT_PLANS, MOCK_TREATMENT_TEMPLATES } from '../../utils/mockTreatmentPlans';
 import { useToast } from '../ui/ToastContext';
 import { useOrganization } from './OrganizationContext';
@@ -32,9 +32,9 @@ const createUser = (role: UserRole): User => {
   }
 
   return {
-    uid: `mock-${role}-id`,
+    uid: `mock - ${role} -id`,
     organizationId: 'org_demo',
-    email: `${role}@divaspa.com`,
+    email: `${role} @divaspa.com`,
     displayName: name,
     role: role,
     staffId: staffId,
@@ -723,6 +723,75 @@ const initialSubscriptions: Subscription[] = [
   { id: 'sub2', organizationId: 'org_demo', clientId: 'c2', clientName: 'Juliana Paes', planId: 'mp2', status: 'overdue', nextBillingDate: '2023-11-20', paymentMethod: 'Credit Card' },
 ];
 
+const initialImpProjects: ImplementationProject[] = [
+  {
+    id: 'imp_1',
+    subscriberId: 'org_demo',
+    clinicName: 'Clínica Dra Jamima Queiroz',
+    stage: ImplementationStage.DEMO_SCHEDULED,
+    startDate: '2025-12-05',
+    deadlineDate: '2026-01-05',
+    modulesChecked: [],
+    status: 'on_track',
+    tasks: []
+  }
+];
+
+const initialSupportTickets: SupportTicket[] = [
+  {
+    id: 'tkt_1',
+    ticketNumber: '#1001',
+    subscriberId: 'org_demo',
+    clinicName: 'Clínica Dra Jamima Queiroz',
+    title: 'Erro ao cadastrar paciente',
+    description: 'Ao tentar salvar, aparece mensagem de erro 500.',
+    category: 'bug',
+    priority: SupportTicketPriority.HIGH,
+    status: SupportTicketStatus.OPEN,
+    createdAt: '2025-12-09T10:00:00',
+    updatedAt: '2025-12-09T10:00:00'
+  }
+];
+
+const initialFeatureRequests: FeatureRequest[] = [
+  {
+    id: 'fr_1',
+    subscriberId: 'org_demo',
+    clinicName: 'Clínica Dra Jamima Queiroz',
+    module: 'financeiro',
+    title: 'Integração com Maquininha Stone',
+    description: 'Seria ótimo se o sistema integrasse direto com a Stone para baixa automática.',
+    impact: FeatureRequestImpact.HIGH,
+    status: FeatureRequestStatus.NEW,
+    votes: 12,
+    createdAt: '2025-12-08T14:00:00'
+  },
+  {
+    id: 'fr_2',
+    subscriberId: 'org_demo',
+    clinicName: 'Spa Vida',
+    module: 'agenda',
+    title: 'Lembrete de Aniversário via WhatsApp',
+    description: 'Enviar mensagem automática de feliz aniversário.',
+    impact: FeatureRequestImpact.MEDIUM,
+    status: FeatureRequestStatus.PLANNED,
+    votes: 45,
+    createdAt: '2025-11-20T10:00:00'
+  },
+  {
+    id: 'fr_3',
+    subscriberId: 'org_demo',
+    clinicName: 'Dermatologia Avançada',
+    module: 'marketing',
+    title: 'Funil de Vendas Personalizável',
+    description: 'Permitir criar colunas personalizadas no CRM.',
+    impact: FeatureRequestImpact.CRITICAL,
+    status: FeatureRequestStatus.IN_DEVELOPMENT,
+    votes: 89,
+    createdAt: '2025-10-15T09:00:00'
+  }
+];
+
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export const useData = () => {
@@ -792,6 +861,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [accounts, setAccounts] = useState<BankAccount[]>(() => loadState('accounts', initialAccounts));
   const [fiscalRecords, setFiscalRecords] = useState<FiscalRecord[]>(() => loadState('fiscalRecords', []));
 
+  const [implementationProjects, setImplementationProjects] = useState<ImplementationProject[]>(() => loadState('implementationProjects', initialImpProjects));
+  const [supportTickets, setSupportTickets] = useState<SupportTicket[]>(() => loadState('supportTickets', initialSupportTickets));
+  const [featureRequests, setFeatureRequests] = useState<FeatureRequest[]>(() => loadState('featureRequests', initialFeatureRequests));
 
   // Persistence Effects
   useEffect(() => localStorage.setItem('clients', JSON.stringify(clients)), [clients]);
@@ -845,6 +917,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => localStorage.setItem('suppliers', JSON.stringify(suppliers)), [suppliers]);
   useEffect(() => localStorage.setItem('accounts', JSON.stringify(accounts)), [accounts]);
   useEffect(() => localStorage.setItem('fiscalRecords', JSON.stringify(fiscalRecords)), [fiscalRecords]);
+  useEffect(() => localStorage.setItem('implementationProjects', JSON.stringify(implementationProjects)), [implementationProjects]);
+  useEffect(() => localStorage.setItem('supportTickets', JSON.stringify(supportTickets)), [supportTickets]);
+  useEffect(() => localStorage.setItem('featureRequests', JSON.stringify(featureRequests)), [featureRequests]);
 
   // Communication State
   const [conversations, setConversations] = useState<ChatConversation[]>(() => {
@@ -969,7 +1044,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // Revert? For now, keep local to avoid data loss for user
       }
     } else {
-      addToast(`Paciente ${client.name} cadastrado (Demo)!`, 'success');
+      addToast(`Paciente ${client.name} cadastrado(Demo)!`, 'success');
     }
   };
 
@@ -1178,9 +1253,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           // 3. Create Transaction (NEW!)
           if (appt.price > 0) {
             const transaction: Transaction = {
-              id: `t_${Date.now()}_${appt.appointmentId}`,
+              id: `t_${Date.now()}_${appt.appointmentId} `,
               organizationId: currentOrgId,
-              description: `${appt.serviceName} - ${appt.clientName}`,
+              description: `${appt.serviceName} - ${appt.clientName} `,
               category: 'Serviços',
               amount: appt.price,
               type: 'income',
@@ -1198,12 +1273,11 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return prev.map(a => a.appointmentId === id ? { ...a, status } : a);
     });
 
-    // Supabase Update
     if (currentOrgId !== 'org_demo' && apptToUpdate) {
       await (supabase.from('appointments') as any).update({ status }).eq('id', id);
     }
 
-    addToast(`Status do agendamento atualizado para: ${status}`, 'info');
+    addToast(`Status do agendamento atualizado para: ${status} `, 'info');
   };
 
   const deleteAppointment = async (id: string) => {
@@ -1313,7 +1387,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Team Logic
   const inviteMember = (email: string, role: string, name: string) => {
     const newMember: OrganizationMember = {
-      id: `mem_${Date.now()}`,
+      id: `mem_${Date.now()} `,
       organizationId: currentOrgId,
       email,
       name,
@@ -1801,6 +1875,188 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const deleteSaaSTask = async (taskId: string, leadId: string) => {
+    // Optimistic
+    setSaaSLeads(prev => prev.map(lead => {
+      if (lead.id === leadId) {
+        return {
+          ...lead,
+          tasks: lead.tasks?.filter(t => t.id !== taskId)
+        };
+      }
+      return lead;
+    }));
+
+    if (supabase) {
+      const { error } = await (supabase.from('saas_tasks') as any).delete().eq('id', taskId);
+      if (error) {
+        console.error('Error deleting task:', error);
+        addToast('Erro ao excluir tarefa.', 'error');
+        // Revert if needed, but keeping it simple for now
+      } else {
+        addToast('Tarefa removida.', 'info');
+      }
+    }
+  };
+
+  // --- New Pipelines Logic ---
+
+  const fetchSaaSPipelines = async () => {
+    if (!supabase) return;
+    try {
+      // 1. Implementation Projects
+      const { data: impData } = await supabase.from('saas_implementation_projects').select('*');
+      if (impData) {
+        setImplementationProjects(impData.map((d: any) => ({
+          id: d.id,
+          subscriberId: d.subscriber_id,
+          clinicName: d.clinic_name,
+          stage: d.stage as ImplementationStage,
+          startDate: d.start_date,
+          deadlineDate: d.deadline_date,
+          modulesChecked: d.modules_checked || [],
+          status: d.status as any,
+          notes: d.notes,
+          tasks: d.tasks || []
+        })));
+      }
+
+      // 2. Support Tickets
+      const { data: tktData } = await supabase.from('saas_support_tickets').select('*').order('created_at', { ascending: false });
+      if (tktData) {
+        setSupportTickets(tktData.map((d: any) => ({
+          id: d.id,
+          ticketNumber: d.ticket_number,
+          subscriberId: d.subscriber_id,
+          clinicName: d.clinic_name,
+          title: d.title,
+          description: d.description,
+          category: d.category as any,
+          priority: d.priority as any,
+          status: d.status as any,
+          aiSummary: d.ai_summary,
+          createdAt: d.created_at,
+          updatedAt: d.updated_at,
+          messages: d.messages || []
+        })));
+      }
+
+      // 3. Feature Requests
+      const { data: ftData } = await supabase.from('saas_feature_requests').select('*').order('votes', { ascending: false });
+      if (ftData) {
+        setFeatureRequests(ftData.map((d: any) => ({
+          id: d.id,
+          subscriberId: d.subscriber_id,
+          clinicName: d.clinic_name,
+          module: d.module,
+          title: d.title,
+          description: d.description,
+          impact: d.impact as any,
+          status: d.status as any,
+          votes: d.votes,
+          createdAt: d.created_at
+        })));
+      }
+    } catch (err) {
+      console.error('Error fetching pipelines:', err);
+    }
+  };
+
+  const addImplementationProject = async (project: ImplementationProject) => {
+    setImplementationProjects(prev => [...prev, project]);
+    if (supabase) {
+      await (supabase.from('saas_implementation_projects') as any).insert({
+        id: project.id,
+        subscriber_id: project.subscriberId,
+        clinic_name: project.clinicName,
+        stage: project.stage,
+        start_date: project.startDate,
+        deadline_date: project.deadlineDate,
+        modules_checked: project.modulesChecked,
+        status: project.status,
+        notes: project.notes,
+        tasks: project.tasks
+      });
+    }
+  };
+
+  const updateImplementationProject = async (id: string, data: Partial<ImplementationProject>) => {
+    setImplementationProjects(prev => prev.map(p => p.id === id ? { ...p, ...data } : p));
+    if (supabase) {
+      const payload: any = {};
+      if (data.stage) payload.stage = data.stage;
+      if (data.modulesChecked) payload.modules_checked = data.modulesChecked;
+      if (data.status) payload.status = data.status;
+      if (data.notes) payload.notes = data.notes;
+      if (data.tasks) payload.tasks = data.tasks;
+      if (Object.keys(payload).length > 0) {
+        await (supabase.from('saas_implementation_projects') as any).update(payload).eq('id', id);
+      }
+    }
+  };
+
+  const addSupportTicket = async (ticket: SupportTicket) => {
+    setSupportTickets(prev => [ticket, ...prev]);
+    if (supabase) {
+      await (supabase.from('saas_support_tickets') as any).insert({
+        id: ticket.id,
+        ticket_number: ticket.ticketNumber,
+        subscriber_id: ticket.subscriberId,
+        clinic_name: ticket.clinicName,
+        title: ticket.title,
+        description: ticket.description,
+        category: ticket.category,
+        priority: ticket.priority,
+        status: ticket.status,
+        created_at: ticket.createdAt,
+        updated_at: ticket.updatedAt
+      });
+    }
+  };
+
+  const updateSupportTicket = async (id: string, data: Partial<SupportTicket>) => {
+    setSupportTickets(prev => prev.map(t => t.id === id ? { ...t, ...data } : t));
+    if (supabase) {
+      const payload: any = {};
+      if (data.status) payload.status = data.status;
+      if (data.messages) payload.messages = data.messages;
+      if (data.aiSummary) payload.ai_summary = data.aiSummary;
+      if (Object.keys(payload).length > 0) {
+        await (supabase.from('saas_support_tickets') as any).update(payload).eq('id', id);
+      }
+    }
+  };
+
+  const addFeatureRequest = async (request: FeatureRequest) => {
+    setFeatureRequests(prev => [request, ...prev]);
+    if (supabase) {
+      await (supabase.from('saas_feature_requests') as any).insert({
+        id: request.id,
+        subscriber_id: request.subscriberId,
+        clinic_name: request.clinicName,
+        module: request.module,
+        title: request.title,
+        description: request.description,
+        impact: request.impact,
+        status: request.status,
+        votes: request.votes,
+        created_at: request.createdAt
+      });
+    }
+  };
+
+  const updateFeatureRequest = async (id: string, data: Partial<FeatureRequest>) => {
+    setFeatureRequests(prev => prev.map(r => r.id === id ? { ...r, ...data } : r));
+    if (supabase) {
+      const payload: any = {};
+      if (data.status) payload.status = data.status;
+      if (data.votes) payload.votes = data.votes;
+      if (Object.keys(payload).length > 0) {
+        await (supabase.from('saas_feature_requests') as any).update(payload).eq('id', id);
+      }
+    }
+  };
+
   const fetchSaaSSubscribers = async () => {
     if (!supabase) return;
 
@@ -1891,21 +2147,35 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     fetchSaaSSubscribers();
     fetchSaaSLeads();
+    fetchSaaSPipelines();
   }, [currentOrgId]);
 
   const fetchSaaSLeads = async () => {
     if (!supabase) return;
     try {
-      const { data, error } = await (supabase.from('saas_leads') as any)
-        .select(`
-            *,
-            saas_tasks (*)
-        `)
+      // 1. Fetch LEADS
+      const { data: leadsData, error: leadsError } = await (supabase.from('saas_leads') as any)
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      if (data) {
-        const mapped: SaaSLead[] = data.map((d: any) => ({
+      if (leadsError) throw leadsError;
+
+      // 2. Fetch TASKS
+      const { data: tasksData, error: tasksError } = await (supabase.from('saas_tasks') as any)
+        .select('*');
+
+      if (tasksError) {
+        console.error("Error fetching tasks:", tasksError);
+      }
+
+      const tasksByLeadId = (tasksData || []).reduce((acc: any, task: any) => {
+        if (!acc[task.lead_id]) acc[task.lead_id] = [];
+        acc[task.lead_id].push(task);
+        return acc;
+      }, {});
+
+      if (leadsData) {
+        const mapped: SaaSLead[] = leadsData.map((d: any) => ({
           id: d.id,
           name: d.name,
           clinicName: d.clinic_name,
@@ -1926,17 +2196,17 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           city: d.city,
           state: d.state,
           zipCode: d.zip_code,
-          paymentMethod: d.payment_method,
+          paymentMethod: d.paymentMethod,
           recurrence: d.recurrence,
           trialStartDate: d.trial_start_date,
-          tasks: d.saas_tasks ? d.saas_tasks.map((t: any) => ({
+          tasks: (tasksByLeadId[d.id] || []).map((t: any) => ({
             id: t.id,
             leadId: t.lead_id,
             title: t.title,
             type: t.type,
             dueDate: t.due_date,
             isCompleted: t.is_completed
-          })) : [],
+          })),
           createdAt: d.created_at,
           updatedAt: d.updated_at
         }));
@@ -1991,8 +2261,16 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     addToast('Assinante SaaS adicionado!', 'success');
   };
 
-  const updateSaaSSubscriber = (id: string, data: Partial<SaaSSubscriber>) => {
+  const updateSaaSSubscriber = async (id: string, data: Partial<SaaSSubscriber>) => {
     setSaaSSubscribers(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
+    if (supabase) {
+      const payload: any = {};
+      if (data.status) payload.saas_status = data.status;
+      if (Object.keys(payload).length > 0) {
+        const { error } = await (supabase.from('organizations') as any).update(payload).eq('id', id);
+        if (error) console.error("Update subscriber error", error);
+      }
+    }
   };
 
   const addFiscalRecord = (record: FiscalRecord) => {
@@ -2166,12 +2444,22 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // SaaS Master Backoffice
       saasLeads,
       saasSubscribers,
+      updateSaaSSubscriber,
       addSaaSLead,
       updateSaaSLead,
       addSaaSTask,
       toggleSaaSTask,
-      addSaaSSubscriber,
-      updateSaaSSubscriber,
+      deleteSaaSTask,
+
+      implementationProjects,
+      addImplementationProject,
+      updateImplementationProject,
+      supportTickets,
+      addSupportTicket,
+      updateSupportTicket,
+      featureRequests,
+      addFeatureRequest,
+      updateFeatureRequest,
 
       // Auth & Users
       // user is now defined via useAuth()

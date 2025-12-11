@@ -262,6 +262,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpen, onCl
 
             const invoice: Invoice = {
                 id: 'inv_' + Date.now(),
+                organizationId: 'org_demo',
                 appointmentId: appointment.appointmentId,
                 clientId: appointment.clientId,
                 clientName: appointment.clientName,

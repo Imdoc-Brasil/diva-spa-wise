@@ -11,8 +11,8 @@ const MasterLayout: React.FC = () => {
 
     const menuItems = [
         { icon: <LayoutDashboard size={20} />, label: 'Dashboard', path: '/master' },
-        { icon: <TrendingUp size={20} />, label: 'CRM de Vendas', path: '/master/crm' },
-        { icon: <Users size={20} />, label: 'Assinantes', path: '/master/subscribers' },
+        { icon: <TrendingUp size={20} />, label: 'CRM & Gestão', path: '/master/crm' },
+        // Item 'Assinantes' removido para centralizar no CRM & Gestão
         { icon: <DollarSign size={20} />, label: 'Financeiro SaaS', path: '/master/finance' },
         { icon: <Globe size={20} />, label: 'CMS / Site', path: '/master/cms' }, // New CMS Module
         { icon: <Shield size={20} />, label: 'Admin Logs', path: '/master/logs' },

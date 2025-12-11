@@ -54,3 +54,19 @@ values ('saas_landing_config', '{
     "contactPhone": "(11) 99999-9999"
 }')
 on conflict (key) do nothing;
+
+-- 7. Organizations Table (SaaS Subscribers)
+create table if not exists organizations (
+  id uuid primary key default uuid_generate_v4(),
+  name text,
+  slug text unique,
+  plan text,
+  saas_status text, -- active, delinquent, etc
+  asaas_customer_id text, -- ID Asaas Customer
+  asaas_subscription_id text, -- ID Asaas Subscription
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Enable RLS
+alter table organizations enable row level security;
+create policy "Admins can view orgs" on organizations for select using (true); -- Simplify for now

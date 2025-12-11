@@ -1,6 +1,9 @@
 export * from './types_financial';
 export * from './types_financial';
-import { SaaSLead, SaaSSubscriber, SaaSTask, SaaSTaskType } from './types_saas';
+import {
+    SaaSLead, SaaSSubscriber, SaaSTask, SaaSPlan,
+    ImplementationProject, SupportTicket, FeatureRequest, ImplementationStage
+} from './types_saas';
 export * from './types_saas';
 // ============================================
 // MULTI-TENANT SAAS - ORGANIZATION & SUBSCRIPTION
@@ -1294,13 +1297,7 @@ export interface HelpArticle {
     views: number;
 }
 
-export interface SupportTicket {
-    id: string;
-    subject: string;
-    status: 'open' | 'closed' | 'pending';
-    priority: 'high' | 'medium' | 'low';
-    createdAt: string;
-}
+
 
 export interface LinenItem {
     id: string;
@@ -1491,13 +1488,31 @@ export interface DataContextType {
 
     // Accounts & Fiscal
     saasLeads: SaaSLead[];
-    addSaaSLead: (lead: SaaSLead) => void;
-    updateSaaSLead: (id: string, data: Partial<SaaSLead>) => void;
+    addSaaSLead: (lead: SaaSLead) => Promise<void>;
+    updateSaaSLead: (id: string, data: Partial<SaaSLead>) => Promise<void>;
+
+    addSaaSTask: (task: Omit<SaaSTask, 'id'>) => Promise<void>;
+    toggleSaaSTask: (taskId: string, leadId: string, currentStatus: boolean) => Promise<void>;
+    deleteSaaSTask: (taskId: string, leadId: string) => Promise<void>;
+
+    // SaaS Operations (Implementation, Support, Features)
+    implementationProjects: ImplementationProject[];
+    addImplementationProject: (project: ImplementationProject) => Promise<void>;
+    updateImplementationProject: (id: string, data: Partial<ImplementationProject>) => Promise<void>;
+
+    supportTickets: SupportTicket[];
+    addSupportTicket: (ticket: SupportTicket) => Promise<void>;
+    updateSupportTicket: (id: string, data: Partial<SupportTicket>) => Promise<void>;
+
+    featureRequests: FeatureRequest[];
+    addFeatureRequest: (request: FeatureRequest) => Promise<void>;
+    updateFeatureRequest: (id: string, data: Partial<FeatureRequest>) => Promise<void>;
+
     saasSubscribers: SaaSSubscriber[];
-    addSaaSSubscriber: (sub: SaaSSubscriber) => void;
-    updateSaaSSubscriber: (id: string, data: Partial<SaaSSubscriber>) => void;
-    addSaaSTask: (task: Omit<SaaSTask, 'id'>) => void;
-    toggleSaaSTask: (taskId: string, leadId: string, currentStatus: boolean) => void;
+    updateSaaSSubscriber: (id: string, data: Partial<SaaSSubscriber>) => Promise<void>;
+
+
+
 
     // Auth & User
     user: User | null;
@@ -1666,3 +1681,40 @@ export interface TreatmentPlanTemplate {
     }[];
 }
 
+
+// ============================================
+// ASAAS INTEGRATION TYPES
+// ============================================
+
+export interface AsaasCustomer {
+    id: string;
+    name: string;
+    email: string;
+    cpfCnpj: string;
+}
+
+export interface AsaasPayment {
+    id: string;
+    customer: string;
+    billingType: 'BOLETO' | 'CREDIT_CARD' | 'PIX' | 'UNDEFINED';
+    value: number;
+    netValue?: number;
+    dueDate: string;
+    status: 'PENDING' | 'RECEIVED' | 'CONFIRMED' | 'OVERDUE' | 'REFUNDED' | 'RECEIVED_IN_CASH' | 'REFUND_REQUESTED' | 'CHARGEBACK_REQUESTED' | 'CHARGEBACK_DISPUTE' | 'AWAITING_CHARGEBACK_REVERSAL' | 'DUNNING_REQUESTED' | 'DUNNING_RECEIVED' | 'AWAITING_RISK_ANALYSIS';
+    description?: string;
+    externalReference?: string;
+    bankSlipUrl?: string;
+    invoiceUrl?: string;
+    pixQrCodeId?: string;
+}
+
+export interface AsaasSubscription {
+    id: string;
+    customer: string;
+    billingType: 'BOLETO' | 'CREDIT_CARD' | 'PIX';
+    value: number;
+    nextDueDate: string;
+    cycle: 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'SEMIANNUALLY' | 'YEARLY';
+    description?: string;
+    status: 'ACTIVE' | 'INACTIVE' | 'EXPIRED';
+}
