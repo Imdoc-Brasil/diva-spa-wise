@@ -1180,6 +1180,23 @@ export interface SaaSAppConfig {
     seoTitle?: string;
     seoDescription?: string;
     contactPhone?: string;
+
+    // Visual Customization
+    fontFamily?: string;
+    secondaryColor?: string;
+    backgroundColor?: string;
+    textColor?: string;
+    enableThemeToggle?: boolean;
+    defaultTheme?: 'dark' | 'light';
+
+    // Section Content
+    featuresTitle?: string;
+    featuresSubtitle?: string;
+    pricingTitle?: string;
+    pricingSubtitle?: string;
+    ctaTitle?: string;
+    ctaSubtitle?: string;
+    ctaButtonText?: string;
 }
 
 export interface Partner {

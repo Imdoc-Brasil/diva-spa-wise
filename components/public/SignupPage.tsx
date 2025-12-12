@@ -1,22 +1,19 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { SUBSCRIPTION_PLANS } from '../../utils/subscriptionPlans';
-import { Organization, OrganizationType, SaaSPlan, SaaSSubscriber } from '../../types';
+import { OrganizationType } from '../../types';
 import { useData } from '../context/DataContext';
-import { Building, CreditCard, ChevronRight, Check, ArrowLeft, Shield, User, Lock, Mail } from 'lucide-react';
+import { Building, CreditCard, ChevronRight, Check, ArrowLeft, Shield, User, Lock, Mail, Loader2 } from 'lucide-react';
 import { supabase } from '../../services/supabase';
 
 const SignupPage: React.FC = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const { login, addSaaSSubscriber } = useData(); // We will use this to "login" the user after creation
+    // const { login } = useData(); 
 
     // Initial Plan from URL
     const planParam = searchParams.get('plan');
-    const initialPlanId = planParam === 'start' ? 'starter' :
-        planParam === 'growth' ? 'professional' :
-            planParam === 'empire' ? 'enterprise' : 'starter';
+    const initialPlanId = planParam || 'start'; // Default to start if not provided
 
     // Steps
     const [currentStep, setCurrentStep] = useState(1);
@@ -24,7 +21,7 @@ const SignupPage: React.FC = () => {
         { id: 1, title: 'Criar Conta', icon: User },
         { id: 2, title: 'Dados da Clínica', icon: Building },
         { id: 3, title: 'Plano', icon: Shield },
-        { id: 4, title: 'Confirmação', icon: CreditCard }
+        { id: 4, title: 'Confirmação', icon: Check }
     ];
 
     // Form Data - User
@@ -36,11 +33,32 @@ const SignupPage: React.FC = () => {
     const [orgName, setOrgName] = useState('');
     const [orgSlug, setOrgSlug] = useState('');
     const [orgType, setOrgType] = useState<OrganizationType>('clinic');
+
+    // Plan Data
+    const [plans, setPlans] = useState<any[]>([]);
     const [selectedPlanId, setSelectedPlanId] = useState<string>(initialPlanId);
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
     // Processing State
     const [isProcessing, setIsProcessing] = useState(false);
+
+    // Fetch Plans Dynamically
+    useEffect(() => {
+        const fetchPlans = async () => {
+            const { data } = await supabase.from('saas_plans').select('*');
+            if (data) {
+                const PLAN_ORDER = ['start', 'growth', 'experts', 'empire'];
+                const sorted = (data as any[]).sort((a, b) => PLAN_ORDER.indexOf(a.key) - PLAN_ORDER.indexOf(b.key));
+                setPlans(sorted);
+
+                // If the URL param provided a plan that exists, ensure it's selected
+                if (planParam && sorted.find(p => p.key === planParam)) {
+                    setSelectedPlanId(planParam);
+                }
+            }
+        };
+        fetchPlans();
+    }, [planParam]);
 
     // Auto-generate slug
     const handleOrgNameChange = (val: string) => {
@@ -82,14 +100,15 @@ const SignupPage: React.FC = () => {
 
             if (authData.user) {
                 // 2. Create Organization
-                // Convert Plan ID to Enum? Or store as string. The SQL schema might not enforce enum strictly yet.
                 const { data: org, error: orgError } = await (supabase.from('organizations') as any).insert([
                     {
                         name: orgName,
                         slug: orgSlug,
                         primary_color: '#9333ea',
-                        subscription_status: 'trial'
-                        // Add plan details if schema supports it
+                        subscription_status: 'trial',
+                        subscription_plan: selectedPlanId,
+                        subscription_cycle: billingCycle,
+                        trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString() // 14 days from now
                     }
                 ])
                     .select()
@@ -98,7 +117,6 @@ const SignupPage: React.FC = () => {
                 if (orgError) throw orgError;
 
                 // 3. Link Profile to Organization
-                // Profile is created by Trigger, update it.
                 if (org) {
                     const { error: profileError } = await (supabase.from('profiles') as any).update({
                         organization_id: org.id,
@@ -108,14 +126,11 @@ const SignupPage: React.FC = () => {
                     if (profileError) throw profileError;
                 }
 
-                // 4. Auto Login (Logic handled by Supabase Session usually, but we need to tell App state)
-                // We redirect to Login or Dashboard.
-                // If email confirmation is ON, we can't login yet.
+                // 4. Redirect
                 if (!authData.session) {
                     alert('Conta criada! Verifique seu email para confirmar antes de entrar.');
                     navigate('/');
                 } else {
-                    // Session active
                     navigate('/?welcome=true');
                 }
             }
@@ -126,6 +141,12 @@ const SignupPage: React.FC = () => {
             setIsProcessing(false);
         }
     };
+
+    const getSelectedPlanDetails = () => {
+        return plans.find(p => p.key === selectedPlanId);
+    };
+
+    const selectedPlan = getSelectedPlanDetails();
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center py-10 font-sans">
@@ -296,56 +317,77 @@ const SignupPage: React.FC = () => {
                             </div>
 
                             <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                                {SUBSCRIPTION_PLANS.map(plan => (
+                                {plans.map(plan => (
                                     <div
                                         key={plan.id}
-                                        onClick={() => setSelectedPlanId(plan.id)}
-                                        className={`relative p-5 rounded-2xl border-2 cursor-pointer transition-all flex items-center gap-4 ${selectedPlanId === plan.id ? 'border-purple-500 bg-purple-50' : 'border-slate-100 hover:border-purple-200'}`}
+                                        onClick={() => setSelectedPlanId(plan.key)}
+                                        className={`relative p-5 rounded-2xl border-2 cursor-pointer transition-all flex items-center gap-4 ${selectedPlanId === plan.key ? 'border-purple-500 bg-purple-50' : 'border-slate-100 hover:border-purple-200'}`}
                                     >
-                                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${selectedPlanId === plan.id ? 'border-purple-500 bg-purple-500' : 'border-slate-300'}`}>
-                                            {selectedPlanId === plan.id && <Check size={14} className="text-white" />}
+                                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${selectedPlanId === plan.key ? 'border-purple-500 bg-purple-500' : 'border-slate-300'}`}>
+                                            {selectedPlanId === plan.key && <Check size={14} className="text-white" />}
                                         </div>
                                         <div className="flex-1">
                                             <div className="flex justify-between items-center mb-1">
                                                 <h3 className="font-bold text-slate-800">{plan.name}</h3>
                                                 <span className="font-bold text-purple-600">
-                                                    R$ {billingCycle === 'monthly' ? plan.pricing.monthly : (plan.pricing.yearly / 12).toFixed(0)}/mês
+                                                    {plan.monthly_price === 0 ? 'Sob Consulta' : (
+                                                        <>
+                                                            R$ {billingCycle === 'monthly' ? plan.monthly_price : (plan.yearly_price / 12).toFixed(0)}/mês
+                                                        </>
+                                                    )}
                                                 </span>
                                             </div>
                                             <p className="text-sm text-slate-500">{plan.description}</p>
                                         </div>
                                     </div>
                                 ))}
+                                {plans.length === 0 && (
+                                    <div className="text-center py-10 text-slate-500">
+                                        <Loader2 className="animate-spin mx-auto mb-2" />
+                                        Carregando planos...
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
 
-                    {/* STEP 4: PAYMENT MOCK */}
+                    {/* STEP 4: TRIAL ACTIVATION (Updated to reflect real flow) */}
                     {currentStep === 4 && (
                         <div className="animate-in slide-in-from-right duration-300 fade-in flex-1">
-                            <h2 className="text-2xl font-bold mb-2 text-slate-800">Quase lá!</h2>
-                            <p className="text-slate-500 mb-6">Insira seus dados para iniciar o teste grátis de 14 dias.</p>
+                            <div className="text-center mb-6">
+                                <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Shield size={32} />
+                                </div>
+                                <h2 className="text-2xl font-bold mb-2 text-slate-800">Tudo pronto!</h2>
+                                <p className="text-slate-500">Sua clínica está a um clique de ser otimizada.</p>
+                            </div>
 
-                            <div className="bg-purple-50 border border-purple-100 p-4 rounded-xl mb-6 flex gap-3 text-purple-800 text-sm">
-                                <Shield className="shrink-0" size={20} />
-                                <div>
-                                    <p className="font-bold">Teste Grátis de 14 Dias</p>
-                                    <p className="opacity-80">Você não será cobrado agora. Cancele a qualquer momento.</p>
+                            <div className="bg-purple-50 border border-purple-100 p-6 rounded-2xl mb-8">
+                                <h3 className="font-bold text-purple-900 mb-4">Resumo da Assinatura</h3>
+
+                                <div className="space-y-3 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-600">Organização:</span>
+                                        <span className="font-bold text-slate-900">{orgName}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-600">Plano Escolhido:</span>
+                                        <span className="font-bold text-slate-900">{selectedPlan?.name || 'Start'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-600">Ciclo de Faturamento:</span>
+                                        <span className="font-bold text-slate-900">{billingCycle === 'monthly' ? 'Mensal' : 'Anual'}</span>
+                                    </div>
+                                    <div className="border-t border-purple-200 mt-2 pt-2 flex justify-between text-base">
+                                        <span className="font-bold text-purple-900">Período de Teste:</span>
+                                        <span className="font-bold text-green-600">14 Dias Grátis</span>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="space-y-4 mb-6">
-                                <input className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" placeholder="Número do Cartão" />
-                                <div className="grid grid-cols-2 gap-4">
-                                    <input className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" placeholder="MM/AA" />
-                                    <input className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" placeholder="CVC" />
-                                </div>
-                                <input className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none" placeholder="Nome no Cartão" />
-                            </div>
-
-                            <div className="flex justify-between items-center py-4 border-t border-slate-100">
-                                <span className="font-bold text-slate-600">Total a pagar hoje:</span>
-                                <span className="text-xl font-bold text-green-600">R$ 0,00</span>
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs text-slate-500 text-center">
+                                <p>Ao clicar em "Finalizar", você concorda com nossos Termos de Uso e Política de Privacidade.</p>
+                                <p className="mt-1">Nenhuma cobrança será realizada hoje. Seu teste vai até {new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR')}.</p>
                             </div>
                         </div>
                     )}
@@ -377,7 +419,7 @@ const SignupPage: React.FC = () => {
                                 disabled={isProcessing}
                                 className="bg-green-500 text-white px-8 py-3 rounded-xl font-bold hover:bg-green-600 transition-all shadow-lg shadow-green-200 flex items-center gap-2 disabled:opacity-70"
                             >
-                                {isProcessing ? 'Criando Conta...' : 'Finalizar e Começar'}
+                                {isProcessing ? 'Criando Conta...' : 'Ativar Teste Grátis'}
                                 {!isProcessing && <Check size={18} />}
                             </button>
                         )}

@@ -10,6 +10,13 @@ import {
 } from 'lucide-react';
 import { asaasService } from '../../../services/asaasService';
 import { useToast } from '../../ui/ToastContext';
+import { maskPhone, maskCEP, maskCNPJ, maskCpfCnpj } from '../../../utils/masks';
+import { SAAS_PLANS_CONFIG } from './saasPlans';
+
+const BRAZIL_STATES = [
+    'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA',
+    'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+];
 
 const SaaSCrmModule: React.FC = () => {
     const {
@@ -140,14 +147,25 @@ const SaaSCrmModule: React.FC = () => {
                     name: closingLead.name || closingLead.clinicName,
                     email: closingLead.email,
                     cpfCnpj: cpfToUse,
-                    mobilePhone: closingLead.phone
+                    mobilePhone: closingLead.phone,
+                    externalReference: closingLead.id,
+
+                    // Full Address Data from Lead
+                    postalCode: closingLead.zipCode,
+                    address: closingLead.address,
+                    addressNumber: closingLead.number,
+                    complement: closingLead.complement,
+                    province: closingLead.neighborhood,
+                    observations: `Lead Source: ${closingLead.source || 'CRM'}`
                 });
             }
 
             // 2. Criar Assinatura (Subscription) em vez de Checkout (Página)
             // Isso evita bloqueios de conta nova e é a forma correta para SaaS
-            const planValueMap: Record<string, number> = { [SaaSPlan.START]: 397, [SaaSPlan.GROWTH]: 797, [SaaSPlan.EMPIRE]: 1497 };
-            const value = planValueMap[closingData.plan] || 797;
+            const config = SAAS_PLANS_CONFIG[closingData.plan];
+            const value = config
+                ? (closingData.recurrence === 'annual' ? config.yearlyPrice : config.monthlyPrice)
+                : 199.90;
 
             const cycle = closingData.recurrence === 'annual' ? 'YEARLY' : 'MONTHLY';
             const nextDue = new Date();
@@ -155,13 +173,20 @@ const SaaSCrmModule: React.FC = () => {
 
             addToast('Gerando assinatura recorrente...', 'info');
 
+            const billingTypeMap: Record<string, 'BOLETO' | 'PIX' | 'CREDIT_CARD'> = {
+                'credit_card': 'CREDIT_CARD',
+                'pix': 'PIX',
+                'boleto': 'BOLETO'
+            };
+
             const subscription = await asaasService.createSubscription({
                 customer: customer.id,
-                billingType: 'BOLETO', // Gera Boleto e Pix na mesma fatura
+                billingType: billingTypeMap[closingData.paymentMethod] || 'BOLETO',
                 value,
                 nextDueDate: nextDue.toISOString().split('T')[0],
                 cycle,
-                description: `Assinatura Plano ${closingData.plan.toUpperCase()} - I'mdoc`
+                description: `Assinatura Plano ${closingData.plan.toUpperCase()} - I'mdoc`,
+                externalReference: closingLead.id
             });
 
             // 3. Obter Link da Fatura Gerada
@@ -987,171 +1012,228 @@ const SaaSCrmModule: React.FC = () => {
             {
                 showNewLeadModal && (
                     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                        <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
+                        <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-3xl p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto custom-scrollbar">
                             <button
                                 onClick={() => setShowNewLeadModal(false)}
-                                className="absolute top-4 right-4 text-slate-400 hover:text-white"
+                                className="absolute top-6 right-6 text-slate-400 hover:text-white transition-colors"
                             >
-                                <XCircle size={24} />
+                                <XCircle size={28} />
                             </button>
 
-                            <h3 className="text-xl font-bold text-white mb-6">Novo Lead</h3>
+                            <h3 className="text-2xl font-bold text-white mb-2">Adicionar cliente</h3>
+                            <p className="text-slate-400 text-sm mb-8">Preencha os campos abaixo para adicionar o seu cliente.</p>
 
-                            <div className="space-y-4">
+                            <div className="space-y-8">
+
+                                {/* DADOS DO CLIENTE */}
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Nome do Contato</label>
-                                    <input
-                                        className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
-                                        value={newLeadData.name}
-                                        onChange={e => setNewLeadData({ ...newLeadData, name: e.target.value })}
-                                        placeholder="Ex: Dra. Ana"
-                                    />
+                                    <h4 className="text-lg font-bold text-white mb-4 border-b border-white/5 pb-2">Dados do cliente</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="md:col-span-1">
+                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Nome</label>
+                                            <input
+                                                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
+                                                value={newLeadData.name}
+                                                onChange={e => setNewLeadData({ ...newLeadData, name: e.target.value })}
+                                                placeholder="Informe o nome do cliente"
+                                            />
+                                        </div>
+                                        <div className="md:col-span-1">
+                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">CPF ou CNPJ (Opcional)</label>
+                                            <input
+                                                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
+                                                value={newLeadData.cnpj || ''}
+                                                onChange={e => setNewLeadData({ ...newLeadData, cnpj: maskCpfCnpj(e.target.value) })}
+                                                maxLength={18}
+                                                placeholder="Informe o CPF ou CNPJ do cliente"
+                                            />
+                                        </div>
+                                        <div className="md:col-span-1">
+                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Email</label>
+                                            <input
+                                                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
+                                                value={newLeadData.email}
+                                                onChange={e => setNewLeadData({ ...newLeadData, email: e.target.value })}
+                                                placeholder="Informe o email do cliente"
+                                            />
+                                        </div>
+                                        <div className="md:col-span-1">
+                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Celular</label>
+                                            <input
+                                                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
+                                                value={newLeadData.phone}
+                                                onChange={e => setNewLeadData({ ...newLeadData, phone: maskPhone(e.target.value) })}
+                                                maxLength={15}
+                                                placeholder="(00) 00000-0000"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                                        <div className="md:col-span-1">
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Nome da Clínica (Interno)</label>
+                                            <input
+                                                className="w-full bg-slate-800/50 border border-white/5 rounded-lg px-4 py-2 text-sm text-slate-300 focus:border-blue-500 outline-none transition-colors"
+                                                value={newLeadData.clinicName}
+                                                onChange={e => setNewLeadData({ ...newLeadData, clinicName: e.target.value })}
+                                                placeholder="Ex: Clínica Real"
+                                            />
+                                        </div>
+                                        <div className="md:col-span-1">
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Razão Social (Interno)</label>
+                                            <input
+                                                className="w-full bg-slate-800/50 border border-white/5 rounded-lg px-4 py-2 text-sm text-slate-300 focus:border-blue-500 outline-none transition-colors"
+                                                value={newLeadData.legalName || ''}
+                                                onChange={e => setNewLeadData({ ...newLeadData, legalName: e.target.value })}
+                                                placeholder="Ex: Razão Social LTDA"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
+
+                                {/* ENDEREÇO */}
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Nome da Clínica</label>
-                                    <input
-                                        className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
-                                        value={newLeadData.clinicName}
-                                        onChange={e => setNewLeadData({ ...newLeadData, clinicName: e.target.value })}
-                                        placeholder="Ex: Clínica Real"
-                                    />
+                                    <h4 className="text-lg font-bold text-white mb-4 border-b border-white/5 pb-2">Endereço</h4>
+                                    <div className="grid grid-cols-4 gap-6">
+                                        <div className="col-span-4 md:col-span-1">
+                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">CEP (Opcional)</label>
+                                            <input
+                                                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
+                                                value={newLeadData.zipCode || ''}
+                                                onChange={async (e) => {
+                                                    const val = maskCEP(e.target.value);
+                                                    setNewLeadData(prev => ({ ...prev, zipCode: val }));
+                                                    if (val.length === 9) {
+                                                        try {
+                                                            const res = await fetch(`https://viacep.com.br/ws/${val.replace('-', '')}/json/`);
+                                                            const data = await res.json();
+                                                            if (!data.erro) {
+                                                                setNewLeadData(prev => ({
+                                                                    ...prev,
+                                                                    zipCode: val,
+                                                                    address: data.logradouro,
+                                                                    neighborhood: data.bairro,
+                                                                    city: data.localidade,
+                                                                    state: data.uf
+                                                                }));
+                                                            }
+                                                        } catch (error) { console.error(error); }
+                                                    }
+                                                }}
+                                                placeholder="00000-000"
+                                                maxLength={9}
+                                            />
+                                        </div>
+                                        <div className="col-span-4 md:col-span-3 hidden md:block"></div>
+
+                                        <div className="col-span-4 md:col-span-3">
+                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Rua (Opcional)</label>
+                                            <input
+                                                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
+                                                value={newLeadData.address || ''}
+                                                onChange={e => setNewLeadData({ ...newLeadData, address: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="col-span-4 md:col-span-1">
+                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Número (Opcional)</label>
+                                            <input
+                                                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
+                                                value={newLeadData.number || ''}
+                                                onChange={e => setNewLeadData({ ...newLeadData, number: e.target.value })}
+                                            />
+                                        </div>
+
+                                        <div className="col-span-4 md:col-span-2">
+                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Complemento (Opcional)</label>
+                                            <input
+                                                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
+                                                value={newLeadData.complement || ''}
+                                                onChange={e => setNewLeadData({ ...newLeadData, complement: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="col-span-4 md:col-span-2">
+                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Bairro (Opcional)</label>
+                                            <input
+                                                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
+                                                value={newLeadData.neighborhood || ''}
+                                                onChange={e => setNewLeadData({ ...newLeadData, neighborhood: e.target.value })}
+                                            />
+                                        </div>
+
+                                        <div className="col-span-4 md:col-span-3">
+                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Cidade (Opcional)</label>
+                                            <input
+                                                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
+                                                value={newLeadData.city || ''}
+                                                onChange={e => setNewLeadData({ ...newLeadData, city: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="col-span-4 md:col-span-1">
+                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Estado</label>
+                                            <select
+                                                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
+                                                value={newLeadData.state || ''}
+                                                onChange={e => setNewLeadData({ ...newLeadData, state: e.target.value })}
+                                            >
+                                                <option value="">UF</option>
+                                                {BRAZIL_STATES.map(uf => (
+                                                    <option key={uf} value={uf}>{uf}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
+
+                                {/* DADOS COMERCIAIS */}
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Razão Social (Opcional)</label>
-                                    <input
-                                        className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
-                                        value={newLeadData.legalName || ''}
-                                        onChange={e => setNewLeadData({ ...newLeadData, legalName: e.target.value })}
-                                        placeholder="Ex: Irecê Atividades Médicas LTDA"
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">CEP</label>
-                                        <input
-                                            className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
-                                            value={newLeadData.zipCode || ''}
-                                            onChange={e => setNewLeadData({ ...newLeadData, zipCode: e.target.value })}
-                                            placeholder="00000-000"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Telefone</label>
-                                        <input
-                                            className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
-                                            value={newLeadData.phone}
-                                            onChange={e => setNewLeadData({ ...newLeadData, phone: e.target.value })}
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Email</label>
-                                    <input
-                                        className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
-                                        value={newLeadData.email}
-                                        onChange={e => setNewLeadData({ ...newLeadData, email: e.target.value })}
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">CNPJ (Opcional)</label>
-                                        <input
-                                            className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
-                                            value={newLeadData.cnpj || ''}
-                                            onChange={e => setNewLeadData({ ...newLeadData, cnpj: e.target.value })}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Valor Estimado</label>
-                                        <input
-                                            type="number"
-                                            className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
-                                            value={newLeadData.estimatedValue}
-                                            onChange={e => setNewLeadData({ ...newLeadData, estimatedValue: Number(e.target.value) })}
-                                        />
+                                    <h4 className="text-lg font-bold text-white mb-4 border-b border-white/5 pb-2">Dados Comerciais (Interno)</h4>
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Plano de Interesse</label>
+                                            <select
+                                                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none"
+                                                value={newLeadData.planInterest}
+                                                onChange={e => {
+                                                    const newPlan = e.target.value as SaaSPlan;
+                                                    const config = SAAS_PLANS_CONFIG[newPlan];
+                                                    setNewLeadData({
+                                                        ...newLeadData,
+                                                        planInterest: newPlan,
+                                                        estimatedValue: config ? config.monthlyPrice : 0
+                                                    });
+                                                }}
+                                            >
+                                                <option value={SaaSPlan.START}>Start</option>
+                                                <option value={SaaSPlan.GROWTH}>Growth</option>
+                                                <option value={SaaSPlan.EMPIRE}>Empire</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Valor Estimado (R$)</label>
+                                            <input
+                                                type="number"
+                                                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none"
+                                                value={newLeadData.estimatedValue}
+                                                onChange={e => setNewLeadData({ ...newLeadData, estimatedValue: Number(e.target.value) })}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-3 gap-4">
-                                    <div className="col-span-1">
-                                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Número</label>
-                                        <input
-                                            className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
-                                            value={newLeadData.number || ''}
-                                            onChange={e => setNewLeadData({ ...newLeadData, number: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="col-span-2">
-                                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Complemento</label>
-                                        <input
-                                            className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
-                                            value={newLeadData.complement || ''}
-                                            onChange={e => setNewLeadData({ ...newLeadData, complement: e.target.value })}
-                                            placeholder="Sala 101"
-                                        />
-                                    </div>
-                                </div>
+                            </div>
 
-                                <div className="grid grid-cols-3 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Bairro</label>
-                                        <input
-                                            className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
-                                            value={newLeadData.neighborhood || ''}
-                                            onChange={e => setNewLeadData({ ...newLeadData, neighborhood: e.target.value })}
-                                            placeholder="Centro"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Cidade</label>
-                                        <input
-                                            className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
-                                            value={newLeadData.city || ''}
-                                            onChange={e => setNewLeadData({ ...newLeadData, city: e.target.value })}
-                                            placeholder="São Paulo"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Estado</label>
-                                        <input
-                                            className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
-                                            value={newLeadData.state || ''}
-                                            onChange={e => setNewLeadData({ ...newLeadData, state: e.target.value })}
-                                            maxLength={2}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Plano de Interesse</label>
-                                        <select
-                                            className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none appearance-none"
-                                            value={newLeadData.planInterest}
-                                            onChange={e => setNewLeadData({ ...newLeadData, planInterest: e.target.value as SaaSPlan })}
-                                        >
-                                            <option value={SaaSPlan.START}>Start</option>
-                                            <option value={SaaSPlan.GROWTH}>Growth</option>
-                                            <option value={SaaSPlan.EMPIRE}>Empire</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Valor Estimado (R$)</label>
-                                        <input
-                                            type="number"
-                                            className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-yellow-500 outline-none"
-                                            value={newLeadData.estimatedValue}
-                                            onChange={e => setNewLeadData({ ...newLeadData, estimatedValue: Number(e.target.value) })}
-                                        />
-                                    </div>
-                                </div>
-
+                            <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-white/5">
+                                <button
+                                    onClick={() => setShowNewLeadModal(false)}
+                                    className="px-6 py-3 rounded-full border border-white/10 text-white font-medium hover:bg-white/5 transition-colors"
+                                >
+                                    Cancelar
+                                </button>
                                 <button
                                     onClick={handleCreateLead}
-                                    className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3 rounded-lg mt-4 transition-colors"
+                                    className="px-6 py-3 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-bold transition-colors shadow-lg shadow-blue-500/20"
                                 >
-                                    Criar Lead
+                                    Adicionar cliente
                                 </button>
                             </div>
                         </div>
@@ -1516,7 +1598,6 @@ const SaaSCrmModule: React.FC = () => {
                                                     onChange={(e) => {
                                                         const val = e.target.value;
                                                         setViewLead(prev => prev ? ({ ...prev, email: val }) : null);
-                                                        updateSaaSLead(viewLead.id, { email: val });
                                                     }}
                                                 />
                                             </div>
@@ -1526,9 +1607,8 @@ const SaaSCrmModule: React.FC = () => {
                                                     className="bg-transparent text-slate-300 w-full text-sm outline-none border-b border-transparent focus:border-yellow-500/50 transition-colors"
                                                     value={viewLead.phone}
                                                     onChange={(e) => {
-                                                        const val = e.target.value;
+                                                        const val = maskPhone(e.target.value);
                                                         setViewLead(prev => prev ? ({ ...prev, phone: val }) : null);
-                                                        updateSaaSLead(viewLead.id, { phone: val });
                                                     }}
                                                 />
                                             </div>
@@ -1546,9 +1626,8 @@ const SaaSCrmModule: React.FC = () => {
                                                 className="bg-slate-800/50 text-slate-300 w-full text-sm p-2 rounded border border-white/5 outline-none focus:border-yellow-500/50"
                                                 value={viewLead.zipCode || ''}
                                                 onChange={(e) => {
-                                                    const val = e.target.value;
+                                                    const val = maskCEP(e.target.value);
                                                     setViewLead(prev => prev ? ({ ...prev, zipCode: val }) : null);
-                                                    updateSaaSLead(viewLead.id, { zipCode: val });
                                                 }}
                                             />
                                             <input
@@ -1558,7 +1637,6 @@ const SaaSCrmModule: React.FC = () => {
                                                 onChange={(e) => {
                                                     const val = e.target.value;
                                                     setViewLead(prev => prev ? ({ ...prev, address: val }) : null);
-                                                    updateSaaSLead(viewLead.id, { address: val });
                                                 }}
                                             />
                                             <div className="flex gap-2">
@@ -1569,7 +1647,6 @@ const SaaSCrmModule: React.FC = () => {
                                                     onChange={(e) => {
                                                         const val = e.target.value;
                                                         setViewLead(prev => prev ? ({ ...prev, number: val }) : null);
-                                                        updateSaaSLead(viewLead.id, { number: val });
                                                     }}
                                                 />
                                                 <input
@@ -1579,7 +1656,6 @@ const SaaSCrmModule: React.FC = () => {
                                                     onChange={(e) => {
                                                         const val = e.target.value;
                                                         setViewLead(prev => prev ? ({ ...prev, complement: val }) : null);
-                                                        updateSaaSLead(viewLead.id, { complement: val });
                                                     }}
                                                 />
                                             </div>
@@ -1591,7 +1667,6 @@ const SaaSCrmModule: React.FC = () => {
                                                     onChange={(e) => {
                                                         const val = e.target.value;
                                                         setViewLead(prev => prev ? ({ ...prev, city: val }) : null);
-                                                        updateSaaSLead(viewLead.id, { city: val });
                                                     }}
                                                 />
                                                 <input
@@ -1599,9 +1674,9 @@ const SaaSCrmModule: React.FC = () => {
                                                     className="bg-slate-800/50 text-slate-300 w-1/3 text-sm p-2 rounded border border-white/5 outline-none focus:border-yellow-500/50"
                                                     value={viewLead.state || ''}
                                                     onChange={(e) => {
-                                                        const val = e.target.value;
+                                                        // Uppercase & Max 2 chars
+                                                        const val = e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2);
                                                         setViewLead(prev => prev ? ({ ...prev, state: val }) : null);
-                                                        updateSaaSLead(viewLead.id, { state: val });
                                                     }}
                                                     maxLength={2}
                                                 />
@@ -1609,8 +1684,32 @@ const SaaSCrmModule: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    {/* Close Deal Button */}
+                                    {/* Save Changes Button (New) */}
                                     <div className="pt-4 mt-4 border-t border-white/10">
+                                        <button
+                                            onClick={() => {
+                                                if (viewLead) {
+                                                    updateSaaSLead(viewLead.id, {
+                                                        email: viewLead.email,
+                                                        phone: viewLead.phone,
+                                                        zipCode: viewLead.zipCode,
+                                                        address: viewLead.address,
+                                                        number: viewLead.number,
+                                                        complement: viewLead.complement,
+                                                        city: viewLead.city,
+                                                        state: viewLead.state
+                                                    });
+                                                    addToast('Dados salvos com sucesso!', 'success');
+                                                }
+                                            }}
+                                            className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg font-bold transition-colors mb-2 flex items-center justify-center gap-2"
+                                        >
+                                            <CheckCircle size={16} /> Salvar Alterações
+                                        </button>
+                                    </div>
+
+                                    {/* Close Deal Button */}
+                                    <div className="">
                                         {viewLead.stage !== SaaSLeadStage.CLOSED_WON ? (
                                             <button
                                                 onClick={() => {
@@ -1669,9 +1768,25 @@ const SaaSCrmModule: React.FC = () => {
                                                     className="w-full h-32 bg-slate-800 border border-white/10 rounded-xl p-4 text-slate-300 focus:border-yellow-500 outline-none resize-none transition-colors"
                                                     placeholder="Escreva notas sobre a negociação..."
                                                     value={viewLead.notes || ''}
-                                                    onChange={(e) => updateSaaSLead(viewLead.id, { notes: e.target.value })}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        setViewLead(prev => prev ? ({ ...prev, notes: val }) : null);
+                                                    }}
                                                 />
-                                                <p className="text-xs text-slate-500 mt-2 text-right">Alterações salvas automaticamente.</p>
+                                                <div className="flex justify-between items-center mt-2">
+                                                    <p className="text-xs text-slate-500">Salve para registrar as alterações.</p>
+                                                    <button
+                                                        onClick={() => {
+                                                            if (viewLead) {
+                                                                updateSaaSLead(viewLead.id, { notes: viewLead.notes });
+                                                                addToast('Observação salva!', 'success');
+                                                            }
+                                                        }}
+                                                        className="text-xs bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 px-3 py-1 rounded border border-yellow-500/30 transition-colors"
+                                                    >
+                                                        Salvar Nota
+                                                    </button>
+                                                </div>
                                             </div>
 
                                             {/* TASKS SECTION */}
@@ -1971,19 +2086,27 @@ const SaaSCrmModule: React.FC = () => {
                             <div className="space-y-6">
                                 <div>
                                     <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Plano Escolhido</label>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        {[SaaSPlan.START, SaaSPlan.GROWTH, SaaSPlan.EMPIRE].map((plan) => (
-                                            <button
-                                                key={plan}
-                                                onClick={() => setClosingData({ ...closingData, plan })}
-                                                className={`py-2 px-3 rounded-lg border text-sm font-bold transition-all ${closingData.plan === plan
-                                                    ? 'bg-emerald-600 border-emerald-500 text-white'
-                                                    : 'bg-slate-800 border-white/10 text-slate-400 hover:border-emerald-500/50'
-                                                    }`}
-                                            >
-                                                {plan.toUpperCase()}
-                                            </button>
-                                        ))}
+                                    <div className="grid grid-cols-3 gap-3">
+                                        {[SaaSPlan.START, SaaSPlan.GROWTH, SaaSPlan.EMPIRE].map((plan) => {
+                                            const config = SAAS_PLANS_CONFIG[plan];
+                                            const isSelected = closingData.plan === plan;
+                                            return (
+                                                <button
+                                                    key={plan}
+                                                    onClick={() => setClosingData({ ...closingData, plan })}
+                                                    className={`py-3 px-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${isSelected
+                                                        ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-900/20'
+                                                        : 'bg-slate-800 border-white/10 text-slate-400 hover:bg-slate-750 hover:border-emerald-500/30'
+                                                        }`}
+                                                >
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider">{config?.name || plan}</span>
+                                                    <span className="text-lg font-mono font-bold text-white">
+                                                        {config ? `R$ ${Math.floor(config.monthlyPrice)}` : '-'}
+                                                    </span>
+                                                    {isSelected && <CheckCircle size={14} className="mt-1 animate-in zoom-in" />}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 </div>
 
@@ -2026,23 +2149,39 @@ const SaaSCrmModule: React.FC = () => {
                                         <div className="grid grid-cols-2 gap-4">
                                             <button
                                                 onClick={() => setClosingData({ ...closingData, recurrence: 'monthly' })}
-                                                className={`p-3 rounded-lg border text-left transition-all ${closingData.recurrence === 'monthly'
+                                                className={`p-4 rounded-xl border text-left transition-all ${closingData.recurrence === 'monthly'
                                                     ? 'bg-slate-700 border-white text-white'
                                                     : 'bg-slate-800 border-white/10 text-slate-400'
                                                     }`}
                                             >
-                                                <span className="block font-bold">Mensal</span>
-                                                <span className="text-xs opacity-70">Sem desconto</span>
+                                                <div className="flex justify-between items-start">
+                                                    <span className="block font-bold">Mensal</span>
+                                                    {closingData.plan && SAAS_PLANS_CONFIG[closingData.plan] && (
+                                                        <span className="text-sm font-mono text-emerald-400">
+                                                            R$ {SAAS_PLANS_CONFIG[closingData.plan].monthlyPrice.toFixed(2)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <span className="text-xs opacity-70 mt-1 block">Pagamento todo mês</span>
                                             </button>
                                             <button
                                                 onClick={() => setClosingData({ ...closingData, recurrence: 'annual' })}
-                                                className={`p-3 rounded-lg border text-left transition-all relative overflow-hidden ${closingData.recurrence === 'annual'
+                                                className={`p-4 rounded-xl border text-left transition-all relative overflow-hidden ${closingData.recurrence === 'annual'
                                                     ? 'bg-gradient-to-br from-yellow-600 to-orange-600 border-yellow-400 text-white'
                                                     : 'bg-slate-800 border-white/10 text-slate-400'
                                                     }`}
                                             >
-                                                <span className="block font-bold">Anual</span>
-                                                <span className="text-xs opacity-90 text-yellow-200">Com Desconto 🎉</span>
+                                                <div className="flex justify-between items-start">
+                                                    <span className="block font-bold">Anual</span>
+                                                    {closingData.plan && SAAS_PLANS_CONFIG[closingData.plan] && (
+                                                        <span className="text-sm font-mono text-white bg-black/20 px-1 rounded">
+                                                            R$ {SAAS_PLANS_CONFIG[closingData.plan].yearlyPrice.toFixed(0)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <span className="text-[10px] mt-2 inline-block bg-white/20 px-2 py-0.5 rounded text-white font-bold">
+                                                    Economize ~17%
+                                                </span>
                                             </button>
                                         </div>
                                     </div>

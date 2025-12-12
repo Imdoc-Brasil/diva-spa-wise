@@ -47,6 +47,9 @@ import TreatmentPlansModule from './components/modules/TreatmentPlansModule';
 import PublicPage from './components/public/PublicPage';
 import SalesPage from './components/public/SalesPage';
 import SignupPage from './components/public/SignupPage';
+import RevenueCalculatorPage from './components/public/tools/RevenueCalculatorPage';
+import BlogPage from './components/public/blog/BlogPage';
+import BlogPostPage from './components/public/blog/BlogPostPage';
 import StaffDashboard from './components/StaffDashboard';
 import LoginPage from './components/LoginPage';
 import NotFound from './components/NotFound';
@@ -89,6 +92,9 @@ const AppContent: React.FC = () => {
                 {/* PUBLIC SITE ROUTE (Accessible without Login) */}
                 <Route path="/site" element={<PublicPage />} />
                 <Route path="/sales" element={<SalesPage />} />
+                <Route path="/tools/revenue-calculator" element={<RevenueCalculatorPage />} />
+                <Route path="/blog" element={<BlogPage />} />
+                <Route path="/blog/:slug" element={<BlogPostPage />} />
                 <Route path="/signup" element={<SignupPage />} />
                 <Route path="/setup" element={<OrganizationSetup />} />
 

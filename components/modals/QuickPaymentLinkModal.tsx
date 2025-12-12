@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import { X, Copy, CheckCircle, Smartphone, CreditCard, FileText } from 'lucide-react';
-import { asaasService } from '../../services/asaasService';
-import { useToast } from '../ui/ToastContext';
+import { asaasService } from '@/services/asaasService';
+import { useToast } from '@/components/ui/ToastContext';
+import { SaaSLead, SaaSPlan } from '@/types_saas';
+import { SAAS_PLANS_CONFIG } from '@/components/modules/saas/saasPlans';
+import { maskCpfCnpj } from '@/utils/masks';
 
 interface QuickPaymentLinkModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSuccess?: () => void;
+    lead?: SaaSLead | null;
 }
 
 // Função auxiliar para gerar CPF válido para testes
@@ -23,7 +27,9 @@ const generateCpf = () => {
     return `${n.join('')}${d1}${d2}`;
 };
 
-const QuickPaymentLinkModal: React.FC<QuickPaymentLinkModalProps> = ({ isOpen, onClose, onSuccess }) => {
+const QuickPaymentLinkModal: React.FC<QuickPaymentLinkModalProps> = ({ isOpen, onClose, onSuccess, lead }) => {
+
+
     const { addToast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
     const [step, setStep] = useState<'form' | 'success'>('form');
@@ -35,10 +41,51 @@ const QuickPaymentLinkModal: React.FC<QuickPaymentLinkModalProps> = ({ isOpen, o
     // New Recurrence State
     const [isRecurrent, setIsRecurrent] = useState(false);
     const [cycle, setCycle] = useState<'MONTHLY' | 'YEARLY'>('MONTHLY');
+    const [selectedPlan, setSelectedPlan] = useState<SaaSPlan | ''>('');
+    const [customerCpf, setCustomerCpf] = useState('');
+    const [customerName, setCustomerName] = useState('');
 
     const [generatedLink, setGeneratedLink] = useState<string>('');
 
-    if (!isOpen) return null;
+
+
+    // Auto-fill from Lead
+    React.useEffect(() => {
+        if (!SAAS_PLANS_CONFIG) return;
+        if (isOpen && lead) {
+            const planConfig = SAAS_PLANS_CONFIG[lead.planInterest];
+            if (planConfig) {
+                setValue(planConfig.monthlyPrice.toFixed(2));
+                setDescription(`Assinatura ${planConfig.name} - ${lead.clinicName}`);
+                setIsRecurrent(true);
+                setCycle('MONTHLY');
+                setSelectedPlan(lead.planInterest);
+            }
+            // Auto-fill customer data
+            setCustomerCpf(lead.cnpj || '');
+            setCustomerName(lead.legalName || lead.clinicName || lead.name || '');
+        } else if (isOpen && !lead) {
+            // Reset for generic use
+            setValue('0.00');
+            setDescription('');
+            setIsRecurrent(false);
+            setSelectedPlan('');
+            setCustomerCpf('');
+            setCustomerName('');
+        }
+    }, [isOpen, lead]);
+
+    // Handle Plan Selection Change
+    const handlePlanChange = (plan: SaaSPlan) => {
+        if (!SAAS_PLANS_CONFIG) return;
+        setSelectedPlan(plan);
+        const config = SAAS_PLANS_CONFIG[plan];
+        if (config) {
+            setValue(cycle === 'YEARLY' ? config.yearlyPrice.toFixed(2) : config.monthlyPrice.toFixed(2));
+            setDescription(`Assinatura ${config.name}`);
+            setIsRecurrent(true);
+        }
+    };
 
     const handleCreateLink = async () => {
         setIsLoading(true);
@@ -50,19 +97,35 @@ const QuickPaymentLinkModal: React.FC<QuickPaymentLinkModalProps> = ({ isOpen, o
                 return;
             }
 
-            // ESTRATÉGIA ROBUSTA: Criar Cliente Teste -> Gerar Cobrança (Invoice)
-            // Isso evita bloqueios do endpoint /checkouts em contas novas
-
-            // Tenta usar um CPF fixo válido ou gera um novo se preferir. 
-            // Vamos gerar um para garantir que não conflite se o fixo estiver bloqueado.
-            const cpfTeste = generateCpf();
+            if (!customerCpf || !customerName) {
+                addToast('Preencha CPF/CNPJ e Nome do Cliente', 'error');
+                return;
+            }
 
             // 1. Busca ou Cria Cliente
-            let customer = await asaasService.findCustomer(cpfTeste);
+            let cpfCnpjToUse = customerCpf.replace(/\D/g, '');
+            let nameToUse = customerName;
+            let addressData = {};
+
+            if (lead) {
+                // Se tiver lead, usa os dados do lead para garantir endereço completo
+                addressData = {
+                    postalCode: lead.zipCode,
+                    address: lead.address,
+                    addressNumber: lead.number,
+                    complement: lead.complement,
+                    province: lead.neighborhood,
+                };
+            }
+
+            let customer = await asaasService.findCustomer(cpfCnpjToUse);
             if (!customer) {
                 customer = await asaasService.createCustomer({
-                    name: 'Cliente Teste Sandbox',
-                    cpfCnpj: cpfTeste
+                    name: nameToUse,
+                    cpfCnpj: cpfCnpjToUse,
+                    email: lead?.email,
+                    mobilePhone: lead?.phone,
+                    ...addressData
                 });
             }
 
@@ -123,6 +186,36 @@ const QuickPaymentLinkModal: React.FC<QuickPaymentLinkModalProps> = ({ isOpen, o
         addToast('Link copiado!', 'success');
     };
 
+    if (!isOpen) return null;
+
+    // Safety Check for Runtime Dependencies
+    if (!SaaSPlan || !SAAS_PLANS_CONFIG) {
+        console.error("Critical Dependencies Missing in QPModal used in SaaSFinanceModule:", { SaaSPlan, SAAS_PLANS_CONFIG });
+        return (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-red-900/90 text-white p-8 animate-in fade-in zoom-in duration-300">
+                <div className="bg-red-950 border-2 border-red-500 p-8 rounded-2xl max-w-lg shadow-2xl">
+                    <h3 className="text-2xl font-black mb-4 flex items-center gap-3 text-red-100">
+                        <span className="text-3xl">⚠️</span> Erro de Dependência
+                    </h3>
+                    <p className="text-red-200 mb-4 text-lg">
+                        O sistema falhou ao carregar as configurações de Planos SaaS.
+                    </p>
+                    <div className="bg-black/40 p-4 rounded-lg text-sm font-mono text-red-300 border border-red-500/30 overflow-auto max-h-40">
+                        <p><strong>Config Status:</strong></p>
+                        <p>SaaSPlan Enum: {typeof SaaSPlan !== 'undefined' ? 'Loaded ✅' : 'Missing ❌'}</p>
+                        <p>SAAS_PLANS_CONFIG: {typeof SAAS_PLANS_CONFIG !== 'undefined' ? 'Loaded ✅' : 'Missing ❌'}</p>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="mt-8 w-full bg-white hover:bg-red-50 text-red-900 px-6 py-4 rounded-xl font-bold text-lg transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                    >
+                        Fechar Janela
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
             <div className={`bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl transition-all duration-300 transform scale-100`}>
@@ -139,6 +232,46 @@ const QuickPaymentLinkModal: React.FC<QuickPaymentLinkModalProps> = ({ isOpen, o
                 <div className="p-6">
                     {step === 'form' ? (
                         <div className="space-y-4">
+
+                            {/* Customer Fields */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">CPF / CNPJ</label>
+                                    <input
+                                        type="text"
+                                        value={customerCpf}
+                                        onChange={(e) => setCustomerCpf(maskCpfCnpj(e.target.value))}
+                                        className="w-full p-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-blue-500 bg-white text-gray-700"
+                                        placeholder="000.000.000-00"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Nome do Cliente</label>
+                                    <input
+                                        type="text"
+                                        value={customerName}
+                                        onChange={(e) => setCustomerName(e.target.value)}
+                                        className="w-full p-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-blue-500 bg-white text-gray-700"
+                                        placeholder="Nome Completo"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Plan Selector */}
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">Selecionar Plano (Opcional)</label>
+                                <select
+                                    className="w-full p-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-blue-500 bg-white text-gray-700"
+                                    value={selectedPlan}
+                                    onChange={(e) => handlePlanChange(e.target.value as SaaSPlan)}
+                                >
+                                    <option value="">Personalizado / Avulso</option>
+                                    <option value={SaaSPlan.START}>Plano Start (R$ 199,90)</option>
+                                    <option value={SaaSPlan.GROWTH}>Plano Growth (R$ 399,90)</option>
+                                    <option value={SaaSPlan.EMPIRE}>Plano Empire (R$ 799,90)</option>
+                                </select>
+                            </div>
+
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">Valor (R$)</label>
                                 <input

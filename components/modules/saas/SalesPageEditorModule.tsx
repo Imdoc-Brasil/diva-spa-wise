@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../ui/ToastContext';
+import { supabase } from '../../../services/supabase';
 import {
     Save, Globe, Activity, Layout, Type,
-    Search, Image as ImageIcon, Settings, CheckCircle
+    Search, Image as ImageIcon, Settings, CheckCircle, DollarSign, FileText
 } from 'lucide-react';
 import { SaaSAppConfig } from '../../../types';
+import BlogEditorModule from './BlogEditorModule';
 
 const SalesPageEditorModule: React.FC = () => {
     const { saasAppConfig, updateSaaSAppConfig } = useData();
@@ -13,7 +15,40 @@ const SalesPageEditorModule: React.FC = () => {
 
     // Local state for form
     const [config, setConfig] = useState<SaaSAppConfig | null>(null);
-    const [activeTab, setActiveTab] = useState<'content' | 'seo' | 'visuals' | 'integrations'>('content');
+    const [activeTab, setActiveTab] = useState<'content' | 'seo' | 'visuals' | 'integrations' | 'plans' | 'blog'>('content');
+    const [plans, setPlans] = useState<any[]>([]);
+    const [loadingPlans, setLoadingPlans] = useState(false);
+
+    useEffect(() => {
+        if (activeTab === 'plans') {
+            fetchPlans();
+        }
+    }, [activeTab]);
+
+    const fetchPlans = async () => {
+        setLoadingPlans(true);
+        const { data, error } = await supabase.from('saas_plans').select('*');
+        if (error) {
+            console.error('Error fetching plans:', error);
+            addToast('Erro ao carregar planos. Tabela não encontrada?', 'error');
+        }
+        if (data) {
+            const PLAN_ORDER = ['start', 'growth', 'experts', 'empire'];
+            const sortedPlans = (data as any[]).sort((a, b) => PLAN_ORDER.indexOf(a.key) - PLAN_ORDER.indexOf(b.key));
+            setPlans(sortedPlans);
+        }
+        setLoadingPlans(false);
+    };
+
+    const handleUpdatePlan = async (planId: string, updates: any) => {
+        const { error } = await (supabase.from('saas_plans') as any).update(updates).eq('id', planId);
+        if (!error) {
+            addToast('Plano atualizado!', 'success');
+            setPlans(plans.map(p => p.id === planId ? { ...p, ...updates } : p));
+        } else {
+            addToast('Erro ao atualizar plano', 'error');
+        }
+    };
 
     useEffect(() => {
         if (saasAppConfig) {
@@ -63,13 +98,15 @@ const SalesPageEditorModule: React.FC = () => {
                     { id: 'visuals', label: 'Visual & Cores', icon: <Layout size={18} /> },
                     { id: 'seo', label: 'SEO & Meta Tags', icon: <Search size={18} /> },
                     { id: 'integrations', label: 'Analytics & Pixels', icon: <Activity size={18} /> },
+                    { id: 'plans', label: 'Planos & Assinaturas', icon: <DollarSign size={18} /> },
+                    { id: 'blog', label: 'Blog & Conteúdo', icon: <FileText size={18} /> },
                 ].map(tab => (
                     <button
                         key={tab.id}
-                        onClick={() => setActiveTab(tab.id as any)}
+                        onClick={() => setActiveTab(tab.id as typeof activeTab)}
                         className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id
-                                ? 'border-purple-500 text-purple-400 font-medium'
-                                : 'border-transparent text-slate-400 hover:text-white'
+                            ? 'border-purple-500 text-purple-400 font-medium'
+                            : 'border-transparent text-slate-400 hover:text-white'
                             }`}
                     >
                         {tab.icon} {tab.label}
@@ -112,8 +149,88 @@ const SalesPageEditorModule: React.FC = () => {
                                     type="text"
                                     value={config.contactPhone}
                                     onChange={e => setConfig({ ...config, contactPhone: e.target.value })}
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3"
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white"
                                 />
+                            </div>
+                        </div>
+
+                        {/* Features Section Texts */}
+                        <div className="pt-8 border-t border-slate-800">
+                            <h3 className="text-lg font-bold mb-4 text-purple-400">Seção de Features</h3>
+                            <div className="grid grid-cols-1 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-400 mb-2">Título</label>
+                                    <input
+                                        type="text"
+                                        value={config.featuresTitle || ''}
+                                        onChange={e => setConfig({ ...config, featuresTitle: e.target.value })}
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white placeholder-slate-600"
+                                        placeholder="Ex: Por que escolher o I'mdoc?"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-400 mb-2">Subtítulo</label>
+                                    <textarea
+                                        value={config.featuresSubtitle || ''}
+                                        onChange={e => setConfig({ ...config, featuresSubtitle: e.target.value })}
+                                        rows={2}
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white placeholder-slate-600"
+                                        placeholder="Texto explicativo abaixo do título"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Pricing Section Texts */}
+                        <div className="pt-8 border-t border-slate-800">
+                            <h3 className="text-lg font-bold mb-4 text-purple-400">Seção de Preços</h3>
+                            <div className="grid grid-cols-1 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-400 mb-2">Título</label>
+                                    <input
+                                        type="text"
+                                        value={config.pricingTitle || ''}
+                                        onChange={e => setConfig({ ...config, pricingTitle: e.target.value })}
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white placeholder-slate-600"
+                                        placeholder="Ex: Escolha seu plano"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-400 mb-2">Subtítulo</label>
+                                    <textarea
+                                        value={config.pricingSubtitle || ''}
+                                        onChange={e => setConfig({ ...config, pricingSubtitle: e.target.value })}
+                                        rows={2}
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white placeholder-slate-600"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* CTA Section Texts */}
+                        <div className="pt-8 border-t border-slate-800">
+                            <h3 className="text-lg font-bold mb-4 text-purple-400">Chamada para Ação (CTA Final)</h3>
+                            <div className="grid grid-cols-1 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-400 mb-2">Título</label>
+                                    <input
+                                        type="text"
+                                        value={config.ctaTitle || ''}
+                                        onChange={e => setConfig({ ...config, ctaTitle: e.target.value })}
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white placeholder-slate-600"
+                                        placeholder="Ex: Pronto para começar?"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-400 mb-2">Botão de Ação</label>
+                                    <input
+                                        type="text"
+                                        value={config.ctaButtonText || ''}
+                                        onChange={e => setConfig({ ...config, ctaButtonText: e.target.value })}
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white placeholder-slate-600"
+                                        placeholder="Ex: Começar Agora"
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -226,6 +343,40 @@ const SalesPageEditorModule: React.FC = () => {
                 {/* VISUALS TAB */}
                 {activeTab === 'visuals' && (
                     <div className="space-y-6 max-w-3xl">
+                        {/* Theme Config */}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-2">Tema & Aparência</label>
+                            <div className="flex flex-col gap-4 bg-slate-800 p-4 rounded-lg border border-slate-700">
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="checkbox"
+                                        checked={config.enableThemeToggle || false}
+                                        onChange={e => setConfig({ ...config, enableThemeToggle: e.target.checked })}
+                                        className="w-5 h-5 rounded border-slate-600 bg-slate-700 text-purple-600 focus:ring-purple-500"
+                                    />
+                                    <span className="text-white">Mostrar botão de alternar tema (Sol/Lua) no site</span>
+                                </div>
+
+                                <div className="pt-2 border-t border-slate-700">
+                                    <label className="text-xs text-slate-500 mb-2 block font-bold uppercase">Tema Padrão Inicial</label>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setConfig({ ...config, defaultTheme: 'dark' })}
+                                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${config.defaultTheme === 'dark' || !config.defaultTheme ? 'bg-slate-950 text-white border-purple-500 ring-1 ring-purple-500' : 'bg-slate-900 text-slate-400 border-slate-700 hover:border-slate-500'}`}
+                                        >
+                                            Dark Mode (Escuro)
+                                        </button>
+                                        <button
+                                            onClick={() => setConfig({ ...config, defaultTheme: 'light' })}
+                                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${config.defaultTheme === 'light' ? 'bg-white text-slate-900 border-purple-500 ring-1 ring-purple-500' : 'bg-slate-100 text-slate-500 border-slate-300 hover:border-slate-400'}`}
+                                        >
+                                            Light Mode (Claro)
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div>
                             <label className="block text-sm font-medium text-slate-400 mb-2">Cor Primária (Hex)</label>
                             <div className="flex gap-4 items-center">
@@ -235,13 +386,42 @@ const SalesPageEditorModule: React.FC = () => {
                                     onChange={e => setConfig({ ...config, primaryColor: e.target.value })}
                                     className="w-16 h-12 bg-transparent border-0 cursor-pointer"
                                 />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-2">Cor Secundária (Hex)</label>
+                            <div className="flex gap-4 items-center">
+                                <input
+                                    type="color"
+                                    value={config.secondaryColor || '#0ea5e9'}
+                                    onChange={e => setConfig({ ...config, secondaryColor: e.target.value })}
+                                    className="w-16 h-12 bg-transparent border-0 cursor-pointer"
+                                />
                                 <input
                                     type="text"
-                                    value={config.primaryColor}
-                                    onChange={e => setConfig({ ...config, primaryColor: e.target.value })}
+                                    value={config.secondaryColor || '#0ea5e9'}
+                                    onChange={e => setConfig({ ...config, secondaryColor: e.target.value })}
                                     className="bg-slate-800 border border-slate-700 rounded-lg p-3 text-white uppercase font-mono w-32"
                                 />
                             </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-2">Tipografia (Google Fonts)</label>
+                            <select
+                                value={config.fontFamily || 'Inter'}
+                                onChange={e => setConfig({ ...config, fontFamily: e.target.value })}
+                                className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white"
+                            >
+                                <option value="Inter">Inter (Padrão - Clean)</option>
+                                <option value="Roboto">Roboto (Clássico)</option>
+                                <option value="Poppins">Poppins (Geométrico/Moderno)</option>
+                                <option value="Montserrat">Montserrat (Elegante)</option>
+                                <option value="Open Sans">Open Sans (Legibilidade)</option>
+                                <option value="Lato">Lato (Equilibrado)</option>
+                                <option value="Playfair Display">Playfair Display (Serifado/Luxo)</option>
+                            </select>
                         </div>
 
                         <div>
@@ -292,6 +472,82 @@ const SalesPageEditorModule: React.FC = () => {
                             </div>
                         </div>
                     </div>
+                )}
+
+                {/* PLANS TAB */}
+                {activeTab === 'plans' && (
+                    <div className="space-y-6">
+                        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 text-yellow-200 text-sm mb-6">
+                            <p><strong>Atenção:</strong> Alterar os preços aqui atualiza a tabela de vendas imediatamente. Clientes existentes não são afetados.</p>
+                        </div>
+
+                        {loadingPlans ? (
+                            <div className="text-center py-8 text-slate-400">Carregando planos...</div>
+                        ) : (
+                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                                {plans.map(plan => (
+                                    <div key={plan.id} className="bg-slate-800 border border-slate-700 rounded-xl p-6 hover:border-slate-600 transition-colors">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div>
+                                                <h3 className="text-xl font-bold text-white">{plan.name}</h3>
+                                                <span className="text-xs text-slate-500 font-mono uppercase">{plan.key}</span>
+                                            </div>
+                                            {plan.is_popular && <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded">Popular</span>}
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4 mb-4">
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Mensal (R$)</label>
+                                                <input
+                                                    type="number"
+                                                    value={plan.monthly_price}
+                                                    onChange={e => handleUpdatePlan(plan.id, { monthly_price: Number(e.target.value) })}
+                                                    className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white font-mono"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Anual (R$)</label>
+                                                <input
+                                                    type="number"
+                                                    value={plan.yearly_price}
+                                                    onChange={e => handleUpdatePlan(plan.id, { yearly_price: Number(e.target.value) })}
+                                                    className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white font-mono"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="mb-4">
+                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Descrição Curta</label>
+                                            <input
+                                                type="text"
+                                                value={plan.description}
+                                                onChange={e => handleUpdatePlan(plan.id, { description: e.target.value })}
+                                                className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-slate-300"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Features (Uma por linha)</label>
+                                            <textarea
+                                                rows={5}
+                                                value={Array.isArray(plan.features) ? plan.features.join('\n') : ''}
+                                                onChange={e => {
+                                                    const lines = e.target.value.split('\n').filter((l: string) => l.trim() !== '');
+                                                    handleUpdatePlan(plan.id, { features: lines });
+                                                }}
+                                                className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-slate-300 font-mono"
+                                                placeholder="Agenda Inteligente&#10;Prontuário..."
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+                {/* BLOG TAB */}
+                {activeTab === 'blog' && (
+                    <BlogEditorModule />
                 )}
             </div>
         </div>

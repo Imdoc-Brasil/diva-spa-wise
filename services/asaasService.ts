@@ -25,6 +25,19 @@ export interface CreateCustomerDTO {
     email?: string;
     mobilePhone?: string;
     externalReference?: string; // Nosso ID uuid
+
+    // Address & Extra Info
+    postalCode?: string;
+    address?: string;
+    addressNumber?: string;
+    complement?: string;
+    province?: string; // Bairro
+    city?: string; // Nome da cidade (embora API peça ID, às vezes aceita nome ou ignora se postalCode for enviado)
+    state?: string;
+    country?: string;
+    notificationDisabled?: boolean;
+    observations?: string;
+    groupName?: string;
 }
 
 export const asaasService = {
@@ -136,6 +149,7 @@ export const asaasService = {
         nextDueDate: string; // YYYY-MM-DD
         cycle: 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'SEMIANNUALLY' | 'YEARLY';
         description: string;
+        externalReference?: string; // ID do assinante no nosso sistema
     }) => {
         try {
             const response = await fetch(`${ASAAS_API_URL}/subscriptions`, {

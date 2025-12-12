@@ -15,6 +15,7 @@ export enum SaaSLeadStage {
 export enum SaaSPlan {
     START = 'Start',
     GROWTH = 'Growth',
+    EXPERTS = 'Experts',
     EMPIRE = 'Empire'
 }
 

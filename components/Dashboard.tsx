@@ -8,7 +8,8 @@ import {
     AlertCircle,
     MapPin,
     Clock,
-    Sun
+    Sun,
+    Sparkles
 } from 'lucide-react';
 import {
     BarChart,
@@ -29,10 +30,13 @@ import { useNavigate } from 'react-router-dom';
 import DailyBriefingModal from './modals/DailyBriefingModal';
 import { User, UserRole, AppointmentStatus, LeadStage } from '../types';
 import { useUnitData } from './hooks/useUnitData';
+import { useOrganization } from './context/OrganizationContext';
 
 const Dashboard: React.FC = () => {
     const navigate = useNavigate();
-    const { transactions, appointments, leads, clients, selectedUnitId, units } = useUnitData();
+    const { transactions, appointments, leads, selectedUnitId, units } = useUnitData();
+    const { organization } = useOrganization();
+
     const [isBriefingOpen, setIsBriefingOpen] = useState(false);
 
     // Mock User for Briefing (In real app, this comes from Auth Context)
@@ -162,6 +166,50 @@ const Dashboard: React.FC = () => {
                     </span>
                 </div>
             </div>
+
+            {/* SaaS Subscription Status Banner - TRIAL */}
+            {organization?.subscriptionStatus === 'trial' && (
+                <div className="bg-gradient-to-r from-purple-900 to-indigo-900 rounded-xl p-4 shadow-lg border border-purple-500/30 flex flex-col md:flex-row items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4">
+                    <div className="flex items-center gap-4">
+                        <div className="bg-white/10 p-2 rounded-lg">
+                            <Sparkles className="text-yellow-400 animate-pulse" size={24} />
+                        </div>
+                        <div>
+                            <h3 className="text-white font-bold text-lg">Modo Trial Ativo</h3>
+                            <p className="text-purple-200 text-sm">
+                                Você tem <span className="text-white font-bold">{Math.max(0, Math.ceil((new Date(organization.trialEndsAt || '').getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} dias</span> restantes de degustação premium.
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => navigate('/settings/organization')}
+                        className="bg-white text-purple-900 px-6 py-2 rounded-full font-bold hover:bg-purple-50 transition-colors shadow-lg whitespace-nowrap"
+                    >
+                        Assinar Agora
+                    </button>
+                </div>
+            )}
+
+            {/* SaaS Subscription Status Banner - PAST DUE */}
+            {organization?.subscriptionStatus === 'past_due' && (
+                <div className="bg-red-50 rounded-xl p-4 border border-red-200 flex flex-col md:flex-row items-center justify-between gap-4 animate-pulse">
+                    <div className="flex items-center gap-4">
+                        <AlertCircle className="text-red-600" size={24} />
+                        <div>
+                            <h3 className="text-red-800 font-bold text-lg">Assinatura Pendente</h3>
+                            <p className="text-red-600 text-sm">
+                                Detectamos um problema no pagamento. Regularize para evitar bloqueio.
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => navigate('/finance')} // Ou settings/billing
+                        className="bg-red-600 text-white px-6 py-2 rounded-full font-bold hover:bg-red-700 transition-colors shadow-lg whitespace-nowrap"
+                    >
+                        Regularizar
+                    </button>
+                </div>
+            )}
 
             {/* TOP ROW: Vital Signs (Live Metrics) */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
