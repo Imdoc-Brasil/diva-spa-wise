@@ -37,7 +37,7 @@ const BlogEditorModule: React.FC = () => {
 
     // Editor UI State
     const [activeModal, setActiveModal] = useState<'none' | 'cta' | 'table'>('none');
-    const [ctaConfig, setCtaConfig] = useState({ text: 'Começar Agora', url: '/#/saas', color: 'purple' });
+    const [ctaConfig, setCtaConfig] = useState({ text: 'Calcular Potencial Agora', url: '/#/tools/revenue-calculator', color: 'purple' });
     const [tableRows, setTableRows] = useState<{ feature: string; us: boolean; them: boolean }[]>([
         { feature: 'IA Nativa', us: true, them: false },
         { feature: 'Suporte 24h', us: true, them: false }
@@ -65,17 +65,17 @@ const BlogEditorModule: React.FC = () => {
 
     const handleCreateNew = () => {
         const IMDOC_MANIFESTO = `
-<h2>🚀 Por que o I'mDoc SaaS é um sistema incrível?</h2>
+<h2>Por que o I'mDoc SaaS é um sistema incrível?</h2>
 <p>Projetado pelo laboratório de IA de última geração, o <strong>I'mDoc</strong> revoluciona a gestão com design avançado, segurança de ponta e base de conhecimento. Não é apenas um software; é um ecossistema projetado com <strong>Inteligência Artificial</strong> e a <strong>Lógica Dominante do Serviço (SDL) de Philip Kotler</strong>.</p>
 
-<h3>🧠 Tecnologia & Inteligência</h3>
+<h3>Tecnologia & Inteligência</h3>
 <ul>
 <li><strong>Design & UX:</strong> Recursos avançados de design e comunicação baseados nos padrões Google e Meta.</li>
 <li><strong>IA Generativa:</strong> Integrado nativamente às APIs mais atuais do <strong>ChatGPT e Gemini</strong> para automação de textos e insights.</li>
 <li><strong>Segurança:</strong> Módulo de Compliance e LGPD nativos para gestão da segurança do paciente e do colaborador.</li>
 </ul>
 
-<h3>💰 Financeiro & Contábil 360º</h3>
+<h3>Financeiro & Contábil 360º</h3>
 <p>Esqueça a complexidade. O I'mDoc cuida da saúde financeira da clínica:</p>
 <ul>
 <li><strong>Emissão de Notas Fiscais:</strong> Automatizada e integrada.</li>
@@ -85,7 +85,7 @@ const BlogEditorModule: React.FC = () => {
 <li><strong>I'mDoc Fintech:</strong> Acesso facilitado a capital de giro e assessoria financeira (Em breve).</li>
 </ul>
 
-<h3>📈 Marketing & Vendas de Alta Performance</h3>
+<h3>Marketing & Vendas de Alta Performance</h3>
 <ul>
 <li><strong>Matriz RFM:</strong> Rankeamento automático de pacientes (Recência, Frequência, Valor).</li>
 <li><strong>Omnichannel:</strong> Integração com Instagram, X, TikTok e Página de Vendas White Label.</li>
@@ -93,15 +93,14 @@ const BlogEditorModule: React.FC = () => {
 <li><strong>Marketplace:</strong> Venda produtos de referência ou autorais diretamente pela plataforma.</li>
 </ul>
 
-<h3>🏥 Operacional & Qualidade</h3>
+<h3>Operacional & Qualidade</h3>
 <ul>
 <li><strong>Padronização (POPs):</strong> Protocolos digitais de diluição, limpeza, manutenção e PGRSS.</li>
 <li><strong>Gestão de Estoque:</strong> Controle rigoroso de insumos e enxoval.</li>
 <li><strong>Gestão de Documentos:</strong> Prontuário e contratos digitais seguros.</li>
 </ul>
 
-
-<h3>👥 Gestão de Pessoas & Cultura</h3>
+<h3>Gestão de Pessoas & Cultura</h3>
 <ul>
 <li><strong>Metas OKR:</strong> Gestão de desempenho com registro de pontualidade e meritocracia.</li>
 <li><strong>Universidade Corporativa:</strong> Área de streaming para treinamentos e certificação dos colaboradores.</li>
@@ -110,12 +109,16 @@ const BlogEditorModule: React.FC = () => {
 
 <p><strong>O I'mDoc SaaS não é apenas uma ferramenta, é o parceiro estratégico para o crescimento exponencial da sua clínica.</strong></p>
 
-<h3>🆚 Comparativo de Mercado (Raio-X)</h3>
+<h3>Comparativo de Mercado (Raio-X)</h3>
 
-<details class="mb-4 bg-slate-900 border border-slate-700 rounded-lg overflow-hidden" open>
+<details class="mb-4 bg-slate-900 border border-slate-700 rounded-lg overflow-hidden group" open>
   <summary class="cursor-pointer p-4 font-bold text-white flex items-center justify-between hover:bg-slate-800 transition-colors list-none">
-    <span class="flex items-center gap-2">🏆 Por que I'mdoc SaaS é superior ao Doctoralia Pro + Feegow?</span>
-    <span class="text-slate-500 text-xs">▼</span>
+    <span class="flex items-center gap-3">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-diva-primary group-open:rotate-180 transition-transform hidden"><path d="m6 9 6 6 6-6"/></svg>
+        <span class="text-diva-primary font-bold mr-2">VS</span>
+        Por que I'mdoc SaaS é superior ao Doctoralia Pro + Feegow?
+    </span>
+    <span class="text-slate-500 text-xs transition-transform group-open:rotate-180">▼</span>
   </summary>
   <div class="p-4 border-t border-slate-700 bg-slate-900/50 overflow-x-auto">
     <table class="w-full text-left border-collapse">
@@ -132,10 +135,13 @@ const BlogEditorModule: React.FC = () => {
   </div>
 </details>
 
-<details class="mb-4 bg-slate-900 border border-slate-700 rounded-lg overflow-hidden">
+<details class="mb-4 bg-slate-900 border border-slate-700 rounded-lg overflow-hidden group">
   <summary class="cursor-pointer p-4 font-bold text-white flex items-center justify-between hover:bg-slate-800 transition-colors list-none">
-    <span class="flex items-center gap-2">⚔️ Por que I'mdoc SaaS é superior ao Gestão DS + ChatGDS?</span>
-    <span class="text-slate-500 text-xs">▼</span>
+    <span class="flex items-center gap-3">
+        <span class="text-diva-primary font-bold mr-2">VS</span>
+        Por que I'mdoc SaaS é superior ao Gestão DS + ChatGDS?
+    </span>
+    <span class="text-slate-500 text-xs transition-transform group-open:rotate-180">▼</span>
   </summary>
   <div class="p-4 border-t border-slate-700 bg-slate-900/50 overflow-x-auto">
     <table class="w-full text-left border-collapse">
@@ -151,10 +157,13 @@ const BlogEditorModule: React.FC = () => {
   </div>
 </details>
 
-<details class="mb-4 bg-slate-900 border border-slate-700 rounded-lg overflow-hidden">
+<details class="mb-4 bg-slate-900 border border-slate-700 rounded-lg overflow-hidden group">
   <summary class="cursor-pointer p-4 font-bold text-white flex items-center justify-between hover:bg-slate-800 transition-colors list-none">
-    <span class="flex items-center gap-2">💎 Por que I'mdoc é superior ao Clínica Experts?</span>
-    <span class="text-slate-500 text-xs">▼</span>
+    <span class="flex items-center gap-3">
+        <span class="text-diva-primary font-bold mr-2">VS</span>
+        Por que I'mdoc é superior ao Clínica Experts?
+    </span>
+    <span class="text-slate-500 text-xs transition-transform group-open:rotate-180">▼</span>
   </summary>
   <div class="p-4 border-t border-slate-700 bg-slate-900/50 overflow-x-auto">
     <table class="w-full text-left border-collapse">
@@ -170,10 +179,13 @@ const BlogEditorModule: React.FC = () => {
   </div>
 </details>
 
-<details class="mb-4 bg-slate-900 border border-slate-700 rounded-lg overflow-hidden">
+<details class="mb-4 bg-slate-900 border border-slate-700 rounded-lg overflow-hidden group">
   <summary class="cursor-pointer p-4 font-bold text-white flex items-center justify-between hover:bg-slate-800 transition-colors list-none">
-    <span class="flex items-center gap-2">🚀 Por que I'mdoc é superior ao Amplimed?</span>
-    <span class="text-slate-500 text-xs">▼</span>
+    <span class="flex items-center gap-3">
+        <span class="text-diva-primary font-bold mr-2">VS</span>
+        Por que I'mdoc é superior ao Amplimed?
+    </span>
+    <span class="text-slate-500 text-xs transition-transform group-open:rotate-180">▼</span>
   </summary>
   <div class="p-4 border-t border-slate-700 bg-slate-900/50 overflow-x-auto">
     <table class="w-full text-left border-collapse">
