@@ -6,6 +6,8 @@ import { useData } from '../context/DataContext';
 import { useUnitData } from '../hooks/useUnitData';
 import { useToast } from '../ui/ToastContext';
 import SuppliersModal from '../modals/SuppliersModal';
+import CheckoutModal from '../modals/CheckoutModal';
+import NewProductModal from '../modals/NewProductModal';
 
 
 
@@ -45,12 +47,16 @@ interface MarketplaceModuleProps {
 }
 
 const MarketplaceModule: React.FC<MarketplaceModuleProps> = ({ user }) => {
-    const { products, updateProductStock, selectedUnitId, suppliers } = useUnitData();
+    const { products, updateProductStock, selectedUnitId, suppliers, addTransaction } = useUnitData();
     const { addToast } = useToast();
     const [viewMode, setViewMode] = useState<'storefront' | 'inventory' | 'purchasing' | 'audit' | 'analytics'>('storefront');
     const [activeCategory, setActiveCategory] = useState<ProductCategory | 'all'>('all');
     const [cart, setCart] = useState<{ product: Product, qty: number }[]>([]);
     const [orders, setOrders] = useState(mockOrders);
+
+    // Checkout State
+    const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+    const [isNewProductModalOpen, setIsNewProductModalOpen] = useState(false);
 
     // Audit State
     const [activeAudit, setActiveAudit] = useState<StockAudit | null>(null);
@@ -204,19 +210,34 @@ const MarketplaceModule: React.FC<MarketplaceModuleProps> = ({ user }) => {
                 updateProductStock(item.productId, item.quantity, 'add', selectedUnitId);
             });
             setOrders(orders.map(o => o.id === id ? { ...o, status: 'received' } : o));
+
+            // Add Expense Transaction
+            addTransaction({
+                id: `txn_${Date.now()}`,
+                description: `Compra de Estoque - Pedido #${id.split('_')[1] || id}`,
+                category: 'Estoque',
+                amount: order.totalCost,
+                type: 'expense',
+                status: 'paid',
+                date: new Date().toISOString().split('T')[0],
+                unitId: selectedUnitId === 'all' ? undefined : selectedUnitId,
+                supplierId: order.supplierId,
+                revenueType: 'product'
+            });
+
             addToast("Estoque atualizado e despesa lançada no Financeiro.", 'success');
         }
     };
 
     const handleCheckout = () => {
         if (cart.length === 0) return;
+        setIsCheckoutOpen(true);
+    };
 
-        cart.forEach(item => {
-            updateProductStock(item.product.id, item.qty, 'remove', selectedUnitId);
-        });
-
-        addToast(`Compra de ${formatCurrency(cartTotal)} realizada com sucesso!`, 'success');
+    const handlePaymentComplete = () => {
         setCart([]);
+        setIsCheckoutOpen(false);
+        addToast("Compra realizada com sucesso! Obrigado.", 'success');
     };
 
     // Audit Logic
@@ -438,8 +459,14 @@ const MarketplaceModule: React.FC<MarketplaceModuleProps> = ({ user }) => {
                             </p>
                         </div>
                         <div className="flex items-center justify-end">
+                            <button
+                                onClick={() => setIsNewProductModalOpen(true)}
+                                className="bg-diva-primary text-white px-4 py-2.5 rounded-lg flex items-center text-sm font-bold shadow-md hover:bg-diva-dark transition-colors mr-2"
+                            >
+                                <Plus size={18} className="mr-2" /> Novo Produto
+                            </button>
                             <button className="bg-diva-dark text-white px-4 py-2.5 rounded-lg flex items-center text-sm font-bold shadow-md hover:bg-diva-primary transition-colors">
-                                <Plus size={18} className="mr-2" /> Entrada de Nota
+                                <ArrowDownRight size={18} className="mr-2" /> Entrada de Nota
                             </button>
                         </div>
                     </div>
@@ -804,6 +831,21 @@ const MarketplaceModule: React.FC<MarketplaceModuleProps> = ({ user }) => {
                 isOpen={isSuppliersModalOpen}
                 onClose={() => setIsSuppliersModalOpen(false)}
                 supplierToEdit={selectedSupplier}
+            />
+            {/* MODALS */}
+            <CheckoutModal
+                isOpen={isCheckoutOpen}
+                onClose={() => setIsCheckoutOpen(false)}
+                cartItems={cart}
+                clientData={user.role === UserRole.CLIENT ? { id: user.uid, name: user.displayName } : { id: 'walk_in', name: 'Cliente Balcão' }}
+                onPaymentComplete={handlePaymentComplete}
+            />
+
+
+
+            <NewProductModal
+                isOpen={isNewProductModalOpen}
+                onClose={() => setIsNewProductModalOpen(false)}
             />
         </div>
     );

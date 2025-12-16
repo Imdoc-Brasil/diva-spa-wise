@@ -68,6 +68,8 @@ const MarketingModule: React.FC = () => {
                     name: data.name,
                     channel: data.channel,
                     segmentId: 's1', // Default for demo
+                    linkedEventId: data.linkedEventId,
+                    targetAudience: data.targetAudience, // Store target audience
                     status: data.scheduledDate ? 'scheduled' : 'draft',
                     scheduledFor: data.scheduledDate,
                     stats: { sent: 0, opened: 0, converted: 0, revenue: 0 }
@@ -578,7 +580,21 @@ const MarketingModule: React.FC = () => {
                                 </tbody>
                             </table>
                         </div>
-                        <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
+                        <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-between">
+                            <button
+                                onClick={() => {
+                                    const segId = selectedSegment;
+                                    setSelectedSegment(null);
+                                    openModal('campaign', {
+                                        name: `Campanha - ${getRFMDisplay(segId).label}`,
+                                        targetAudience: `rfm_${segId}`,
+                                        templateId: (segId === 'AtRisk' || segId === 'Lost' || segId === 'Hibernating') ? 't4' : 'custom'
+                                    });
+                                }}
+                                className="px-4 py-2 bg-diva-primary text-white rounded-lg text-sm font-bold shadow-sm hover:bg-diva-dark flex items-center transition-colors"
+                            >
+                                <Megaphone size={16} className="mr-2" /> Criar Campanha
+                            </button>
                             <button
                                 onClick={() => setSelectedSegment(null)}
                                 className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-100"

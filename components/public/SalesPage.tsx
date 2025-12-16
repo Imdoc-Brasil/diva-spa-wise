@@ -159,6 +159,8 @@ const SalesPage: React.FC = () => {
                         {saasAppConfig?.showPricing && (
                             <button onClick={() => scrollToSection('pricing')} className="hover:text-[var(--text-main)] transition-colors">Planos</button>
                         )}
+                        <button onClick={() => navigate('/blog')} className="hover:text-[var(--text-main)] transition-colors font-bold text-purple-400">Blog</button>
+                        <button onClick={() => navigate('/tools/revenue-calculator')} className="hover:text-[var(--text-main)] transition-colors">Ferramentas</button>
 
                         {saasAppConfig?.enableThemeToggle && (
                             <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">

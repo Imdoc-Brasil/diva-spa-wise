@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Transaction, TransactionType, TransactionStatus, User as UserType, UserRole } from '../../types';
 import { DollarSign, TrendingUp, TrendingDown, AlertCircle, Download, Filter, FileText, Lock, Award, Settings, Calendar, RefreshCcw } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, PieChart, Pie, Cell } from 'recharts';
 import CashClosingModal from '../modals/CashClosingModal';
 import DREReportModal from '../modals/DREReportModal';
 import NewTransactionModal from '../modals/NewTransactionModal';
@@ -15,8 +15,17 @@ interface FinanceModuleProps {
     user: UserType;
 }
 
+// Mock Gateways Reference (Should match PaymentSettingsModal)
+// In a real app, this comes from useData() context
+const MOCK_GATEWAYS_REF = [
+    { id: 'gw_stone_rec', name: 'Stone - Recepção', provider: 'stone', bankLabel: 'Conta Itaú - Principal' },
+    { id: 'gw_infinitepay', name: 'InfinitePay - Dra. Julia', provider: 'infinitepay', bankLabel: 'Conta Digital InfinitePay' },
+    { id: 'gw_stripe', name: 'Stripe Online', provider: 'stripe', bankLabel: 'Conta Inter - PJ' },
+    { id: 'gw_manual', name: 'Dinheiro / Manual', provider: 'other', bankLabel: 'Gaveta Recepção' }
+];
+
 const FinanceModule: React.FC<FinanceModuleProps> = ({ user }) => {
-    const { transactions, staff, appointments, suppliers, fiscalRecords, updateTransaction, addFiscalRecord } = useUnitData();
+    const { transactions, staff, appointments, suppliers, fiscalRecords, updateTransaction, addFiscalRecord, addTransaction } = useUnitData();
     const [activeTab, setActiveTab] = useState<'overview' | 'commissions' | 'payables' | 'fiscal'>('overview');
     const [isClosingModalOpen, setIsClosingModalOpen] = useState(false);
     const [isDREModalOpen, setIsDREModalOpen] = useState(false);
@@ -44,7 +53,7 @@ const FinanceModule: React.FC<FinanceModuleProps> = ({ user }) => {
         };
 
         transactions.forEach(t => {
-            if (t.type === 'income' && t.status === 'paid' && t.relatedAppointmentId) {
+            if (t.type === 'income' && t.status === 'paid' && t.relatedAppointmentId && !(t as any).commissionPaid) {
                 const appt = appointments.find(a => a.appointmentId === t.relatedAppointmentId);
                 if (appt && appt.staffId) {
                     const rate = getCommissionRate(appt.staffId, appt.serviceId);
@@ -92,7 +101,6 @@ const FinanceModule: React.FC<FinanceModuleProps> = ({ user }) => {
         new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
     // --- Dynamic Stats ---
-    // Calculate totals based on viewMode as well? Usually totals are absolute historical but let's keep them absolute for now.
     const totalIncome = transactions.filter(t => t.type === 'income').reduce((acc, curr) => acc + curr.amount, 0);
     const totalExpense = transactions.filter(t => t.type === 'expense').reduce((acc, curr) => acc + curr.amount, 0);
 
@@ -120,7 +128,6 @@ const FinanceModule: React.FC<FinanceModuleProps> = ({ user }) => {
     const totalOverdue = overduePayables.reduce((acc, t) => acc + t.amount, 0);
 
     // Fiscal Data Logic
-    // Filter Income that is PAID but has NO Linked Fiscal Record (Pending Emission)
     const fiscalPendingData = useMemo(() => {
         return transactions.filter(t =>
             t.type === 'income' &&
@@ -129,15 +136,50 @@ const FinanceModule: React.FC<FinanceModuleProps> = ({ user }) => {
         ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [transactions]);
 
-    const fiscalEmittedData = useMemo(() => {
-        // This would ideally join with fiscalRecords
-        return fiscalRecords; // Assuming fiscalRecords has transaction details or linked properly.
-        // Actually, let's just list recent fiscal records
-    }, [fiscalRecords]);
+    // Account Balances Logic (Dashboard de Caixas)
+    const balancesByAccount = useMemo(() => {
+        const balances: Record<string, { name: string, bank: string, provider: string, available: number, future: number }> = {};
+
+        // Initialize with Mock Gateways
+        MOCK_GATEWAYS_REF.forEach(gw => {
+            balances[gw.id] = {
+                name: gw.name,
+                bank: gw.bankLabel || 'Conta Padrão',
+                provider: gw.provider,
+                available: 0,
+                future: 0
+            };
+        });
+
+        const todaySim = new Date().toISOString().split('T')[0];
+
+        transactions.forEach(t => {
+            if (t.type === 'income' && t.status === 'paid') {
+                let gwId = t.gatewayId;
+                if (!gwId) {
+                    if (t.paymentMethod === 'cash') gwId = 'gw_manual';
+                    else return;
+                }
+
+                if (!balances[gwId]) {
+                    balances[gwId] = { name: 'Outros Canais', bank: 'Não classificado', provider: 'other', available: 0, future: 0 };
+                }
+
+                const amount = t.netAmount || t.amount;
+                const isFuture = t.settlementDate && t.settlementDate > todaySim;
+
+                if (isFuture) {
+                    balances[gwId].future += amount;
+                } else {
+                    balances[gwId].available += amount;
+                }
+            }
+        });
+        return Object.values(balances);
+    }, [transactions]);
 
     const handleEmitFiscal = (t: Transaction, type: 'NFS-e' | 'NF-e') => {
-        // 1. Create simulated Fiscal Record
-        const newRecord: any = { // Cast to any to avoid strict type checks for missing fields like issuerDocument if not in UI
+        const newRecord: any = {
             id: `fr_${Date.now()}`,
             organizationId: t.organizationId,
             transactionId: t.id,
@@ -146,39 +188,56 @@ const FinanceModule: React.FC<FinanceModuleProps> = ({ user }) => {
             number: String(Math.floor(Math.random() * 10000) + 1000),
             emissionDate: new Date().toISOString(),
             amount: t.amount,
-            issuerName: 'Minha Clínica', // Should come from BusinessConfig
+            issuerName: 'Minha Clínica',
             issuerDocument: '00.000.000/0001-00',
             recipientName: t.relatedAppointmentId ? 'Cliente Registrado' : 'Consumidor Final',
             recipientDocument: '___.___.___-__',
             pdfUrl: '#'
         };
         addFiscalRecord(newRecord);
-        // 2. Update Transaction
         updateTransaction(t.id, { fiscalRecordId: newRecord.id });
         alert(`Nota Fiscal (${type}) emitida com sucesso!`);
     };
 
+    const handlePayCommissions = (staffId: string, staffName: string, amount: number, transactionIds: string[]) => {
+        if (!confirm(`Confirma o pagamento de ${formatCurrency(amount)} para ${staffName}?`)) return;
+
+        const expense: any = {
+            id: `comm_pay_${Date.now()}`,
+            organizationId: 'org_default',
+            description: `Pagamento de Comissões - ${staffName}`,
+            type: 'expense',
+            category: 'Comissão',
+            amount: amount,
+            status: 'paid',
+            date: new Date().toISOString().split('T')[0],
+            paymentMethod: 'pix',
+            supplierId: staffId
+        };
+        addTransaction(expense);
+
+        let updatedCount = 0;
+        transactionIds.forEach(id => {
+            updateTransaction(id, { commissionPaid: true } as any);
+            updatedCount++;
+        });
+
+        alert(`Pagamento registrado! ${updatedCount} comissões foram baixadas.`);
+    };
+
     const netProfit = totalIncome - totalExpense;
 
-    // --- Dynamic Chart Data Aggregation ---
     const chartData = useMemo(() => {
         const grouped = transactions.reduce((acc: any, curr) => {
-            // Logic: 
-            // If viewMode === 'settlement', use settlementDate for income if present.
-            // If viewMode === 'competence', always use date.
-
             let dateKey = curr.date;
             let displayAmount = curr.amount;
 
             if (viewMode === 'settlement' && curr.type === 'income') {
                 if (curr.settlementDate) {
                     dateKey = curr.settlementDate;
-                    displayAmount = curr.netAmount || curr.amount; // Use Net Amount for actual cash flow
+                    displayAmount = curr.netAmount || curr.amount;
                 }
             }
-
-            // Limit Date Range Logic (Simulated)
-            // Ideally we filter before reduce, but for mock data simplicity:
 
             if (!acc[dateKey]) {
                 acc[dateKey] = {
@@ -186,7 +245,7 @@ const FinanceModule: React.FC<FinanceModuleProps> = ({ user }) => {
                     rawDate: dateKey,
                     entradas: 0,
                     saidas: 0,
-                    previsto: 0 // For future
+                    previsto: 0
                 };
             }
 
@@ -209,9 +268,31 @@ const FinanceModule: React.FC<FinanceModuleProps> = ({ user }) => {
         return sortedEntries.map((e: any) => e[1]);
     }, [transactions, viewMode]);
 
+    const revenueBreakdown = useMemo(() => {
+        let service = 0;
+        let product = 0;
+        let event = 0;
+
+        transactions.filter(t => t.type === 'income').forEach(t => {
+            if (t.category === 'Eventos' || t.description.includes('Ingresso')) {
+                event += t.amount;
+            } else if (t.revenueType === 'product') {
+                product += t.amount;
+            } else {
+                service += t.amount;
+            }
+        });
+
+        return [
+            { name: 'Serviços', value: service, color: '#14808C' },
+            { name: 'Produtos', value: product, color: '#F59E0B' },
+            { name: 'Eventos', value: event, color: '#EC4899' }
+        ].filter(i => i.value > 0);
+    }, [transactions]);
+
     return (
         <div className="space-y-6 animate-in fade-in">
-            {/* Header com Tabs ... (Existing) ... */}
+            {/* Header com Tabs */}
             {(user.role === UserRole.ADMIN || user.role === UserRole.MANAGER || user.role === UserRole.FINANCE) && (
                 <div className="flex justify-between items-end border-b border-diva-light/20 pb-1 mb-6">
                     <div className="flex space-x-6">
@@ -234,11 +315,9 @@ const FinanceModule: React.FC<FinanceModuleProps> = ({ user }) => {
                 </div>
             )}
 
-            {/* ... Staff View (Existing) ... */}
+            {/* Staff View */}
             {user.role === UserRole.STAFF && (
                 <>
-                    {/* ... Keep existing staff content ... */}
-                    {/* Re-inserting Staff Header for context, but keeping it brief in rewrite */}
                     <div className="bg-diva-dark text-white p-6 rounded-xl shadow-lg relative overflow-hidden">
                         <div className="relative z-10">
                             <div className="flex items-center gap-3 mb-2">
@@ -276,7 +355,7 @@ const FinanceModule: React.FC<FinanceModuleProps> = ({ user }) => {
                 </>
             )}
 
-            {/* VIEW PARA ADMIN - VISÃO GERAL REVISADA */}
+            {/* ADMIN OVERVIEW */}
             {(user.role !== UserRole.STAFF) && activeTab === 'overview' && (
                 <PermissionGate allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.FINANCE]} userRole={user.role} fallbackMessage="Acesso restrito.">
                     {/* Header Stats */}
@@ -295,7 +374,6 @@ const FinanceModule: React.FC<FinanceModuleProps> = ({ user }) => {
                             </div>
                             <div className="h-12 w-12 bg-red-50 rounded-full flex items-center justify-center text-diva-alert"><TrendingDown size={24} /></div>
                         </div>
-                        {/* New Card: Floating / Future Receivables */}
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-diva-light/30 flex items-center justify-between relative overflow-hidden">
                             <div className="relative z-10">
                                 <p className="text-sm font-medium text-gray-500 mb-1">A Receber (Futuro)</p>
@@ -305,6 +383,39 @@ const FinanceModule: React.FC<FinanceModuleProps> = ({ user }) => {
                             <div className="h-12 w-12 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 relative z-10">
                                 <Calendar size={24} />
                             </div>
+                        </div>
+                    </div>
+
+                    {/* DASHBOARD: Saldos por Conta / Caixa */}
+                    <div className="mb-6 mt-6">
+                        <h3 className="text-lg font-bold text-diva-dark mb-3 flex items-center">
+                            <DollarSign size={18} className="mr-2 text-diva-primary" /> Saldos por Conta / Caixa
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {balancesByAccount.map((acc, idx) => (
+                                <div key={idx} className="bg-white p-4 rounded-xl shadow-sm border border-diva-light/30 flex flex-col justify-between hover:shadow-md transition-shadow">
+                                    <div className="mb-3">
+                                        <div className="flex justify-between items-start">
+                                            <h4 className="font-bold text-gray-800 text-sm truncate pr-2" title={acc.name}>{acc.name}</h4>
+                                            {acc.provider === 'stone' && <span className="w-2 h-2 rounded-full bg-green-500"></span>}
+                                            {acc.provider === 'infinitepay' && <span className="w-2 h-2 rounded-full bg-black"></span>}
+                                            {acc.provider === 'stripe' && <span className="w-2 h-2 rounded-full bg-purple-500"></span>}
+                                            {acc.provider === 'other' && <span className="w-2 h-2 rounded-full bg-gray-400"></span>}
+                                        </div>
+                                        <p className="text-[10px] text-gray-400 truncate">{acc.bank}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <div className="flex justify-between items-end border-b border-gray-50 pb-1">
+                                            <span className="text-[10px] text-gray-500 font-bold uppercase">Disponível</span>
+                                            <span className="text-sm font-bold text-green-600 font-mono">{formatCurrency(acc.available)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-end">
+                                            <span className="text-[10px] text-gray-400 uppercase">A Receber</span>
+                                            <span className="text-xs font-medium text-blue-500 font-mono">{formatCurrency(acc.future)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
 
@@ -361,20 +472,50 @@ const FinanceModule: React.FC<FinanceModuleProps> = ({ user }) => {
                             </div>
                         </div>
 
-                        {/* Quick Actions / Alerts */}
-                        <div className="space-y-6">
-                            <div className="bg-diva-dark text-white p-6 rounded-xl shadow-lg flex flex-col items-center text-center relative overflow-hidden">
-                                <div className="relative z-10">
-                                    <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3"><Lock size={24} /></div>
-                                    <h3 className="font-bold text-lg">Fechamento de Caixa</h3>
-                                    <p className="text-xs text-white/70 mb-4">Realize a conferência diária de valores.</p>
-                                    <button onClick={() => setIsClosingModalOpen(true)} className="w-full bg-white text-diva-dark py-2 rounded-lg text-sm font-bold hover:bg-gray-100 transition-colors">Iniciar Fechamento</button>
-                                </div>
-                                <div className="absolute top-[-20px] right-[-20px] opacity-10"><Lock size={120} /></div>
+                        {/* Pie Chart: Revenue Breakdown */}
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-diva-light/30 flex flex-col">
+                            <h3 className="text-lg font-bold text-diva-dark mb-4">Fontes de Receita</h3>
+                            <div className="flex-1 min-h-[250px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={revenueBreakdown}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={80}
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                        >
+                                            {revenueBreakdown.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                                        <Legend verticalAlign="bottom" height={36} />
+                                    </PieChart>
+                                </ResponsiveContainer>
                             </div>
-                            <button onClick={() => setIsDREModalOpen(true)} className="w-full flex items-center justify-center space-x-2 bg-white border border-diva-dark text-diva-dark py-3 rounded-lg hover:bg-gray-50 transition">
-                                <Download size={18} /><span>Abrir Relatório DRE</span>
-                            </button>
+                        </div>
+                    </div>
+
+                    {/* Quick Actions Row */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-diva-light/10 p-6 rounded-xl border border-diva-light/20">
+                        <div className="flex items-center gap-4">
+                            <div className="bg-diva-primary/10 p-3 rounded-full text-diva-primary"><Lock size={24} /></div>
+                            <div>
+                                <h4 className="font-bold text-diva-dark">Fechamento de Caixa</h4>
+                                <p className="text-xs text-gray-500">Conferência diária de valores.</p>
+                            </div>
+                            <button onClick={() => setIsClosingModalOpen(true)} className="ml-auto bg-white border border-gray-200 text-diva-dark px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-50 transition-colors">Iniciar</button>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="bg-diva-primary/10 p-3 rounded-full text-diva-primary"><FileText size={24} /></div>
+                            <div>
+                                <h4 className="font-bold text-diva-dark">Relatórios Contábeis</h4>
+                                <p className="text-xs text-gray-500">DRE, Balancete e Extratos.</p>
+                            </div>
+                            <button onClick={() => setIsDREModalOpen(true)} className="ml-auto bg-white border border-gray-200 text-diva-dark px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-50 transition-colors">Visualizar</button>
                         </div>
                     </div>
 
@@ -431,41 +572,96 @@ const FinanceModule: React.FC<FinanceModuleProps> = ({ user }) => {
                 </PermissionGate>
             )}
 
-            {/* KEEP COMMISSIONS TAB CONTENT BUT COLLAPSE IN REWRITE TO SAVE SPACE IF UNCHANGED */}
             {(user.role !== UserRole.STAFF) && activeTab === 'commissions' && (
                 <PermissionGate allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.FINANCE]} userRole={user.role}>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div className="lg:col-span-2 bg-diva-primary/10 border border-diva-primary/20 rounded-xl p-6 flex flex-col md:flex-row justify-between items-center text-diva-dark">
-                            <div><h3 className="text-xl font-bold font-serif mb-1">Central de Pagamento de Comissões</h3><p className="text-sm opacity-80">Valores com base em transações pagas.</p></div>
-                            <div className="mt-4 md:mt-0 text-right"><p className="text-xs uppercase font-bold tracking-wide opacity-60">Total a Pagar</p><p className="text-3xl font-bold text-diva-primary">{formatCurrency(commissionsByStaff.reduce((acc, c) => acc + c.total, 0))}</p></div>
-                        </div>
-                        {commissionsByStaff.map((staffComm, idx) => (
-                            <div key={idx} className="bg-white rounded-xl shadow-sm border border-diva-light/30 overflow-hidden">
-                                <div className="p-4 bg-gray-50 border-b border-diva-light/20 flex justify-between items-center">
-                                    <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-white border border-diva-light/50 flex items-center justify-center text-diva-dark font-bold text-lg">{staffComm.name.charAt(0)}</div><div><h4 className="font-bold text-diva-dark">{staffComm.name}</h4><p className="text-xs text-gray-500">{staffComm.count} procedimentos</p></div></div>
-                                    <div className="text-right"><p className="text-lg font-bold text-diva-primary">{formatCurrency(staffComm.total)}</p></div>
-                                </div>
-                                <div className="p-4 bg-white max-h-60 overflow-y-auto custom-scrollbar">
-                                    <table className="w-full text-xs">
-                                        <thead className="text-gray-400 border-b border-gray-100"><tr><th className="text-left pb-2">Serviço</th><th className="text-right pb-2">Comissão</th></tr></thead>
-                                        <tbody className="text-gray-600">
-                                            {staffComm.details.map((detail, dIdx) => (
-                                                <tr key={dIdx} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
-                                                    <td className="py-2">{detail.serviceName}</td>
-                                                    <td className="py-2 text-right font-bold text-green-600">{formatCurrency(detail.value)}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div className="p-3 bg-gray-50 border-t border-diva-light/20 text-right"><button className="text-xs font-bold bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 transition-colors shadow-sm">Registrar Pagamento</button></div>
+                        <div className="lg:col-span-2 bg-gradient-to-r from-diva-primary/10 to-transparent border border-diva-primary/20 rounded-xl p-8 flex flex-col md:flex-row justify-between items-center text-diva-dark shadow-sm">
+                            <div>
+                                <h3 className="text-2xl font-bold font-serif mb-2 flex items-center gap-2">
+                                    <Award className="text-diva-primary" /> Central de Comissões
+                                </h3>
+                                <p className="text-sm opacity-80 max-w-md">
+                                    Gerencie e pague as comissões da sua equipe. Os valores são calculados automaticamente com base apenas em serviços <b>pagos</b>.
+                                </p>
                             </div>
-                        ))}
+                            <div className="mt-6 md:mt-0 text-right bg-white p-4 rounded-xl shadow-sm border border-diva-primary/10">
+                                <p className="text-xs uppercase font-bold tracking-wide text-gray-400 mb-1">Total Pendente</p>
+                                <p className="text-4xl font-bold text-diva-primary">{formatCurrency(commissionsByStaff.reduce((acc, c) => acc + c.total, 0))}</p>
+                            </div>
+                        </div>
+
+                        {commissionsByStaff.length === 0 ? (
+                            <div className="col-span-2 text-center py-12 bg-white rounded-xl border border-gray-100 border-dashed">
+                                <Award size={48} className="mx-auto text-gray-200 mb-4" />
+                                <p className="text-gray-400 font-bold">Nenhuma comissão pendente no momento.</p>
+                            </div>
+                        ) : (
+                            commissionsByStaff.map((staffComm, idx) => (
+                                <div key={idx} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all group">
+                                    <div className="p-5 bg-gray-50/50 border-b border-gray-100 flex justify-between items-center">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-full bg-diva-primary text-white flex items-center justify-center font-bold text-lg shadow-lg shadow-diva-primary/20">
+                                                {staffComm.name.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-diva-dark text-lg">{staffComm.name}</h4>
+                                                <p className="text-xs text-gray-500 font-medium bg-gray-200 px-2 py-0.5 rounded-full inline-block mt-1">
+                                                    {staffComm.count} serviços pendentes
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-2xl font-bold text-diva-primary">{formatCurrency(staffComm.total)}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="p-0 max-h-60 overflow-y-auto custom-scrollbar bg-white">
+                                        <table className="w-full text-xs">
+                                            <thead className="text-gray-400 bg-gray-50 sticky top-0 z-10">
+                                                <tr>
+                                                    <th className="text-left py-2 px-5 font-semibold uppercase">Data</th>
+                                                    <th className="text-left py-2 px-2 font-semibold uppercase">Serviço</th>
+                                                    <th className="text-right py-2 px-5 font-semibold uppercase">Valor</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="text-gray-600 divide-y divide-gray-50">
+                                                {staffComm.details.map((detail, dIdx) => (
+                                                    <tr key={dIdx} className="hover:bg-blue-50/30 transition-colors">
+                                                        <td className="py-3 px-5 text-gray-400">{new Date(detail.date).toLocaleDateString()}</td>
+                                                        <td className="py-3 px-2 font-medium text-diva-dark">{detail.serviceName}</td>
+                                                        <td className="py-3 px-5 text-right font-bold text-green-600 bg-green-50/30">{formatCurrency(detail.value)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                                        <button
+                                            onClick={() => alert('Feature: Visualizar histórico de pagamentos deste profissional')}
+                                            className="px-4 py-2 rounded-lg border border-gray-200 text-gray-500 text-xs font-bold hover:bg-gray-100 transition-colors"
+                                        >
+                                            Histórico
+                                        </button>
+                                        <button
+                                            onClick={() => handlePayCommissions(
+                                                staffComm.details[0].staffId,
+                                                staffComm.name,
+                                                staffComm.total,
+                                                staffComm.details.map(d => d.transactionId)
+                                            )}
+                                            className="px-6 py-2 rounded-lg bg-green-600 text-white text-xs font-bold hover:bg-green-700 transition-colors shadow-md shadow-green-600/20 flex items-center"
+                                        >
+                                            <DollarSign size={14} className="mr-1" /> Pagar Comissões
+                                        </button>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </PermissionGate>
             )}
 
-            {/* FISCAL TAB CONTENT */}
             {(user.role !== UserRole.STAFF) && activeTab === 'fiscal' && (
                 <PermissionGate allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.FINANCE]} userRole={user.role}>
                     <div className="grid grid-cols-1 gap-6">
@@ -524,7 +720,6 @@ const FinanceModule: React.FC<FinanceModuleProps> = ({ user }) => {
                                                         )}
                                                     </td>
                                                     <td className="px-6 py-4 text-right flex justify-end gap-2">
-                                                        {/* Logic: If Product -> Recommend NF-e. If Service -> Recommend NFS-e or Receipt if allowed */}
                                                         {t.revenueType === 'product' ? (
                                                             <button
                                                                 onClick={() => handleEmitFiscal(t, 'NF-e')}
@@ -616,14 +811,16 @@ const FinanceModule: React.FC<FinanceModuleProps> = ({ user }) => {
             <PaymentSettingsModal isOpen={isPaymentSettingsModalOpen} onClose={() => setIsPaymentSettingsModalOpen(false)} />
 
             {/* Receipt Modal */}
-            {selectedTransactionForReceipt && (
-                <ReceiptPreviewModal
-                    isOpen={!!selectedTransactionForReceipt}
-                    onClose={() => setSelectedTransactionForReceipt(null)}
-                    transaction={selectedTransactionForReceipt}
-                />
-            )}
-        </div>
+            {
+                selectedTransactionForReceipt && (
+                    <ReceiptPreviewModal
+                        isOpen={!!selectedTransactionForReceipt}
+                        onClose={() => setSelectedTransactionForReceipt(null)}
+                        transaction={selectedTransactionForReceipt}
+                    />
+                )
+            }
+        </div >
     );
 };
 

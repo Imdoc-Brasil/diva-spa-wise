@@ -333,7 +333,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
               </button>
             )}
             <h2 className="text-lg md:text-xl font-serif text-diva-dark font-bold truncate max-w-[150px] md:max-w-none">
-              {location.pathname === '/profile' ? 'Meu Perfil' : (navSections.flatMap(s => s.items).find(i => i.path === location.pathname)?.label || 'Diva Spa')}
+              {location.pathname === '/profile' ? 'Meu Perfil' : (navSections.flatMap(s => s.items).find(i => i.path === location.pathname)?.label || organization?.displayName || "I'mDoc")}
             </h2>
           </div>
 

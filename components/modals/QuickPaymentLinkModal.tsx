@@ -1,385 +1,325 @@
-import React, { useState } from 'react';
-import { X, Copy, CheckCircle, Smartphone, CreditCard, FileText } from 'lucide-react';
-import { asaasService } from '@/services/asaasService';
-import { useToast } from '@/components/ui/ToastContext';
-import { SaaSLead, SaaSPlan } from '@/types_saas';
-import { SAAS_PLANS_CONFIG } from '@/components/modules/saas/saasPlans';
-import { maskCpfCnpj } from '@/utils/masks';
+import React, { useState, useEffect } from 'react';
+import { X, Copy, CheckCircle, Smartphone, CreditCard, FileText, Globe, Link as LinkIcon, AlertCircle, Package, Settings } from 'lucide-react';
+import { useToast } from '../ui/ToastContext';
+import { PaymentGateway } from '../../types';
 
 interface QuickPaymentLinkModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSuccess?: () => void;
-    lead?: SaaSLead | null;
+    initialValue?: number;
+    initialDescription?: string;
 }
 
-// Função auxiliar para gerar CPF válido para testes
-const generateCpf = () => {
-    const rnd = (n: number) => Math.round(Math.random() * n);
-    const mod = (base: number, div: number) => Math.round(base - Math.floor(base / div) * div);
-    const n = Array(9).fill(0).map(() => rnd(9));
-    let d1 = n.reduce((total, num, i) => total + num * (10 - i), 0);
-    d1 = 11 - mod(d1, 11);
-    if (d1 >= 10) d1 = 0;
-    let d2 = n.reduce((total, num, i) => total + num * (11 - i), 0) + d1 * 2;
-    d2 = 11 - mod(d2, 11);
-    if (d2 >= 10) d2 = 0;
-    return `${n.join('')}${d1}${d2}`;
-};
+// MOCK GATEWAYS (Simulating Global Configuration)
+const MOCK_ONLINE_GATEWAYS: PaymentGateway[] = [
+    {
+        id: 'gw_infinitepay',
+        name: 'InfinitePay - Online',
+        type: 'online_api',
+        integrationType: 'api',
+        provider: 'infinitepay',
+        scope: 'all',
+        active: true,
+        fees: { debit: 1.38, credit_1x: 2.90, credit_2x_6x: 3.90, credit_7x_12x: 4.90, pix: 0, pix_type: 'percentage' },
+        installmentRule: { maxInstallments: 12, maxFreeInstallments: 10, interestRate: 1.99, buyerPaysInterest: false }, // Loja absorve
+        settlementDays: { debit: 1, credit: 1, pix: 0 }
+    },
+    {
+        id: 'gw_asaas',
+        name: 'Asaas - Cobranças',
+        type: 'online_api',
+        integrationType: 'api',
+        provider: 'asaas',
+        scope: 'online_only',
+        active: true,
+        fees: { debit: 0, credit_1x: 0, credit_2x_6x: 0, credit_7x_12x: 0, pix: 0.99, pix_type: 'fixed' },
+        installmentRule: { maxInstallments: 1, maxFreeInstallments: 1, interestRate: 0, buyerPaysInterest: false }, // Só à vista? Assume boleto/pix
+        settlementDays: { debit: 1, credit: 1, pix: 0 }
+    },
+    {
+        id: 'gw_stripe',
+        name: 'Stripe Checkout',
+        type: 'online_api',
+        integrationType: 'api',
+        provider: 'stripe',
+        scope: 'online_only',
+        active: true,
+        fees: { debit: 0, credit_1x: 3.99, credit_2x_6x: 3.99, credit_7x_12x: 3.99, pix: 0, pix_type: 'fixed' },
+        installmentRule: { maxInstallments: 12, maxFreeInstallments: 12, interestRate: 0, buyerPaysInterest: false },
+        settlementDays: { debit: 2, credit: 5, pix: 0 }
+    }
+];
 
-const QuickPaymentLinkModal: React.FC<QuickPaymentLinkModalProps> = ({ isOpen, onClose, onSuccess, lead }) => {
-
-
+const QuickPaymentLinkModal: React.FC<QuickPaymentLinkModalProps> = ({ isOpen, onClose, onSuccess, initialValue, initialDescription }) => {
     const { addToast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
     const [step, setStep] = useState<'form' | 'success'>('form');
 
-    // Form State
-    const [value, setValue] = useState<string>('1.00'); // Default demo value
-    const [description, setDescription] = useState<string>('Teste de Integração Sandbox');
+    // Form
+    const [amount, setAmount] = useState<string>('0.00');
+    const [description, setDescription] = useState('');
+    const [clientName, setClientName] = useState('');
 
-    // New Recurrence State
-    const [isRecurrent, setIsRecurrent] = useState(false);
-    const [cycle, setCycle] = useState<'MONTHLY' | 'YEARLY'>('MONTHLY');
-    const [selectedPlan, setSelectedPlan] = useState<SaaSPlan | ''>('');
-    const [customerCpf, setCustomerCpf] = useState('');
-    const [customerName, setCustomerName] = useState('');
+    // Gateway Selection
+    const [selectedGatewayId, setSelectedGatewayId] = useState<string>('');
+    const [availableGateways, setAvailableGateways] = useState<PaymentGateway[]>([]);
 
-    const [generatedLink, setGeneratedLink] = useState<string>('');
+    // Output
+    const [generatedLink, setGeneratedLink] = useState('');
 
-
-
-    // Auto-fill from Lead
-    React.useEffect(() => {
-        if (!SAAS_PLANS_CONFIG) return;
-        if (isOpen && lead) {
-            const planConfig = SAAS_PLANS_CONFIG[lead.planInterest];
-            if (planConfig) {
-                setValue(planConfig.monthlyPrice.toFixed(2));
-                setDescription(`Assinatura ${planConfig.name} - ${lead.clinicName}`);
-                setIsRecurrent(true);
-                setCycle('MONTHLY');
-                setSelectedPlan(lead.planInterest);
+    useEffect(() => {
+        if (isOpen) {
+            // Filter gateways that support online scope
+            const onlineGateways = MOCK_ONLINE_GATEWAYS.filter(g => g.active && (g.scope === 'online_only' || g.scope === 'all'));
+            setAvailableGateways(onlineGateways);
+            if (onlineGateways.length > 0) {
+                setSelectedGatewayId(onlineGateways[0].id);
             }
-            // Auto-fill customer data
-            setCustomerCpf(lead.cnpj || '');
-            setCustomerName(lead.legalName || lead.clinicName || lead.name || '');
-        } else if (isOpen && !lead) {
-            // Reset for generic use
-            setValue('0.00');
-            setDescription('');
-            setIsRecurrent(false);
-            setSelectedPlan('');
-            setCustomerCpf('');
-            setCustomerName('');
-        }
-    }, [isOpen, lead]);
 
-    // Handle Plan Selection Change
-    const handlePlanChange = (plan: SaaSPlan) => {
-        if (!SAAS_PLANS_CONFIG) return;
-        setSelectedPlan(plan);
-        const config = SAAS_PLANS_CONFIG[plan];
-        if (config) {
-            setValue(cycle === 'YEARLY' ? config.yearlyPrice.toFixed(2) : config.monthlyPrice.toFixed(2));
-            setDescription(`Assinatura ${config.name}`);
-            setIsRecurrent(true);
+            // Set initials
+            if (initialValue) setAmount(initialValue.toFixed(2));
+            if (initialDescription) setDescription(initialDescription);
+            setStep('form');
+            setGeneratedLink('');
         }
-    };
+    }, [isOpen, initialValue, initialDescription]);
 
-    const handleCreateLink = async () => {
+    const selectedGateway = availableGateways.find(g => g.id === selectedGatewayId);
+
+    const handleCreateLink = () => {
+        if (!amount || parseFloat(amount) <= 0) {
+            addToast('Insira um valor válido.', 'error');
+            return;
+        }
+        if (!selectedGateway) return;
+
         setIsLoading(true);
-        try {
-            const numValue = parseFloat(value.replace(',', '.'));
 
-            if (isNaN(numValue) || numValue <= 0) {
-                addToast('Valor inválido', 'error');
-                return;
-            }
-
-            if (!customerCpf || !customerName) {
-                addToast('Preencha CPF/CNPJ e Nome do Cliente', 'error');
-                return;
-            }
-
-            // 1. Busca ou Cria Cliente
-            let cpfCnpjToUse = customerCpf.replace(/\D/g, '');
-            let nameToUse = customerName;
-            let addressData = {};
-
-            if (lead) {
-                // Se tiver lead, usa os dados do lead para garantir endereço completo
-                addressData = {
-                    postalCode: lead.zipCode,
-                    address: lead.address,
-                    addressNumber: lead.number,
-                    complement: lead.complement,
-                    province: lead.neighborhood,
-                };
-            }
-
-            let customer = await asaasService.findCustomer(cpfCnpjToUse);
-            if (!customer) {
-                customer = await asaasService.createCustomer({
-                    name: nameToUse,
-                    cpfCnpj: cpfCnpjToUse,
-                    email: lead?.email,
-                    mobilePhone: lead?.phone,
-                    ...addressData
-                });
-            }
-
-            // 2. Cria Cobrança ou Assinatura
-            const dueDate = new Date();
-            dueDate.setDate(dueDate.getDate() + 3); // Vence em 3 dias
-            let finalLink = '';
-
-            if (isRecurrent) {
-                // ASSINATURA
-                const subscription = await asaasService.createSubscription({
-                    customer: customer.id,
-                    billingType: 'BOLETO',
-                    value: numValue,
-                    nextDueDate: dueDate.toISOString().split('T')[0],
-                    cycle: cycle,
-                    description: description
-                });
-
-                // Tenta pegar a primeira fatura
-                const payments = await asaasService.listSubscriptionPayments(subscription.id);
-                if (payments.data && payments.data.length > 0) {
-                    finalLink = payments.data[0].invoiceUrl;
-                } else {
-                    finalLink = `https://sandbox.asaas.com/subscriptions/${subscription.id}`; // Fallback visual
-                }
-
-            } else {
-                // COBRANÇA AVULSA
-                const response = await asaasService.createPayment({
-                    customer: customer.id,
-                    billingType: 'PIX', // Gera link de pagamento versátil
-                    value: numValue,
-                    dueDate: dueDate.toISOString().split('T')[0],
-                    description: description
-                });
-                finalLink = response.invoiceUrl;
-            }
-
-            if (finalLink) {
-                setGeneratedLink(finalLink);
-                setStep('success');
-                addToast(isRecurrent ? 'Assinatura criada!' : 'Cobrança criada!', 'success');
-                if (onSuccess) onSuccess();
-            } else {
-                throw new Error('Resposta inválida do Asaas');
-            }
-        } catch (error: any) {
-            console.error(error);
-            addToast(error.message || 'Erro ao criar link', 'error');
-        } finally {
+        // Simulate API Call delay
+        setTimeout(() => {
             setIsLoading(false);
-        }
+
+            // Generate Mock URL based on Provider
+            let url = '';
+            const code = Math.random().toString(36).substring(7).toUpperCase();
+
+            switch (selectedGateway.provider) {
+                case 'infinitepay':
+                    url = `https://pay.infinitepay.io/divaspa/${amount.replace('.', '')}?desc=${encodeURIComponent(description)}`;
+                    break;
+                case 'asaas':
+                    url = `https://www.asaas.com/c/${code}`;
+                    break;
+                case 'stripe':
+                    url = `https://buy.stripe.com/${code}`;
+                    break;
+                default:
+                    url = `https://diva.link/${code}`;
+            }
+
+            setGeneratedLink(url);
+            setStep('success');
+            addToast('Link gerado com sucesso!', 'success');
+            if (onSuccess) onSuccess();
+
+        }, 1500);
     };
 
-    const handleCopyLink = () => {
+    const handleCopy = () => {
         navigator.clipboard.writeText(generatedLink);
-        addToast('Link copiado!', 'success');
+        addToast('Copiado para a área de transferência!', 'success');
     };
+
+    const formatCurrency = (val: number) =>
+        new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
     if (!isOpen) return null;
 
-    // Safety Check for Runtime Dependencies
-    if (!SaaSPlan || !SAAS_PLANS_CONFIG) {
-        console.error("Critical Dependencies Missing in QPModal used in SaaSFinanceModule:", { SaaSPlan, SAAS_PLANS_CONFIG });
-        return (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-red-900/90 text-white p-8 animate-in fade-in zoom-in duration-300">
-                <div className="bg-red-950 border-2 border-red-500 p-8 rounded-2xl max-w-lg shadow-2xl">
-                    <h3 className="text-2xl font-black mb-4 flex items-center gap-3 text-red-100">
-                        <span className="text-3xl">⚠️</span> Erro de Dependência
-                    </h3>
-                    <p className="text-red-200 mb-4 text-lg">
-                        O sistema falhou ao carregar as configurações de Planos SaaS.
-                    </p>
-                    <div className="bg-black/40 p-4 rounded-lg text-sm font-mono text-red-300 border border-red-500/30 overflow-auto max-h-40">
-                        <p><strong>Config Status:</strong></p>
-                        <p>SaaSPlan Enum: {typeof SaaSPlan !== 'undefined' ? 'Loaded ✅' : 'Missing ❌'}</p>
-                        <p>SAAS_PLANS_CONFIG: {typeof SAAS_PLANS_CONFIG !== 'undefined' ? 'Loaded ✅' : 'Missing ❌'}</p>
-                    </div>
-                    <button
-                        onClick={onClose}
-                        className="mt-8 w-full bg-white hover:bg-red-50 text-red-900 px-6 py-4 rounded-xl font-bold text-lg transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-                    >
-                        Fechar Janela
-                    </button>
-                </div>
-            </div>
-        );
-    }
-
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className={`bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl transition-all duration-300 transform scale-100`}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col">
 
                 {/* Header */}
-                <div className="flex justify-between items-center p-6 border-b border-gray-100">
-                    <h3 className="text-xl font-bold text-gray-900">Nova Cobrança Rápida</h3>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500">
-                        <X size={20} />
+                <div className="bg-diva-dark p-6 flex justify-between items-center text-white">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-white/10 rounded-lg">
+                            <Globe size={24} className="text-blue-300" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold">Venda Online</h2>
+                            <p className="text-xs text-blue-200">Gerador de Link de Pagamento</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="text-white/70 hover:text-white transition-colors">
+                        <X size={24} />
                     </button>
                 </div>
 
                 {/* Content */}
-                <div className="p-6">
+                <div className="p-6 bg-gray-50 flex-1 overflow-y-auto">
                     {step === 'form' ? (
-                        <div className="space-y-4">
+                        <div className="space-y-6">
 
-                            {/* Customer Fields */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">CPF / CNPJ</label>
-                                    <input
-                                        type="text"
-                                        value={customerCpf}
-                                        onChange={(e) => setCustomerCpf(maskCpfCnpj(e.target.value))}
-                                        className="w-full p-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-blue-500 bg-white text-gray-700"
-                                        placeholder="000.000.000-00"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Nome do Cliente</label>
-                                    <input
-                                        type="text"
-                                        value={customerName}
-                                        onChange={(e) => setCustomerName(e.target.value)}
-                                        className="w-full p-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-blue-500 bg-white text-gray-700"
-                                        placeholder="Nome Completo"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Plan Selector */}
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Selecionar Plano (Opcional)</label>
-                                <select
-                                    className="w-full p-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-blue-500 bg-white text-gray-700"
-                                    value={selectedPlan}
-                                    onChange={(e) => handlePlanChange(e.target.value as SaaSPlan)}
-                                >
-                                    <option value="">Personalizado / Avulso</option>
-                                    <option value={SaaSPlan.START}>Plano Start (R$ 199,90)</option>
-                                    <option value={SaaSPlan.GROWTH}>Plano Growth (R$ 399,90)</option>
-                                    <option value={SaaSPlan.EMPIRE}>Plano Empire (R$ 799,90)</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Valor (R$)</label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    value={value}
-                                    onChange={(e) => setValue(e.target.value)}
-                                    className="w-full text-2xl font-bold p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-gray-900"
-                                    placeholder="0,00"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Descrição</label>
-                                <textarea
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                    rows={3}
-                                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-gray-600 text-sm resize-none"
-                                    placeholder="Ex: Consultoria Técnica..."
-                                />
-                            </div>
-
-                            {/* Recurrence Options */}
-                            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={isRecurrent}
-                                        onChange={(e) => setIsRecurrent(e.target.checked)}
-                                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-gray-300"
-                                    />
-                                    <span className="text-sm font-medium text-gray-700">Assinatura Recorrente?</span>
+                            {/* Gateway Selector */}
+                            <div className="bg-white p-4 rounded-xl border border-blue-100 shadow-sm">
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2 flex items-center">
+                                    <Settings size={14} className="mr-1" /> Processador de Pagamento
                                 </label>
+                                <select
+                                    value={selectedGatewayId}
+                                    onChange={(e) => setSelectedGatewayId(e.target.value)}
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 outline-none focus:border-diva-primary focus:ring-1 focus:ring-diva-primary transition-all"
+                                >
+                                    {availableGateways.map(gw => (
+                                        <option key={gw.id} value={gw.id}>
+                                            {gw.name} ({gw.provider.toUpperCase()})
+                                        </option>
+                                    ))}
+                                </select>
 
-                                {isRecurrent && (
-                                    <select
-                                        value={cycle}
-                                        onChange={(e) => setCycle(e.target.value as any)}
-                                        className="text-sm bg-white border border-gray-200 rounded-lg px-2 py-1 outline-none focus:border-blue-500 text-gray-700"
-                                    >
-                                        <option value="MONTHLY">Mensal</option>
-                                        <option value="YEARLY">Anual</option>
-                                    </select>
+                                {selectedGateway && (
+                                    <div className="mt-3 text-xs text-gray-500 flex flex-col gap-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold text-[10px]">ATIVO</span>
+                                            <span>Taxas online aplicadas automaticamente.</span>
+                                        </div>
+                                        {selectedGateway.installmentRule && (
+                                            <div className="flex items-center gap-2 mt-1 p-2 bg-blue-50 rounded border border-blue-100 text-blue-700">
+                                                <CreditCard size={12} />
+                                                <span>
+                                                    Parcelamento: Até <strong>{selectedGateway.installmentRule.maxInstallments}x</strong>
+                                                    {selectedGateway.installmentRule.maxFreeInstallments > 1 && ` (${selectedGateway.installmentRule.maxFreeInstallments}x Sem Juros)`}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
                             </div>
 
-                            <div className="flex gap-2 text-xs text-gray-400 p-1">
-                                <div className="flex items-center gap-1"><Smartphone size={12} /> Pix</div>
-                                <div className="flex items-center gap-1"><CreditCard size={12} /> Cartão</div>
-                                <div className="flex items-center gap-1"><FileText size={12} /> Boleto</div>
+                            {/* Form Fields */}
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Valor da Cobrança (R$)</label>
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">R$</span>
+                                        <input
+                                            type="number"
+                                            value={amount}
+                                            onChange={(e) => setAmount(e.target.value)}
+                                            className="w-full pl-10 get p-4 text-2xl font-bold text-diva-dark bg-white border border-gray-200 rounded-xl outline-none focus:border-diva-primary"
+                                            placeholder="0.00"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Descrição do Pedido / Produto</label>
+                                    <div className="relative">
+                                        <Package size={18} className="absolute left-3 top-3.5 text-gray-400" />
+                                        <input
+                                            type="text"
+                                            value={description}
+                                            onChange={(e) => setDescription(e.target.value)}
+                                            className="w-full pl-10 p-3 bg-white border border-gray-200 rounded-lg text-sm outline-none focus:border-diva-primary"
+                                            placeholder="Ex: Kit Homecare + Consulta"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Nome do Cliente (Opcional)</label>
+                                    <input
+                                        type="text"
+                                        value={clientName}
+                                        onChange={(e) => setClientName(e.target.value)}
+                                        className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm outline-none focus:border-diva-primary"
+                                        placeholder="Nome para identificação"
+                                    />
+                                </div>
                             </div>
                         </div>
                     ) : (
-                        <div className="text-center py-4 space-y-4 animate-in zoom-in-95">
-                            <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-2">
-                                <CheckCircle size={32} />
+                        <div className="flex flex-col items-center justify-center py-8 text-center animate-in zoom-in duration-300">
+                            <div className="w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center mb-6 shadow-sm">
+                                <CheckCircle size={40} />
                             </div>
-                            <div>
-                                <h4 className="text-lg font-bold text-gray-900">Link Gerado!</h4>
-                                <p className="text-sm text-gray-500">Envie este link para o cliente realizar o pagamento.</p>
-                            </div>
+                            <h3 className="text-2xl font-bold text-gray-900 mb-2">Link Gerado com Sucesso!</h3>
+                            <p className="text-gray-500 text-sm max-w-xs mx-auto mb-8">
+                                O link para pagamento de <strong>{formatCurrency(parseFloat(amount))}</strong> via <strong>{selectedGateway?.name}</strong> está pronto.
+                            </p>
 
-                            <div className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-xl mt-4">
-                                <span className="text-xs text-blue-600 font-mono flex-1 truncate">{generatedLink}</span>
+                            <div className="w-full bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3 mb-6">
+                                <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                                    <LinkIcon size={20} />
+                                </div>
+                                <div className="flex-1 text-left overflow-hidden">
+                                    <p className="text-xs text-gray-400 font-bold uppercase">URL de Pagamento</p>
+                                    <p className="text-sm text-blue-600 font-medium truncate">{generatedLink}</p>
+                                </div>
                                 <button
-                                    onClick={handleCopyLink}
-                                    className="p-2 hover:bg-white hover:shadow-sm rounded-lg transition-all text-gray-600"
+                                    onClick={handleCopy}
+                                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-diva-primary"
                                     title="Copiar"
                                 >
-                                    <Copy size={16} />
+                                    <Copy size={20} />
+                                </button>
+                            </div>
+
+                            <div className="flex gap-4 w-full">
+                                <button
+                                    onClick={() => {
+                                        window.open(`https://wa.me/?text=Olá ${clientName}, segue o link para pagamento: ${generatedLink}`, '_blank');
+                                    }}
+                                    className="flex-1 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl font-bold flex items-center justify-center shadow-lg shadow-green-500/20 transition-all"
+                                >
+                                    <Smartphone size={18} className="mr-2" /> Enviar WhatsApp
                                 </button>
                             </div>
                         </div>
                     )}
                 </div>
 
-                {/* Footer */}
-                <div className="p-6 border-t border-gray-50 bg-gray-50/50 flex justify-end gap-3">
-                    {step === 'form' ? (
-                        <>
-                            <button
-                                onClick={onClose}
-                                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                onClick={handleCreateLink}
-                                disabled={isLoading}
-                                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-md shadow-blue-600/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[120px]"
-                            >
-                                {isLoading ? (
-                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                ) : (
-                                    'Gerar Link'
-                                )}
-                            </button>
-                        </>
-                    ) : (
+                {/* Footer Actions */}
+                {step === 'form' && (
+                    <div className="p-4 bg-white border-t border-gray-100 flex justify-end gap-3">
                         <button
                             onClick={onClose}
-                            className="w-full px-6 py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-bold text-sm transition-all shadow-lg"
+                            className="px-6 py-3 text-gray-500 font-bold hover:bg-gray-50 rounded-lg transition-colors"
                         >
-                            Fechar e Atualizar Lista
+                            Cancelar
                         </button>
-                    )}
-                </div>
+                        <button
+                            onClick={handleCreateLink}
+                            disabled={isLoading || !selectedGateway}
+                            className={`px-8 py-3 bg-diva-primary text-white font-bold rounded-lg shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 flex items-center
+                            ${(isLoading || !selectedGateway) ? 'opacity-70 cursor-not-allowed' : 'hover:bg-diva-dark'}`}
+                        >
+                            {isLoading ? (
+                                <>
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+                                    Gerando...
+                                </>
+                            ) : (
+                                <>
+                                    <LinkIcon size={18} className="mr-2" />
+                                    Gerar Link de Pagamento
+                                </>
+                            )}
+                        </button>
+                    </div>
+                )}
+                {step === 'success' && (
+                    <div className="p-4 bg-white border-t border-gray-100">
+                        <button
+                            onClick={onClose}
+                            className="w-full py-3 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition-colors"
+                        >
+                            Fechar
+                        </button>
+                    </div>
+                )}
+
             </div>
         </div>
     );

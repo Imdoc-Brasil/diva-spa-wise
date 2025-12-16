@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
-import { X, Save, DollarSign, ArrowUpCircle, ArrowDownCircle, Calendar, FileText, Tag, User, Repeat, Clock } from 'lucide-react';
-import { Transaction, TransactionType, TransactionStatus, RevenueType } from '../../types';
+import { X, Save, DollarSign, ArrowUpCircle, ArrowDownCircle, Calendar, FileText, Tag, User, Repeat, Clock, CreditCard } from 'lucide-react';
+import { Transaction, TransactionType, TransactionStatus, RevenueType, PaymentMethod } from '../../types';
 import { useUnitData } from '../hooks/useUnitData';
 import { useOrganization } from '../context/OrganizationContext';
 
@@ -28,6 +27,7 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClo
     date: getLocalDate(), // Competence Date
     status: 'paid' as TransactionStatus,
     revenueType: 'service' as RevenueType,
+    paymentMethod: 'credit_card' as PaymentMethod, // NEW
     // Expense Extras
     supplierId: '',
     sourceAccountId: '', // Bank Account
@@ -73,6 +73,7 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClo
       amount: parseFloat(formData.amount) || 0,
       unitId: selectedUnitId === 'all' ? undefined : selectedUnitId,
       sourceAccountId: formData.sourceAccountId ? formData.sourceAccountId : undefined,
+      paymentMethod: formData.paymentMethod, // NEW
     };
 
     if (formData.isRecurring && formData.recurrenceCount > 1) {
@@ -90,29 +91,12 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClo
           dueDate.setFullYear(dueDate.getFullYear() + i);
         }
 
-        const competenceDate = new Date(formData.date);
-        // Competence usually is the same (accrual basis) or moves? For installments (purchase), competence is day of purchase. But due dates move.
-        // Let's keep competence date as the purchase date for the first one, or all? 
-        // In standard accounting, 1 purchase of 1200 in 12x:
-        // Competence: 1200 on Day 0.
-        // Cash Flow: 100 on Day 0, 100 on Day 30, etc.
-        // BUT our system stores transactions as rows. 
-        // If we store 12 rows, we split the amount.
-
         addTransaction({
           ...baseTransaction,
           id: `t_${Date.now()}_${i}`,
           amount: amountPerInstallment, // Split amount
-          date: formData.date, // Competence Date remains the purchase date usually, but for simple cash flow visualization we often treat individual records.
-          // Let's set 'date' = dueDate to simplifly "Competence View" matching "Cash View" unless we specifically handle it.
-          // Actually, let's strictly follow:
-          // Date = Competence (When the cost occurred)
-          // DueDate = When it must be paid.
-          // Status = Pending (for future ones)
-
+          date: formData.date,
           status: i === 0 && formData.status === 'paid' ? 'paid' : 'pending',
-
-          // Expense Specifics
           supplierId: formData.supplierId || undefined,
           dueDate: dueDate.toISOString().split('T')[0],
           recurrence: {
@@ -131,7 +115,6 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClo
         ...baseTransaction,
         status: formData.status,
         date: formData.date,
-        // Expense Specifics
         supplierId: formData.supplierId || undefined,
         dueDate: type === 'expense' && formData.status === 'pending' ? formData.dueDate : undefined,
       };
@@ -145,6 +128,7 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClo
       date: getLocalDate(),
       status: 'paid',
       revenueType: 'service',
+      paymentMethod: 'credit_card',
       supplierId: '',
       sourceAccountId: '', // Reset
       dueDate: getLocalDate(),
@@ -275,6 +259,26 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClo
               />
             </div>
             <div>
+              {/* PAYMENT METHOD SELECTOR */}
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Método</label>
+              <div className="relative">
+                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                <select
+                  className="w-full pl-9 pr-3 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all bg-white text-gray-900 text-sm"
+                  value={formData.paymentMethod}
+                  onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value as PaymentMethod })}
+                >
+                  <option value="credit_card">Cartão de Crédito</option>
+                  <option value="debit_card">Cartão de Débito</option>
+                  <option value="pix">PIX</option>
+                  <option value="cash">Dinheiro</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
               <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Data (Competência)</label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
@@ -287,9 +291,6 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClo
                 />
               </div>
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Categoria</label>
               <div className="relative">
@@ -305,18 +306,19 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClo
                 </select>
               </div>
             </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Status</label>
-              <select
-                className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all bg-white text-gray-900 text-sm"
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as TransactionStatus })}
-              >
-                <option value="paid">{type === 'income' ? 'Recebido' : 'Pago'}</option>
-                <option value="pending">Pendente (Agendado)</option>
-                <option value="overdue">Atrasado</option>
-              </select>
-            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Status</label>
+            <select
+              className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all bg-white text-gray-900 text-sm"
+              value={formData.status}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value as TransactionStatus })}
+            >
+              <option value="paid">{type === 'income' ? 'Recebido' : 'Pago'}</option>
+              <option value="pending">Pendente (Agendado)</option>
+              <option value="overdue">Atrasado</option>
+            </select>
           </div>
 
           {/* Due Date (Vencimento) - Visible if Pending or Expense */}

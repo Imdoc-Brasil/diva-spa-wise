@@ -1,22 +1,21 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { ServiceAppointment, Invoice, InvoiceItem, PaymentMethod, Promotion, PaymentGateway } from '../../types';
-import { X, ShoppingBag, CreditCard, DollarSign, Smartphone, Plus, Trash2, Printer, CheckCircle, Ticket, Share2, Percent, Tag, Star, ArrowRight, Calculator } from 'lucide-react';
+import { X, ShoppingBag, CreditCard, DollarSign, Smartphone, Plus, Trash2, Printer, CheckCircle, Ticket, Share2, Percent, Tag, Star, ArrowRight, Calculator, AlertCircle } from 'lucide-react';
 import { useToast } from '../ui/ToastContext';
 import { useData } from '../context/DataContext';
 
 interface CheckoutModalProps {
-    appointment: ServiceAppointment;
+    appointment?: ServiceAppointment;
+    cartItems?: { product: any, qty: number }[];
+    clientData?: { id: string, name: string };
     isOpen: boolean;
     onClose: () => void;
     onPaymentComplete: (invoice: Invoice) => void;
 }
 
 // Mock Packages for the client
-const mockClientPackages = [
-    { id: 'pkg1', name: 'Depilação a Laser - Perna', total: 10, used: 4 },
-    { id: 'pkg2', name: 'Limpeza de Pele', total: 5, used: 5 } // Expired/Full
-];
+// Removed mockClientPackages in favor of client.wallet data
 
 // Mock Active Promotions (Available in System)
 const mockActivePromotions: Promotion[] = [
@@ -25,12 +24,15 @@ const mockActivePromotions: Promotion[] = [
 ];
 
 // Mock Gateways (Usually fetched from settings/context)
+// Mock Gateways (Usually fetched from settings/context)
 const mockGateways: PaymentGateway[] = [
     {
         id: 'gw_stone_rec',
         name: 'Stone - Recepção',
         type: 'physical_pos',
+        integrationType: 'manual',
         provider: 'stone',
+        scope: 'pos_only', // Limitado à recepção
         active: true,
         fees: {
             debit: 1.25,
@@ -40,13 +42,21 @@ const mockGateways: PaymentGateway[] = [
             pix: 0,
             pix_type: 'percentage'
         },
+        installmentRule: {
+            maxInstallments: 12,
+            maxFreeInstallments: 6, // 6x Sem Juros
+            interestRate: 2.99, // 2.99% a.m. a partir da 7ª
+            buyerPaysInterest: true
+        },
         settlementDays: { debit: 1, credit: 1, pix: 0 }
     },
     {
         id: 'gw_infinitepay',
         name: 'InfinitePay - Dra. Julia',
         type: 'physical_pos',
+        integrationType: 'manual',
         provider: 'infinitepay',
+        scope: 'all',
         active: true,
         fees: {
             debit: 1.38,
@@ -56,12 +66,18 @@ const mockGateways: PaymentGateway[] = [
             pix: 0,
             pix_type: 'percentage'
         },
+        installmentRule: {
+            maxInstallments: 12,
+            maxFreeInstallments: 10, // 10x Sem Juros
+            interestRate: 1.99,
+            buyerPaysInterest: false // Loja absorve (Simulação)
+        },
         settlementDays: { debit: 1, credit: 1, pix: 0 }
     }
 ];
 
-const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpen, onClose, onPaymentComplete }) => {
-    const { products, updateProductStock, clients, updateClient, addTransaction } = useData();
+const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, cartItems, clientData, isOpen, onClose, onPaymentComplete }) => {
+    const { products, updateProductStock, clients, updateClient, addTransaction, services, selectedUnitId } = useData();
     const { addToast } = useToast();
     const [items, setItems] = useState<InvoiceItem[]>([]);
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
@@ -81,27 +97,63 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpen, onCl
     const [usePackage, setUsePackage] = useState(false);
     const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
 
+    // Unified Client Data
+    const finalClientId = appointment?.clientId || clientData?.id || 'walk_in';
+    const finalClientName = appointment?.clientName || clientData?.name || 'Cliente Balcão';
+
     // Get Client Data
-    const client = clients.find(c => c.clientId === appointment.clientId);
+    const client = clients.find(c => c.clientId === finalClientId);
     const loyaltyDiscountValue = client && client.loyaltyPoints ? Math.floor(client.loyaltyPoints / 10) : 0;
 
     // Filter products for upsell (e.g., homecare items with stock)
     const upsellProducts = products.filter(p => p.category === 'homecare' && (p.stock || 0) > 0).slice(0, 3);
 
     // Detect matching package
-    const matchingPackage = mockClientPackages.find(p => appointment.serviceName.includes(p.name) && p.used < p.total);
+    // Detect matching package from Client Wallet
+    const clientPackages = client?.wallet?.activePackages || [];
+    const matchingPackage = clientPackages.find(p =>
+        appointment &&
+        (
+            (p.serviceId && (p.serviceId === appointment.serviceName || p.serviceId === appointment.appointmentId)) || // Try ID match
+            appointment.serviceName.includes(p.name) || // Fallback name match
+            p.name.includes(appointment.serviceName)
+        ) &&
+        p.sessionsUsed < p.sessionsTotal
+    );
 
-    // Initialize Invoice with the service
+    // Initialize Invoice with service OR cart items
     useEffect(() => {
-        if (isOpen && appointment) {
-            setItems([{
-                id: 'svc_' + appointment.appointmentId,
-                description: appointment.serviceName,
-                quantity: 1,
-                unitPrice: appointment.price,
-                total: appointment.price,
-                type: 'service'
-            }]);
+        if (isOpen) {
+            const initialItems: InvoiceItem[] = [];
+
+            // Add Appointment Service
+            if (appointment) {
+                initialItems.push({
+                    id: 'svc_' + appointment.appointmentId,
+                    description: appointment.serviceName,
+                    quantity: 1,
+                    unitPrice: appointment.price,
+                    total: appointment.price,
+                    type: 'service'
+                });
+            }
+
+            // Add Cart Items
+            if (cartItems) {
+                cartItems.forEach(cartItem => {
+                    initialItems.push({
+                        id: 'prod_' + cartItem.product.id + '_' + Date.now(),
+                        productId: cartItem.product.id,
+                        description: cartItem.product.name,
+                        quantity: cartItem.qty,
+                        unitPrice: cartItem.product.price,
+                        total: cartItem.product.price * cartItem.qty,
+                        type: 'product'
+                    });
+                });
+            }
+
+            setItems(initialItems);
             setPaymentMethod(null);
             setIsSuccess(false);
             setUsePackage(false);
@@ -113,7 +165,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpen, onCl
             setInstallments(1);
             setSelectedGatewayId(mockGateways[0].id);
         }
-    }, [isOpen, appointment]);
+    }, [isOpen, appointment, cartItems]);
 
     // Update totals when package is toggled
     useEffect(() => {
@@ -143,11 +195,41 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpen, onCl
     const total = Math.max(0, subtotal - totalDiscount);
 
     // --- FINANCIAL CALCULATIONS ---
+    // --- INTEREST & FINANCIAL CALCULATIONS ---
+    const interestInfo = useMemo(() => {
+        if (!total || paymentMethod !== 'credit_card' || !selectedGatewayId) return { totalWithInterest: total, interestAmount: 0, hasInterest: false };
+
+        const gateway = mockGateways.find(g => g.id === selectedGatewayId);
+        if (!gateway || !gateway.installmentRule) return { totalWithInterest: total, interestAmount: 0, hasInterest: false };
+
+        const { maxFreeInstallments, interestRate, buyerPaysInterest } = gateway.installmentRule;
+
+        if (installments > maxFreeInstallments) {
+            // Calculate Interest (Simple Compound for visualization)
+            // Total * (1 + rate)^months
+            // NOTE: In real world, use specific coefficients tables
+            const rateDecimal = interestRate / 100;
+            const newTotal = total * Math.pow(1 + rateDecimal, installments);
+
+            if (buyerPaysInterest) {
+                return {
+                    totalWithInterest: newTotal,
+                    interestAmount: newTotal - total,
+                    hasInterest: true,
+                    monthlyInstallment: newTotal / installments
+                };
+            }
+        }
+        return { totalWithInterest: total, interestAmount: 0, hasInterest: false, monthlyInstallment: total / installments };
+    }, [total, paymentMethod, selectedGatewayId, installments]);
+
     const financialSummary = useMemo(() => {
         if (!paymentMethod || !total) return null;
 
         const gateway = mockGateways.find(g => g.id === selectedGatewayId);
         if (!gateway) return null;
+
+        const chargedAmount = interestInfo.totalWithInterest; // Calculate fees on what was charged
 
         let feePercentage = 0;
         let settlementDays = 0;
@@ -165,13 +247,12 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpen, onCl
             }
             settlementDays = gateway.settlementDays.credit;
         } else if (paymentMethod === 'pix') {
-            // Basic PIX check (assuming percentage for simplicity)
             feePercentage = gateway.fees.pix;
             settlementDays = gateway.settlementDays.pix;
         }
 
-        const feeAmount = total * (feePercentage / 100);
-        const netAmount = total - feeAmount;
+        const feeAmount = chargedAmount * (feePercentage / 100);
+        const netAmount = chargedAmount - feeAmount;
 
         const settlementDate = new Date();
         settlementDate.setDate(settlementDate.getDate() + settlementDays);
@@ -185,7 +266,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpen, onCl
             settlementDays,
             settlementDate
         };
-    }, [paymentMethod, selectedGatewayId, installments, total]);
+    }, [paymentMethod, selectedGatewayId, installments, interestInfo]);
 
     const handleAddProduct = (prod: { id: string, name: string, price: number }) => {
         const newItem: InvoiceItem = {
@@ -250,22 +331,95 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpen, onCl
 
             // Deduct Stock for Products
             items.forEach(item => {
+                // 1. Direct Product Sale Deduction
                 if (item.type === 'product' && item.productId) {
                     updateProductStock(item.productId, item.quantity, 'remove');
                 }
+
+                // 2. Service Protocol Deduction (Integration)
+                if (item.type === 'service') {
+                    // Try to find the service definition to check for consumed materials
+                    // Note: We match by name because appointment might only have name, but ideally use serviceId
+                    const serviceDef = services?.find(s => s.name === item.description || s.id === item.productId);
+
+                    if (serviceDef && serviceDef.protocol) {
+                        serviceDef.protocol.forEach(protoItem => {
+                            // Deduct the quantity defined in protocol * quantity of services performed
+                            updateProductStock(protoItem.productId, protoItem.quantity * item.quantity, 'remove');
+                            console.log(`[Estoque] Deduzido ${protoItem.quantity * item.quantity}x ${protoItem.productName} via Protocolo de Serviço.`);
+                        });
+                    }
+                }
             });
 
-            // Deduct Loyalty Points
-            if (useLoyaltyPoints && client) {
-                updateClient(client.clientId, { loyaltyPoints: 0 });
+            // --- WALLET UPDATES (Packages & Loyalty) ---
+            if (client) {
+                let currentWallet = client.wallet || { balance: 0, activePackages: [] };
+                let walletUpdated = false;
+
+                // 1. Deduct Session if consuming package
+                if (usePackage && matchingPackage) {
+                    currentWallet = {
+                        ...currentWallet,
+                        activePackages: currentWallet.activePackages.map(p => {
+                            if (p.id === matchingPackage.id) {
+                                return { ...p, sessionsUsed: p.sessionsUsed + 1 };
+                            }
+                            return p;
+                        })
+                    };
+                    walletUpdated = true;
+                    console.log(`[Pacotes] Sessão debitada do pacote: ${matchingPackage.name}`);
+                }
+
+                // 2. Add New Package if buying one
+                items.forEach(item => {
+                    if (item.type === 'product') {
+                        const prodDef = products.find(p => p.id === item.productId);
+                        if (prodDef && prodDef.category === 'treatment_package' && prodDef.packageSessionCount) {
+                            const newPkg = {
+                                id: `pkg_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                                name: prodDef.name,
+                                serviceId: prodDef.serviceReferenceId, // Link to service
+                                sessionsTotal: prodDef.packageSessionCount * item.quantity,
+                                sessionsUsed: 0,
+                                expiryDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString() // 1 year validity
+                            };
+                            currentWallet = {
+                                ...currentWallet,
+                                activePackages: [...currentWallet.activePackages, newPkg]
+                            };
+                            walletUpdated = true;
+                            addToast(`Pacote ${prodDef.name} adicionado à carteira do cliente!`, 'success');
+                        }
+                    }
+                });
+
+                // 3. Deduct Loyalty Points (if used)
+                if (useLoyaltyPoints) {
+                    // Logic to deduct points handled via updateClient or here?
+                    // Let's assume UpdateClient handles simple props, but wallet is complex.
+                    // The original code passed { loyaltyPoints: 0 }. 
+                    // Better to integrate here if possible, but loyaltyPoints is top-level on Client, not in Wallet currently?
+                    // Checked types: loyaltyPoints IS top-level.
+                    // So we do that separately below.
+                }
+
+                if (walletUpdated) {
+                    updateClient(client.clientId, { wallet: currentWallet });
+                }
+
+                if (useLoyaltyPoints) {
+                    updateClient(client.clientId, { loyaltyPoints: 0 }); // Reset points
+                }
             }
 
             const invoice: Invoice = {
                 id: 'inv_' + Date.now(),
                 organizationId: 'org_demo',
-                appointmentId: appointment.appointmentId,
-                clientId: appointment.clientId,
-                clientName: appointment.clientName,
+                appointmentId: appointment?.appointmentId || '',
+                clientId: finalClientId,
+                clientName: finalClientName,
                 items: items,
                 subtotal,
                 discount: totalDiscount,
@@ -294,14 +448,14 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpen, onCl
                 const transaction: any = {
                     id: `t_${Date.now()}_checkout`,
                     organizationId: 'org_default', // Placeholder
-                    description: `Procd. - ${appointment.clientName}`,
-                    category: 'Serviços',
-                    amount: total,
+                    description: appointment ? `Procd. - ${finalClientName}` : `Compra Loja - ${finalClientName}`,
+                    category: appointment ? 'Serviços' : 'Vendas Produtos',
+                    amount: interestInfo.totalWithInterest, // Use amount with interest if applicable
                     type: 'income',
                     status: 'paid',
                     date: new Date().toISOString().split('T')[0],
-                    unitId: appointment.unitId,
-                    relatedAppointmentId: appointment.appointmentId,
+                    unitId: appointment?.unitId || selectedUnitId || 'unit_default',
+                    relatedAppointmentId: appointment?.appointmentId,
                     revenueType: 'service', // Simplified
                     paymentMethod: paymentMethod,
                     ...financialInfo
@@ -341,7 +495,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpen, onCl
                     <div className="flex items-center justify-between mb-4">
                         <div>
                             <h2 className="text-lg md:text-xl font-serif font-bold text-diva-dark">Checkout</h2>
-                            <p className="text-xs md:text-sm text-gray-500">Pedido #1024 • {appointment.clientName}</p>
+                            <p className="text-xs md:text-sm text-gray-500">{appointment ? `Pedido #${appointment.appointmentId.slice(-4)}` : 'Nova Venda'} • {finalClientName}</p>
                         </div>
                         <button onClick={onClose} className="md:hidden text-gray-400 hover:text-diva-dark"><X size={24} /></button>
                     </div>
@@ -353,7 +507,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpen, onCl
                                 <div className="bg-purple-100 p-2 rounded-full text-purple-600"><Ticket size={20} /></div>
                                 <div>
                                     <p className="text-sm font-bold text-purple-800">Pacote Disponível</p>
-                                    <p className="text-xs text-purple-600">Restam {matchingPackage.total - matchingPackage.used} sessões.</p>
+                                    <p className="text-xs text-purple-600">Restam {matchingPackage.sessionsTotal - matchingPackage.sessionsUsed} sessões.</p>
                                 </div>
                             </div>
                             <button onClick={() => setUsePackage(true)} className="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-purple-700 transition-colors">Usar Sessão</button>
@@ -527,13 +681,77 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpen, onCl
                                                 onChange={(e) => setInstallments(Number(e.target.value))}
                                                 className="w-full p-2 text-sm border border-gray-300 rounded-lg outline-none focus:border-diva-primary bg-white"
                                             >
-                                                {Array.from({ length: 12 }, (_, i) => i + 1).map(num => (
-                                                    <option key={num} value={num}>
-                                                        {num}x de {formatCurrency(total / num)} {num > 1 ? '(Sem Juros)' : ''}
-                                                    </option>
-                                                ))}
+                                                {(() => {
+                                                    const gw = mockGateways.find(g => g.id === selectedGatewayId);
+                                                    const max = gw?.installmentRule?.maxInstallments || 12;
+                                                    const maxFree = gw?.installmentRule?.maxFreeInstallments || 1;
+
+                                                    return Array.from({ length: max }, (_, i) => i + 1).map(num => {
+                                                        // Calc simulation for this option
+                                                        let label = `${num}x`;
+                                                        let hasInterest = false;
+                                                        let value = total;
+
+                                                        if (num > maxFree && gw?.installmentRule?.buyerPaysInterest) {
+                                                            const rateDecimal = (gw.installmentRule.interestRate || 0) / 100;
+                                                            value = total * Math.pow(1 + rateDecimal, num);
+                                                            hasInterest = true;
+                                                        }
+
+                                                        const installmentParams: Intl.NumberFormatOptions = { style: 'currency', currency: 'BRL' };
+                                                        const installmentVal = value / num;
+
+                                                        return (
+                                                            <option key={num} value={num}>
+                                                                {num}x de {installmentVal.toLocaleString('pt-BR', installmentParams)}
+                                                                {hasInterest ? ` (c/ juros ${formatCurrency(value)})` : ' (Sem Juros)'}
+                                                            </option>
+                                                        );
+                                                    });
+                                                })()}
                                             </select>
                                         </div>
+                                    )}
+
+                                    {interestInfo.hasInterest && (
+                                        <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-xs text-yellow-800 flex items-start">
+                                            <AlertCircle size={14} className="mt-0.5 mr-2 flex-shrink-0" />
+                                            <div>
+                                                <p className="font-bold">Juros Aplicados (Repasse ao Cliente)</p>
+                                                <p>O valor total subiu de {formatCurrency(total)} para {formatCurrency(interestInfo.totalWithInterest)} devido ao parcelamento em {installments}x.</p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* PIX Key Display */}
+                                    {paymentMethod === 'pix' && (
+                                        (() => {
+                                            const gw = mockGateways.find(g => g.id === selectedGatewayId);
+                                            if (gw?.pixKey) {
+                                                return (
+                                                    <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-lg text-xs animate-in zoom-in">
+                                                        <h4 className="font-bold text-green-800 mb-1 flex items-center">
+                                                            <Smartphone size={14} className="mr-1" /> Chave PIX para Depósito
+                                                        </h4>
+                                                        <div className="flex items-center gap-2 bg-white p-2 rounded border border-green-100">
+                                                            <span className="font-mono text-gray-700 flex-1 truncate select-all">
+                                                                {gw.pixKey}
+                                                            </span>
+                                                            <button
+                                                                onClick={() => { navigator.clipboard.writeText(gw.pixKey || ''); addToast('Copiado!', 'success') }}
+                                                                className="text-green-600 font-bold px-2 py-1 rounded bg-green-100 hover:bg-green-200"
+                                                            >
+                                                                Copiar
+                                                            </button>
+                                                        </div>
+                                                        <p className="text-[10px] text-green-600 mt-1 italic">
+                                                            Confira se o destinatário é a clínica.
+                                                        </p>
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        })()
                                     )}
 
                                     {/* Financial Simulation Result */}
@@ -570,7 +788,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({ appointment, isOpen, onCl
                                 ) : (
                                     <>
                                         <CheckCircle size={20} className="mr-2" />
-                                        Finalizar Pedido {total > 0 && `• ${formatCurrency(total)}`}
+                                        Finalizar Pedido {interestInfo.totalWithInterest > 0 && `• ${formatCurrency(interestInfo.totalWithInterest)}`}
                                     </>
                                 )}
                             </button>

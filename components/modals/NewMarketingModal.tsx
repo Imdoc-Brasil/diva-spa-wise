@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Megaphone, Zap, Users, MessageCircle, Mail, Instagram, Bell, FileText, Bot } from 'lucide-react';
+import { X, Save, Megaphone, Zap, Users, MessageCircle, Mail, Instagram, Bell, FileText, Bot, Calendar } from 'lucide-react';
 import { MarketingCampaign, AutomationRule, CampaignChannel } from '../../types';
+import { useData } from '../context/DataContext';
 
 type ModalType = 'campaign' | 'automation' | 'segment';
 
@@ -27,17 +28,20 @@ const WHATSAPP_FLOWS = [
 ];
 
 const NewMarketingModal: React.FC<NewMarketingModalProps> = ({ isOpen, onClose, type, onSave, initialData }) => {
+  const { events, segments } = useData();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     channel: 'whatsapp' as CampaignChannel,
+    targetAudience: 'all',
     trigger: 'birthday',
     action: 'send_message',
     scheduledDate: '',
     messageContent: '',
     selectedTemplate: 'custom',
     useWhatsappFlow: false,
-    selectedFlow: ''
+    selectedFlow: '',
+    linkedEventId: ''
   });
 
   useEffect(() => {
@@ -47,13 +51,15 @@ const NewMarketingModal: React.FC<NewMarketingModalProps> = ({ isOpen, onClose, 
           name: initialData.name || '',
           description: initialData.description || '',
           channel: initialData.channel || 'whatsapp',
+          targetAudience: initialData.targetAudience || 'all',
           trigger: initialData.trigger || 'birthday',
           action: initialData.action || 'send_message',
           scheduledDate: initialData.scheduledFor || '',
           messageContent: initialData.messageContent || '',
           selectedTemplate: initialData.templateId || 'custom',
           useWhatsappFlow: initialData.useWhatsappFlow || false,
-          selectedFlow: initialData.flowId || ''
+          selectedFlow: initialData.flowId || '',
+          linkedEventId: initialData.linkedEventId || ''
         });
       } else {
         // Reset for creation
@@ -61,13 +67,15 @@ const NewMarketingModal: React.FC<NewMarketingModalProps> = ({ isOpen, onClose, 
           name: '',
           description: '',
           channel: 'whatsapp',
+          targetAudience: 'all',
           trigger: 'birthday',
           action: 'send_message',
           scheduledDate: '',
           messageContent: '',
           selectedTemplate: 'custom',
           useWhatsappFlow: false,
-          selectedFlow: ''
+          selectedFlow: '',
+          linkedEventId: ''
         });
       }
     }
@@ -137,6 +145,54 @@ const NewMarketingModal: React.FC<NewMarketingModalProps> = ({ isOpen, onClose, 
           {/* CAMPAIGN FIELDS */}
           {type === 'campaign' && (
             <>
+              {/* Target Audience Selector */}
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Público Alvo</label>
+                <select
+                  className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary bg-white text-gray-900 text-sm"
+                  value={formData.targetAudience}
+                  onChange={(e) => setFormData({ ...formData, targetAudience: e.target.value })}
+                >
+                  <option value="all">Todos os Clientes</option>
+                  <optgroup label="Segmentos Automáticos (RFM)">
+                    <option value="rfm_Champions">🏆 Clientes VIP / Campeões</option>
+                    <option value="rfm_Loyal">💙 Clientes Leais</option>
+                    <option value="rfm_AtRisk">⚠️ Em Risco (Recuperação)</option>
+                    <option value="rfm_Lost">❌ Perdidos (Win-back)</option>
+                    <option value="rfm_NewCustomers">🌟 Novos Clientes</option>
+                  </optgroup>
+                  <optgroup label="Segmentos Personalizados">
+                    {segments.map(seg => (
+                      <option key={seg.id} value={seg.id}>{seg.name}</option>
+                    ))}
+                  </optgroup>
+                </select>
+              </div>
+
+              {/* Event Promotion Selector */}
+              <div className="p-4 bg-diva-primary/5 rounded-xl border border-diva-primary/10 mb-5">
+                <label className="block text-xs font-bold text-diva-primary uppercase mb-2 flex items-center">
+                  <Calendar size={14} className="mr-1" /> Promover Evento (Opcional)
+                </label>
+                <select
+                  className="w-full p-2 border border-diva-primary/20 rounded-lg text-sm bg-white"
+                  value={formData.linkedEventId}
+                  onChange={(e) => {
+                    const evtId = e.target.value;
+                    const evt = events.find(ev => ev.id === evtId);
+                    setFormData(prev => ({
+                      ...prev,
+                      linkedEventId: evtId,
+                      messageContent: evt ? `✨ Convite Especial: ${evt.title}\n\nOlá {name}, queremos te convidar para nosso evento exclusivo no dia ${new Date(evt.date).toLocaleDateString()}!\n\nGaranta seu lugar aqui: {link}` : prev.messageContent
+                    }));
+                  }}
+                >
+                  <option value="">Selecione um evento...</option>
+                  {events.map(evt => (
+                    <option key={evt.id} value={evt.id}>{evt.title} ({new Date(evt.date).toLocaleDateString()})</option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Canal de Envio</label>
                 <div className="grid grid-cols-4 gap-2">
@@ -249,6 +305,7 @@ const NewMarketingModal: React.FC<NewMarketingModalProps> = ({ isOpen, onClose, 
                   <option value="abandoned_cart">Carrinho Abandonado</option>
                   <option value="inactive_30d">Inativo 30 dias</option>
                   <option value="lead_stale_24h">Lead s/ Contato 24h</option>
+                  <option value="new_event">Novo Evento Criado</option>
                 </select>
               </div>
               <div>
@@ -303,8 +360,8 @@ const NewMarketingModal: React.FC<NewMarketingModalProps> = ({ isOpen, onClose, 
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };
 export default NewMarketingModal;

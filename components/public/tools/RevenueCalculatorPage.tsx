@@ -2,24 +2,26 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
 import { SaaSLead, SaaSLeadStage, SaaSPlan } from '../../../types';
-import { Calculator, ArrowRight, DollarSign, Users, Building, CheckCircle, Lock, TrendingUp, AlertCircle, Sparkles } from 'lucide-react';
+import { Calculator, ArrowRight, DollarSign, Users, Building, CheckCircle, Lock, TrendingUp, AlertCircle, Sparkles, Clock, MapPin } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { useToast } from '../../ui/ToastContext';
+import { supabase } from '../../../services/supabase';
 
 const RevenueCalculatorPage: React.FC = () => {
     const navigate = useNavigate();
     const { addSaaSLead } = useData();
     const { addToast } = useToast();
 
-    // Steps: 0 = Intro, 1 = Data, 2 = Contact, 3 = Result
+    // Steps: 0 = Intro, 1 = Type & Basic, 2 = Details, 3 = Lead, 4 = Result
     const [step, setStep] = useState(0);
 
     // Inputs
-    const [chairs, setChairs] = useState(3);
-    const [ticket, setTicket] = useState(250);
-    const [daysOpen, setDaysOpen] = useState(22); // Mensal (dias úteis)
-    const [dailyCapacity, setDailyCapacity] = useState(8); // Atendimentos por dia por sala
-    const [occupancyRate, setOccupancyRate] = useState(40); // % Atual estimada
+    const [entityType, setEntityType] = useState<'professional' | 'office' | 'clinic' | 'franchise'>('clinic');
+    const [ns, setNs] = useState(1); // Número de Salas
+    const [nt, setNt] = useState(10); // Turnos por semana (max 14)
+    const [nu, setNu] = useState(1); // Número de Unidades (Franquia)
+    const [tmd, setTmd] = useState<20 | 30 | 60 | 90>(30); // Tempo Médio
+    const [mfm, setMfm] = useState(0); // Melhor Faturamento Mensal (Atual)
 
     // Lead Data
     const [name, setName] = useState('');
@@ -27,14 +29,33 @@ const RevenueCalculatorPage: React.FC = () => {
     const [phone, setPhone] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Calculation Results
+    // Calculation Logic
     const calculatePotential = () => {
-        const totalCapacityMonthly = chairs * dailyCapacity * daysOpen;
-        const potentialRevenue = totalCapacityMonthly * ticket * 0.85; // 85% occupancy target
-        const currentRevenueEstimate = totalCapacityMonthly * ticket * (occupancyRate / 100);
-        const lostRevenue = potentialRevenue - currentRevenueEstimate;
+        // Factors derived from user request formulas
+        // 20min factor: 10 * 500 = 5000
+        // 30min factor: 9 * 600 = 5400
+        // 60min factor: 6 * 1000 = 6000
+        // 90min factor: 5 * 1500 = 7500
 
-        return { potentialRevenue, currentRevenueEstimate, lostRevenue };
+        let multiplier = 0;
+        if (tmd === 20) multiplier = 10 * 4 * 500;
+        if (tmd === 30) multiplier = 9 * 4 * 600;
+        if (tmd === 60) multiplier = 6 * 4 * 1000;
+        if (tmd === 90) multiplier = 5 * 4 * 1500;
+
+        let occupancyFactor = 1.0;
+        if (entityType === 'professional') occupancyFactor = 0.6; // 60% occupation for professionals per formula
+
+        let totalSalas = ns;
+        if (entityType === 'professional' || entityType === 'office') totalSalas = 1;
+        if (entityType === 'franchise') totalSalas = ns * nu;
+
+        // Formula: Rooms * Shifts * Multiplier * Occupancy
+        const potentialRevenue = totalSalas * nt * multiplier * occupancyFactor;
+        const currentRevenue = mfm;
+        const lostRevenue = Math.max(0, potentialRevenue - currentRevenue);
+
+        return { potentialRevenue, currentRevenue, lostRevenue };
     };
 
     const results = calculatePotential();
@@ -48,12 +69,12 @@ const RevenueCalculatorPage: React.FC = () => {
             name,
             email,
             phone,
-            clinicName: 'Via Calculadora',
+            clinicName: entityType === 'professional' ? 'Profissional Liberal' : (entityType === 'franchise' ? 'Rede de Franquias' : 'Clínica/Consultório'),
             stage: SaaSLeadStage.NEW,
-            source: 'landing_page', // Fixed: use valid union type
-            planInterest: results.potentialRevenue > 50000 ? SaaSPlan.GROWTH : SaaSPlan.START, // Fixed: use Enum
+            source: 'landing_page',
+            planInterest: results.potentialRevenue > 50000 ? SaaSPlan.GROWTH : SaaSPlan.START,
             status: 'active',
-            notes: `Origem: Calculadora Faturamento. Potencial de ${formatCurrency(results.potentialRevenue)}. Perda de ${formatCurrency(results.lostRevenue)}`,
+            notes: `Calculadora (${entityType}): Potencial Potencial R$${results.potentialRevenue.toFixed(2)}. Atual R$${mfm.toFixed(2)}. Salas: ${ns}, Turnos: ${nt}, Tempo: ${tmd}min`,
             estimatedValue: results.potentialRevenue > 50000 ? 597 : 297,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
@@ -63,11 +84,11 @@ const RevenueCalculatorPage: React.FC = () => {
             if (addSaaSLead) {
                 await addSaaSLead(lead);
             }
-            setStep(3);
+            setStep(4);
             addToast('Análise gerada com sucesso!', 'success');
         } catch (error) {
             console.error(error);
-            addToast('Erro ao processar. Tente novamente.', 'error');
+            addToast('Erro ao processar.', 'error');
         } finally {
             setIsSubmitting(false);
         }
@@ -77,8 +98,8 @@ const RevenueCalculatorPage: React.FC = () => {
         new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(val);
 
     const chartData = [
-        { name: 'Atual (Est.)', value: results.currentRevenueEstimate, color: '#94a3b8' },
-        { name: 'Potencial', value: results.potentialRevenue, color: '#a855f7' }
+        { name: 'Seu Melhor Mês', value: results.currentRevenue, color: '#94a3b8' },
+        { name: 'Potencial I\'mdoc', value: results.potentialRevenue, color: '#a855f7' }
     ];
 
     return (
@@ -94,236 +115,218 @@ const RevenueCalculatorPage: React.FC = () => {
             <div className="min-h-screen flex items-center justify-center px-4 py-20 relative overflow-hidden">
                 {/* Background Effects */}
                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2"></div>
-                <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[120px] translate-y-1/2 -translate-x-1/2"></div>
+                <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px] translate-y-1/2 -translate-x-1/2"></div>
 
                 <div className="w-full max-w-4xl relative z-10">
 
                     {/* STEP 0: INTRO */}
                     {step === 0 && (
                         <div className="text-center animate-in fade-in zoom-in duration-500">
-                            <div className="inline-flex items-center justify-center w-20 h-20 bg-purple-500/10 rounded-3xl mb-8 border border-purple-500/20 shadow-lg shadow-purple-500/20">
-                                <Calculator className="text-purple-400" size={40} />
+                            <div className="inline-flex items-center justify-center w-24 h-24 bg-purple-500/10 rounded-3xl mb-8 border border-purple-500/20 shadow-lg shadow-purple-500/20">
+                                <Calculator className="text-purple-400" size={48} />
                             </div>
                             <h1 className="text-4xl md:text-6xl font-black mb-6 leading-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-slate-400">
-                                Calculadora de<br />Potencial de Faturamento
+                                Simule sua Capacidade<br />de Faturamento
                             </h1>
                             <p className="text-xl text-slate-400 mb-12 max-w-2xl mx-auto">
-                                Descubra quanto sua clínica está deixando de ganhar por ineficiência na gestão e buracos na agenda. Análise gratuita em 30 segundos.
+                                Descubra o verdadeiro potencial do seu negócio de saúde com o algoritmo exclusivo do I'mdoc, baseado em dados reais de mercado.
                             </p>
                             <button
                                 onClick={() => setStep(1)}
                                 className="group relative px-10 py-5 bg-white text-slate-900 rounded-full font-black text-xl hover:bg-slate-200 transition-all hover:scale-105 shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)]"
                             >
                                 <span className="flex items-center gap-3">
-                                    Começar Análise <ArrowRight size={24} className="group-hover:translate-x-1 transition-transform" />
+                                    Iniciar Simulação Gratuita <ArrowRight size={24} className="group-hover:translate-x-1 transition-transform" />
                                 </span>
                             </button>
                         </div>
                     )}
 
-                    {/* STEP 1: CLINIC DATA */}
+                    {/* STEP 1: TYPE */}
                     {step === 1 && (
                         <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 p-8 md:p-12 rounded-3xl shadow-2xl animate-in slide-in-from-right duration-500">
-                            <h2 className="text-3xl font-bold mb-2">Estrutura da Clínica</h2>
-                            <p className="text-slate-400 mb-8">Conte um pouco sobre sua capacidade atual de atendimento.</p>
+                            <h2 className="text-3xl font-bold mb-8">Qual o perfil do seu negócio?</h2>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-400 mb-3 uppercase tracking-wider">Salas de Atendimento</label>
-                                    <div className="bg-slate-800 p-4 rounded-xl flex items-center gap-4 border border-slate-700 focus-within:border-purple-500 transition-colors">
-                                        <Building className="text-purple-500" size={24} />
-                                        <input
-                                            type="number"
-                                            value={chairs}
-                                            onChange={e => setChairs(Number(e.target.value))}
-                                            className="bg-transparent w-full text-2xl font-bold outline-none"
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-400 mb-3 uppercase tracking-wider">Ticket Médio (R$)</label>
-                                    <div className="bg-slate-800 p-4 rounded-xl flex items-center gap-4 border border-slate-700 focus-within:border-purple-500 transition-colors">
-                                        <DollarSign className="text-green-500" size={24} />
-                                        <input
-                                            type="number"
-                                            value={ticket}
-                                            onChange={e => setTicket(Number(e.target.value))}
-                                            className="bg-transparent w-full text-2xl font-bold outline-none"
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-400 mb-3 uppercase tracking-wider">Atendimentos / Dia (Capacidade)</label>
-                                    <div className="bg-slate-800 p-4 rounded-xl flex items-center gap-4 border border-slate-700 focus-within:border-purple-500 transition-colors">
-                                        <Users className="text-blue-500" size={24} />
-                                        <input
-                                            type="number"
-                                            value={dailyCapacity}
-                                            onChange={e => setDailyCapacity(Number(e.target.value))}
-                                            className="bg-transparent w-full text-2xl font-bold outline-none"
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-400 mb-3 uppercase tracking-wider">Ocupação Atual Estimada (%)</label>
-                                    <div className="bg-slate-800 p-4 rounded-xl flex items-center gap-4 border border-slate-700 focus-within:border-purple-500 transition-colors">
-                                        <TrendingUp className="text-orange-500" size={24} />
-                                        <input
-                                            type="number"
-                                            value={occupancyRate}
-                                            onChange={e => setOccupancyRate(Number(e.target.value))}
-                                            className="bg-transparent w-full text-2xl font-bold outline-none"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="flex justify-between items-center">
-                                <button onClick={() => setStep(0)} className="text-slate-500 hover:text-white font-bold transition-colors">Voltar</button>
-                                <button
-                                    onClick={() => setStep(2)}
-                                    className="bg-purple-600 hover:bg-purple-500 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all shadow-lg hover:shadow-purple-500/20 flex items-center gap-2"
-                                >
-                                    Próximo Passo <ArrowRight size={20} />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                <button onClick={() => { setEntityType('professional'); setNs(1); }} className={`p-6 rounded-xl border text-left transition-all relative overflow-hidden group ${entityType === 'professional' ? 'bg-purple-600/20 border-purple-500 ring-1 ring-purple-500' : 'bg-slate-800 border-slate-700 hover:border-slate-600'}`}>
+                                    <div className="font-bold text-lg mb-1 relative z-10">Profissional Liberal</div>
+                                    <p className="text-xs text-slate-400 relative z-10">Presta serviço em clínicas de terceiros.</p>
+                                    <div className={`absolute inset-0 bg-gradient-to-r from-purple-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity`} />
+                                </button>
+                                <button onClick={() => { setEntityType('office'); setNs(1); }} className={`p-6 rounded-xl border text-left transition-all relative overflow-hidden group ${entityType === 'office' ? 'bg-purple-600/20 border-purple-500 ring-1 ring-purple-500' : 'bg-slate-800 border-slate-700 hover:border-slate-600'}`}>
+                                    <div className="font-bold text-lg mb-1 relative z-10">Consultório Próprio</div>
+                                    <p className="text-xs text-slate-400 relative z-10">Possui consultório ou sala própria.</p>
+                                    <div className={`absolute inset-0 bg-gradient-to-r from-purple-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity`} />
+                                </button>
+                                <button onClick={() => setEntityType('clinic')} className={`p-6 rounded-xl border text-left transition-all relative overflow-hidden group ${entityType === 'clinic' ? 'bg-purple-600/20 border-purple-500 ring-1 ring-purple-500' : 'bg-slate-800 border-slate-700 hover:border-slate-600'}`}>
+                                    <div className="font-bold text-lg mb-1 relative z-10">Clínica / Centro Médico</div>
+                                    <p className="text-xs text-slate-400 relative z-10">Estrutura com múltiplas salas.</p>
+                                    <div className={`absolute inset-0 bg-gradient-to-r from-purple-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity`} />
+                                </button>
+                                <button onClick={() => setEntityType('franchise')} className={`p-6 rounded-xl border text-left transition-all relative overflow-hidden group ${entityType === 'franchise' ? 'bg-purple-600/20 border-purple-500 ring-1 ring-purple-500' : 'bg-slate-800 border-slate-700 hover:border-slate-600'}`}>
+                                    <div className="font-bold text-lg mb-1 relative z-10">Rede de Franquias</div>
+                                    <p className="text-xs text-slate-400 relative z-10">Possui múltiplas unidades.</p>
+                                    <div className={`absolute inset-0 bg-gradient-to-r from-purple-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity`} />
                                 </button>
                             </div>
+
+                            <button onClick={() => setStep(2)} className="w-full bg-purple-600 hover:bg-purple-500 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all shadow-lg shadow-purple-900/20">
+                                Continuar
+                            </button>
                         </div>
                     )}
 
-                    {/* STEP 2: LEAD CAPTURE */}
+                    {/* STEP 2: DETAILS */}
                     {step === 2 && (
+                        <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 p-8 md:p-12 rounded-3xl shadow-2xl animate-in slide-in-from-right duration-500">
+                            <div className="flex items-center gap-2 mb-8 cursor-pointer text-slate-500 hover:text-white transition-colors" onClick={() => setStep(1)}><ArrowRight className="rotate-180" size={16} /> Voltar</div>
+                            <h2 className="text-3xl font-bold mb-8">Dados de Capacidade</h2>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                                {(entityType === 'clinic' || entityType === 'franchise') && (
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-400 mb-2">Número de Salas de Atendimento</label>
+                                        <input type="number" min="1" value={ns} onChange={e => setNs(Math.max(1, Number(e.target.value)))} className="w-full bg-slate-800 p-4 rounded-xl text-white font-bold text-xl border border-slate-700 focus:border-purple-500 outline-none transition-all" />
+                                    </div>
+                                )}
+                                {entityType === 'franchise' && (
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-400 mb-2">Número de Unidades</label>
+                                        <input type="number" min="1" value={nu} onChange={e => setNu(Math.max(1, Number(e.target.value)))} className="w-full bg-slate-800 p-4 rounded-xl text-white font-bold text-xl border border-slate-700 focus:border-purple-500 outline-none transition-all" />
+                                    </div>
+                                )}
+
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-400 mb-2">Turnos Semanais por Sala (Max 14)</label>
+                                    <div className="flex items-center gap-4 bg-slate-800 p-4 rounded-xl border border-slate-700 focus-within:border-purple-500 transition-all">
+                                        <Clock className="text-blue-500" />
+                                        <input type="number" min="1" max="14" value={nt} onChange={e => setNt(Math.min(14, Math.max(1, Number(e.target.value))))} className="bg-transparent w-full text-white font-bold text-xl outline-none" />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-400 mb-2">Tempo Médio de Atendimento</label>
+                                    <select value={tmd} onChange={e => setTmd(Number(e.target.value) as any)} className="w-full bg-slate-800 p-4 rounded-xl text-white font-bold text-xl border border-slate-700 focus:border-purple-500 outline-none transition-all cursor-pointer">
+                                        <option value={20}>20 minutos</option>
+                                        <option value={30}>30 minutos</option>
+                                        <option value={60}>60 minutos (1h)</option>
+                                        <option value={90}>90 minutos (1.5h)</option>
+                                    </select>
+                                </div>
+
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-bold text-slate-400 mb-2">Melhor Faturamento Mensal (Últimos 12 meses)</label>
+                                    <div className="flex items-center gap-4 bg-slate-800 p-4 rounded-xl border border-slate-700 focus-within:border-green-500 transition-all shadow-inner shadow-black/20">
+                                        <DollarSign className="text-green-500" />
+                                        <input type="number" value={mfm || ''} onChange={e => setMfm(Number(e.target.value))} placeholder="0,00" className="bg-transparent w-full text-white font-bold text-xl outline-none" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button onClick={() => setStep(3)} className="w-full bg-purple-600 hover:bg-purple-500 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all shadow-lg shadow-purple-900/20">
+                                Calcular Potencial Agora
+                            </button>
+                        </div>
+                    )}
+
+                    {/* STEP 3: LEAD CAPTURE */}
+                    {step === 3 && (
                         <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 p-8 md:p-12 rounded-3xl shadow-2xl animate-in slide-in-from-right duration-500 max-w-2xl mx-auto">
                             <div className="text-center mb-10">
-                                <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500/10 rounded-2xl mb-4 text-green-500">
-                                    <CheckCircle size={32} />
+                                <div className="inline-flex items-center justify-center w-20 h-20 bg-green-500/10 rounded-full mb-6 border border-green-500/20">
+                                    <CheckCircle size={32} className="text-green-500" />
                                 </div>
-                                <h2 className="text-3xl font-bold mb-2">Cálculo Pronto!</h2>
+                                <h2 className="text-3xl font-bold mb-3 text-white">Cálculo Realizado</h2>
                                 <p className="text-slate-400">Insira seus dados para liberar o relatório detalhado.</p>
                             </div>
 
                             <form onSubmit={handleCapture} className="space-y-6">
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-400 mb-2">Seu Nome</label>
-                                    <input
-                                        required
-                                        value={name}
-                                        onChange={e => setName(e.target.value)}
-                                        className="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all"
-                                        placeholder="Dr. Nome Sobrenome"
-                                    />
+                                    <label className="block text-sm font-bold text-slate-400 mb-2">Nome Completo</label>
+                                    <input required value={name} onChange={e => setName(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-white focus:border-purple-500 outline-none transition-all placeholder:text-slate-600" placeholder="Seu Nome" />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-400 mb-2">E-mail Corporativo</label>
-                                    <input
-                                        required
-                                        type="email"
-                                        value={email}
-                                        onChange={e => setEmail(e.target.value)}
-                                        className="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all"
-                                        placeholder="seu@email.com"
-                                    />
+                                    <label className="block text-sm font-bold text-slate-400 mb-2">E-mail Profissional</label>
+                                    <input required type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-white focus:border-purple-500 outline-none transition-all placeholder:text-slate-600" placeholder="seu@email.com" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-bold text-slate-400 mb-2">WhatsApp</label>
-                                    <input
-                                        required
-                                        value={phone}
-                                        onChange={e => setPhone(e.target.value)}
-                                        className="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-white focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all"
-                                        placeholder="(DD) 99999-9999"
-                                    />
+                                    <input required value={phone} onChange={e => setPhone(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-white focus:border-purple-500 outline-none transition-all placeholder:text-slate-600" placeholder="(DD) 99999-9999" />
                                 </div>
 
-                                <div className="pt-4">
-                                    <button
-                                        type="submit"
-                                        disabled={isSubmitting}
-                                        className="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl font-bold text-xl text-white shadow-lg hover:shadow-purple-500/25 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
-                                    >
-                                        {isSubmitting ? 'Gerando Relatório...' : 'Ver Meu Faturamento Potencial'}
-                                        {!isSubmitting && <Lock size={20} />}
-                                    </button>
-                                    <p className="text-center text-xs text-slate-500 mt-4 flex items-center justify-center gap-1">
-                                        <Lock size={12} /> Seus dados estão 100% seguros.
-                                    </p>
-                                </div>
+                                <button type="submit" disabled={isSubmitting} className="w-full py-4 mt-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl font-bold text-xl text-white shadow-lg flex items-center justify-center gap-3 transition-all transform hover:scale-[1.02]">
+                                    {isSubmitting ? 'Gerando...' : 'Ver Meu Relatório'} <Lock size={20} />
+                                </button>
+                                <p className="text-center text-xs text-slate-500 flex items-center justify-center gap-1">
+                                    <Lock size={12} /> Seus dados estão seguros. Não enviamos spam.
+                                </p>
                             </form>
-                            <button onClick={() => setStep(1)} className="w-full text-center mt-4 text-slate-500 text-sm hover:text-white transition-colors">Voltar e corrigir dados</button>
                         </div>
                     )}
 
-                    {/* STEP 3: RESULTS DASHBOARD */}
-                    {step === 3 && (
+                    {/* STEP 4: RESULT */}
+                    {step === 4 && (
                         <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
                             <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
-                                {/* Header Result */}
-                                <div className="bg-slate-800/50 p-8 border-b border-slate-700 text-center">
-                                    <h2 className="text-2xl text-slate-400 mb-2">Seu Potencial Mensal</h2>
-                                    <div className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-500 mb-4">
+                                <div className="bg-slate-800/50 p-10 border-b border-slate-700 text-center relative overflow-hidden">
+                                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500"></div>
+                                    <Sparkles className="mx-auto text-yellow-400 mb-4" size={32} />
+                                    <h2 className="text-2xl font-bold text-slate-300 mb-2">Seu Potencial Mensal</h2>
+                                    <div className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-500 mb-6 drop-shadow-sm">
                                         {formatCurrency(results.potentialRevenue)}
                                     </div>
-                                    <div className="inline-flex items-center gap-2 bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-2 rounded-full text-sm font-bold">
-                                        <AlertCircle size={16} />
-                                        Você está deixando {formatCurrency(results.lostRevenue)} na mesa todos os meses.
-                                    </div>
+
+                                    {results.lostRevenue > 0 ? (
+                                        <div className="inline-flex items-center gap-2 bg-red-500/10 border border-red-500/20 text-red-400 px-6 py-3 rounded-full text-base font-bold animate-pulse">
+                                            <TrendingUp size={20} />
+                                            Você está deixando {formatCurrency(results.lostRevenue)} na mesa todos os meses.
+                                        </div>
+                                    ) : (
+                                        <div className="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/20 text-green-400 px-6 py-3 rounded-full text-base font-bold">
+                                            <CheckCircle size={20} />
+                                            Você já está no caminho da alta performance!
+                                        </div>
+                                    )}
                                 </div>
 
-                                <div className="p-8 md:p-12 grid grid-cols-1 md:grid-cols-2 gap-12">
-                                    {/* Chart */}
-                                    <div className="h-80 w-full">
+                                <div className="p-8 md:p-12 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                                    <div className="h-80 w-full bg-slate-800/30 rounded-2xl p-4">
                                         <ResponsiveContainer width="100%" height="100%">
-                                            <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                                            <BarChart data={chartData}>
                                                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
                                                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 14, fontWeight: 'bold' }} />
                                                 <YAxis hide />
                                                 <Tooltip
-                                                    cursor={{ fill: 'transparent' }}
-                                                    contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.5)' }}
+                                                    cursor={{ fill: '#334155', opacity: 0.2 }}
+                                                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}
                                                     itemStyle={{ color: '#fff', fontWeight: 'bold' }}
-                                                    formatter={(value) => formatCurrency(Number(value))}
+                                                    formatter={(val) => formatCurrency(Number(val))}
                                                 />
                                                 <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={60}>
-                                                    {chartData.map((entry, index) => (
-                                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                                    ))}
+                                                    {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                                                 </Bar>
                                             </BarChart>
                                         </ResponsiveContainer>
                                     </div>
-
-                                    {/* Action Plan */}
                                     <div className="flex flex-col justify-center">
-                                        <h3 className="text-2xl font-bold mb-6 flex items-center gap-2">
-                                            <Sparkles className="text-purple-500" /> Como atingir esse número?
-                                        </h3>
-                                        <ul className="space-y-4 mb-8">
-                                            <li className="flex items-start gap-3">
-                                                <CheckCircle className="text-green-500 shrink-0 mt-1" size={20} />
-                                                <span className="text-slate-300">Automatize confirmações para reduzir No-Show a zero.</span>
-                                            </li>
-                                            <li className="flex items-start gap-3">
-                                                <CheckCircle className="text-green-500 shrink-0 mt-1" size={20} />
-                                                <span className="text-slate-300">Use IA para reativar pacientes antigos da base.</span>
-                                            </li>
-                                            <li className="flex items-start gap-3">
-                                                <CheckCircle className="text-green-500 shrink-0 mt-1" size={20} />
-                                                <span className="text-slate-300">Ofereça agendamento online 24/7.</span>
-                                            </li>
-                                        </ul>
-                                        <button
-                                            onClick={() => navigate('/signup?plan=growth')}
-                                            className="w-full py-4 bg-white text-purple-900 rounded-xl font-black text-lg hover:bg-slate-200 transition-all shadow-lg hover:scale-[1.02]"
-                                        >
-                                            Quero atingir {formatCurrency(results.potentialRevenue)}
-                                        </button>
-                                        <p className="text-center text-xs text-slate-500 mt-4">
-                                            Plano recomendado: Growth (Para Clínicas em Escala)
+                                        <h3 className="text-3xl font-bold mb-4 text-white">Como alcançar a meta?</h3>
+                                        <p className="text-slate-400 text-lg mb-8 leading-relaxed">
+                                            O <span className="text-purple-400 font-bold">I'mdoc Saas</span> organiza sua agenda, reduz faltas com IA e otimiza cada turno para você atingir a ocupação máxima ideal, sem sobrecarga.
                                         </p>
+                                        <div className="space-y-4">
+                                            <button onClick={() => navigate('/signup')} className="w-full py-4 bg-white text-purple-900 rounded-xl font-black text-lg hover:bg-slate-200 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1">
+                                                Começar Teste Grátis Agora
+                                            </button>
+                                            <button onClick={() => window.open('https://wa.me/55000000000', '_blank')} className="w-full py-4 bg-transparent border border-slate-700 text-slate-300 rounded-xl font-bold text-lg hover:bg-slate-800 transition-all">
+                                                Falar com Consultor
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     )}
+
                 </div>
             </div>
         </div>

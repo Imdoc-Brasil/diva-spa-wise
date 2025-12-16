@@ -163,8 +163,36 @@ xl: 1280px  /* Desktop grande */
 ---
 
 **Sessão iniciada**: 2025-12-05 15:22  
-**Última atualização**: 2025-12-05 16:00  
-**Tempo estimado**: ~40 minutos  
+**Última atualização**: 2025-12-16 08:30
 **Status**: 🟢 Progresso Excelente
 
-**Próxima sessão**: Continuar com CRM e Modais
+---
+
+## 🎯 Sessão Extra - 2025-12-16
+
+### ✅ Funcionalidades Completadas
+
+#### 1. **Módulo de Eventos (`EventsModule.tsx`)**
+- ✅ **Checklist Persistente**: Adicionado suporte à persistência de checklists via `useEffect` e `DataContext`.
+- ✅ **Pagamentos de Convidados**: Implementado botão "Marcar como Pago" que atualiza status e lança transação automaticamente.
+
+#### 2. **Integração Financeira**
+- ✅ **Eventos**: Venda de ingressos agora gera receita no Financeiro (`revenueType: 'service'`).
+- ✅ **Marketplace - Compras (`Purchasing`)**: Recebimento de Pedidos (PO) agora lança despesa no Financeiro (`type: 'expense'`).
+- ✅ **Marketplace - Vendas (`Checkout`)**: Verificado que o checkout já lança receita corretamente via `CheckoutModal`.
+
+#### 3. **Correções Diversas**
+- ✅ **AcademyModule**: Corrigida a geração de certificados e layouts.
+- ✅ **Syntax**: Resolvidos erros de tags JSX malformadas (`</div >`).
+
+#### 4. **Módulo de Marketing (`MarketingModule.tsx`)**
+- ✅ **Integração com Eventos**: Implementado seletor de *Eventos* ao criar uma campanha, permitindo promover workshops e encontros facilmente.
+- ✅ **Templates Inteligentes**: Selecionar um evento preenche automaticamente o corpo da mensagem com detalhes (Data, Título) e link de inscrição.
+- ✅ **Novos Gatilhos**: Adicionado suporte a `new_event` nas regras de automação.
+
+### 📊 Status Atual
+- **Módulo de Eventos**: 🟢 Completo
+- **Integração Financeira**: 🟢 Concluída (Marketplace & Eventos)
+- **Marketing**: 🟢 Integrado com Eventos
+
+**Próxima etapa sugerida**: Revisão Geral ou Deploy.

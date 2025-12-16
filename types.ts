@@ -284,6 +284,7 @@ export interface Client {
     };
     notes?: string;         // Novo: Observações Gerais
     unitId?: string;        // Novo: ID da unidade
+    wallet?: ClientWallet;  // Novo: Carteira de Pacotes e Créditos
 }
 
 export enum LeadStage {
@@ -409,7 +410,9 @@ export interface ClientPhoto {
 export interface ClientWallet {
     balance: number;
     activePackages: {
+        id: string;          // Unique ID for the package instance
         name: string;
+        serviceId?: string;  // Linked Service ID
         sessionsTotal: number;
         sessionsUsed: number;
         expiryDate: string;
@@ -579,6 +582,8 @@ export interface Product {
     isPromotion?: boolean;
     loyaltyPoints?: number;
     unitId?: string; // Se o produto for exclusivo de uma unidade
+    serviceReferenceId?: string; // Para pacotes: ID do serviço que este pacote dá direito
+    packageSessionCount?: number; // Para pacotes: Número de sessões
 }
 
 export type ProductCategory = 'homecare' | 'treatment_package' | 'giftcard' | 'professional_use';
@@ -822,13 +827,14 @@ export type CampaignStatus = 'draft' | 'scheduled' | 'active' | 'completed';
 
 export interface MarketingCampaign {
     id: string;
-    organizationId: string; // ← NOVO: ID da organização
+    organizationId: string;
     name: string;
     channel: CampaignChannel;
     segmentId: string;
+    linkedEventId?: string;
+    targetAudience?: string;
     scheduledFor?: string;
     status: CampaignStatus;
-    // Content Config
     messageContent?: string;
     templateId?: string;
     useWhatsappFlow?: boolean;
@@ -845,7 +851,7 @@ export interface AutomationRule {
     id: string;
     organizationId: string;
     name: string;
-    trigger: 'birthday' | 'post_service' | 'abandoned_cart' | 'inactive_30d' | 'lead_stale_24h';
+    trigger: 'birthday' | 'post_service' | 'abandoned_cart' | 'inactive_30d' | 'lead_stale_24h' | 'new_event';
     action: 'send_message' | 'create_task' | 'notify_team';
     active: boolean;
 }
@@ -1255,6 +1261,15 @@ export interface ClinicEvent {
 
     // Social
     feed: EventFeedPost[];
+
+    // Preparation
+    checklist?: EventChecklistItem[];
+}
+
+export interface EventChecklistItem {
+    id: string;
+    task: string;
+    completed: boolean;
 }
 
 export interface EventFeedPost {
@@ -1384,12 +1399,21 @@ export interface Course {
 
 export type CourseCategory = 'onboarding' | 'technical' | 'sales' | 'service';
 
+export interface QuizQuestion {
+    id: string;
+    text: string;
+    options: string[];
+    correctOptionIndex: number;
+}
+
 export interface Lesson {
     id: string;
     title: string;
     duration: string;
     type: 'video' | 'text' | 'quiz';
     completed: boolean;
+    questions?: QuizQuestion[];
+    minScore?: number; // Minimum correct answers to pass
 }
 
 export interface WaitlistItem {
@@ -1427,6 +1451,11 @@ export interface DataContextType {
     businessConfig: BusinessConfig;
     notificationConfig: NotificationConfig;
     products: Product[];
+    courses: Course[];
+    addCourse: (course: Course) => void;
+    updateCourse: (id: string, data: Partial<Course>) => void;
+    addProduct: (product: Omit<Product, 'organizationId'>) => void;
+    updateProduct: (id: string, data: Partial<Product>) => void;
     addClient: (client: Omit<Client, 'organizationId'>) => void;
     updateClient: (clientId: string, data: Partial<Client>) => void;
     addLead: (lead: Omit<SalesLead, 'organizationId'>) => void;

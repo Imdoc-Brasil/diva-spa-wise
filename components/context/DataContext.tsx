@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { Client, SalesLead, ServiceAppointment, AppointmentStatus, LeadStage, Transaction, WaitlistItem, StaffMember, OrganizationMember, ServiceRoom, DataContextType, ServiceDefinition, BusinessConfig, NotificationConfig, Product, BusinessUnit, YieldRule, FormTemplate, FormResponse, AppointmentRecord, ClinicEvent, EventGuest, Partner, WebsiteConfig, SaaSAppConfig, User, UserRole, AppNotification, OpenVial, VialUsageLog, MarketingCampaign, AutomationRule, CustomerSegment, MembershipPlan, Subscription, ChatConversation, ChatMessage, TreatmentPlan, TreatmentPlanTemplate, Supplier, BankAccount, FiscalRecord, SaaSLead, SaaSSubscriber, SaaSLeadStage, SaaSPlan, SaaSTask, SaaSTaskType, ImplementationProject, SupportTicket, FeatureRequest, ImplementationStage, SupportTicketStatus, SupportTicketPriority, FeatureRequestStatus, FeatureRequestImpact } from '../../types';
+import { Client, SalesLead, ServiceAppointment, AppointmentStatus, LeadStage, Transaction, WaitlistItem, StaffMember, OrganizationMember, ServiceRoom, DataContextType, ServiceDefinition, BusinessConfig, NotificationConfig, Product, BusinessUnit, YieldRule, FormTemplate, FormResponse, AppointmentRecord, ClinicEvent, EventGuest, Partner, WebsiteConfig, SaaSAppConfig, User, UserRole, AppNotification, OpenVial, VialUsageLog, MarketingCampaign, AutomationRule, CustomerSegment, MembershipPlan, Subscription, ChatConversation, ChatMessage, TreatmentPlan, TreatmentPlanTemplate, Supplier, BankAccount, FiscalRecord, SaaSLead, SaaSSubscriber, SaaSLeadStage, SaaSPlan, SaaSTask, SaaSTaskType, ImplementationProject, SupportTicket, FeatureRequest, ImplementationStage, SupportTicketStatus, SupportTicketPriority, FeatureRequestStatus, FeatureRequestImpact, Course } from '../../types';
 import { MOCK_TREATMENT_PLANS, MOCK_TREATMENT_TEMPLATES } from '../../utils/mockTreatmentPlans';
 import { useToast } from '../ui/ToastContext';
 import { useOrganization } from './OrganizationContext';
@@ -753,6 +753,73 @@ const initialSupportTickets: SupportTicket[] = [
   }
 ];
 
+const initialCourses: Course[] = [
+  {
+    id: 'c1',
+    title: 'Onboarding: Cultura Diva Spa',
+    description: 'Boas-vindas e introdução aos valores, missão e padrão de atendimento de excelência da marca.',
+    category: 'onboarding',
+    thumbnail: 'https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=2070&auto=format&fit=crop',
+    instructor: 'Ana (CEO)',
+    totalLessons: 5,
+    completedLessons: 5,
+    duration: '1h 30m',
+    tags: ['Obrigatório', 'Cultura'],
+    lessons: [
+      { id: 'l1', title: 'Boas Vindas da CEO', duration: '10:00', type: 'video', completed: true },
+      { id: 'l2', title: 'Nossa História', duration: '15:00', type: 'video', completed: true },
+      { id: 'l3', title: 'Manual de Conduta', duration: '20 min', type: 'text', completed: true },
+      { id: 'l4', title: 'Tour pela Clínica', duration: '20:00', type: 'video', completed: true },
+      {
+        id: 'l5',
+        title: 'Quiz de Cultura',
+        duration: '10 min',
+        type: 'quiz',
+        completed: false,
+        minScore: 2,
+        questions: [
+          {
+            id: 'q1',
+            text: 'Qual é a principal missão do Diva Spa?',
+            options: ['Vender mais produtos', 'Oferecer beleza com bem-estar e excelência', 'Ser a maior franquia do mundo', 'Ter os preços mais baixos'],
+            correctOptionIndex: 1
+          },
+          {
+            id: 'q2',
+            text: 'Qual a tolerância de atraso para clientes?',
+            options: ['15 minutos', '30 minutos', '10 minutos', 'Não há tolerância'],
+            correctOptionIndex: 2
+          },
+          {
+            id: 'q3',
+            text: 'O que é o "Efeito Uau"?',
+            options: ['Um desconto surpresa', 'Uma técnica de laser', 'Superar a expectativa da cliente', 'Um drink servido na recepção'],
+            correctOptionIndex: 2
+          }
+        ]
+      },
+    ]
+  },
+  {
+    id: 'c2',
+    title: 'Protocolo Avançado: Laser Alexandrite',
+    description: 'Domine a técnica de aplicação do laser Alexandrite para fototipos I a III, garantindo segurança e eficácia.',
+    category: 'technical',
+    thumbnail: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?q=80&w=2070&auto=format&fit=crop',
+    instructor: 'Dra. Julia Martins',
+    totalLessons: 8,
+    completedLessons: 2,
+    duration: '3h 15m',
+    tags: ['Técnico', 'Laser'],
+    lessons: [
+      { id: 'l21', title: 'Física do Laser', duration: '25:00', type: 'video', completed: true },
+      { id: 'l22', title: 'Avaliação de Fototipo', duration: '20:00', type: 'video', completed: true },
+      { id: 'l23', title: 'Parametrização Segura', duration: '30:00', type: 'video', completed: false },
+      { id: 'l24', title: 'Aplicação Prática (Pernas)', duration: '45:00', type: 'video', completed: false },
+    ]
+  }
+];
+
 const initialFeatureRequests: FeatureRequest[] = [
   {
     id: 'fr_1',
@@ -1494,6 +1561,29 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setCurrentUser({ ...currentUser, ...data });
       addToast('Perfil atualizado com sucesso!', 'success');
     }
+  };
+
+  const addProduct = (product: Omit<Product, 'organizationId'>) => {
+    const newProduct: Product = { ...product, organizationId: currentOrgId };
+    setProducts(prev => [...prev, newProduct]);
+    addToast('Produto cadastrado com sucesso!', 'success');
+  };
+
+  const updateProduct = (id: string, data: Partial<Product>) => {
+    setProducts(prev => prev.map(p => p.id === id ? { ...p, ...data } : p));
+    addToast('Produto atualizado.', 'success');
+  };
+
+  // ACADEMY LOGIC
+  const [courses, setCourses] = useState<Course[]>(initialCourses);
+
+  const addCourse = (course: Course) => {
+    setCourses(prev => [...prev, course]);
+    addToast('Curso criado!', 'success');
+  };
+
+  const updateCourse = (id: string, data: Partial<Course>) => {
+    setCourses(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
   };
 
   const updateProductStock = (productId: string, qty: number, type: 'add' | 'remove', unitId?: string) => {
@@ -2474,6 +2564,13 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       markAsRead,
       markAllAsRead,
       updateProductStock,
+      addProduct,
+      updateProduct,
+
+      // Academy
+      courses,
+      addCourse,
+      updateCourse,
 
       // Treatment Plans Export
       treatmentPlans,

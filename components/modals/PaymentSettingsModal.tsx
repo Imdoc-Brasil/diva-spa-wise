@@ -16,7 +16,9 @@ const PaymentSettingsModal: React.FC<PaymentSettingsModalProps> = ({ isOpen, onC
             id: 'gw_stone_rec',
             name: 'Stone - Recepção',
             type: 'physical_pos',
+            integrationType: 'manual',
             provider: 'stone',
+            scope: 'pos_only',
             active: true,
             fees: {
                 debit: 1.25,
@@ -26,13 +28,21 @@ const PaymentSettingsModal: React.FC<PaymentSettingsModalProps> = ({ isOpen, onC
                 pix: 0,
                 pix_type: 'percentage'
             },
-            settlementDays: { debit: 1, credit: 1, pix: 0 } // Antecipado
+            installmentRule: {
+                maxInstallments: 12,
+                maxFreeInstallments: 6,
+                interestRate: 2.99,
+                buyerPaysInterest: true
+            },
+            settlementDays: { debit: 1, credit: 1, pix: 0 }
         },
         {
             id: 'gw_infinitepay',
             name: 'InfinitePay - Dra. Julia',
             type: 'physical_pos',
+            integrationType: 'manual',
             provider: 'infinitepay',
+            scope: 'all',
             active: true,
             fees: {
                 debit: 1.38,
@@ -42,7 +52,15 @@ const PaymentSettingsModal: React.FC<PaymentSettingsModalProps> = ({ isOpen, onC
                 pix: 0,
                 pix_type: 'percentage'
             },
-            settlementDays: { debit: 1, credit: 1, pix: 0 }
+            installmentRule: {
+                maxInstallments: 12,
+                maxFreeInstallments: 10,
+                interestRate: 1.99,
+                buyerPaysInterest: false
+            },
+            settlementDays: { debit: 1, credit: 1, pix: 0 },
+            bankLabel: 'Conta Digital InfinitePay',
+            pixKey: 'paciente@clinicadiva.com.br'
         }
     ]);
 
@@ -54,7 +72,9 @@ const PaymentSettingsModal: React.FC<PaymentSettingsModalProps> = ({ isOpen, onC
         id: '',
         name: '',
         type: 'physical_pos',
+        integrationType: 'manual',
         provider: 'stone',
+        scope: 'all',
         active: true,
         fees: {
             debit: 0,
@@ -64,7 +84,15 @@ const PaymentSettingsModal: React.FC<PaymentSettingsModalProps> = ({ isOpen, onC
             pix: 0,
             pix_type: 'percentage'
         },
-        settlementDays: { debit: 1, credit: 30, pix: 0 }
+        installmentRule: {
+            maxInstallments: 12,
+            maxFreeInstallments: 6,
+            interestRate: 0,
+            buyerPaysInterest: false
+        },
+        settlementDays: { debit: 1, credit: 30, pix: 0 },
+        bankLabel: '',
+        pixKey: ''
     };
 
     if (!isOpen) return null;
@@ -85,11 +113,11 @@ const PaymentSettingsModal: React.FC<PaymentSettingsModalProps> = ({ isOpen, onC
     };
 
     const getProviderIcon = (provider: string) => {
-        // Simplified icon logic
         switch (provider) {
             case 'stone': return <span className="bg-green-600 text-white text-[10px] font-bold px-1 py-0.5 rounded">STONE</span>;
             case 'infinitepay': return <span className="bg-black text-white text-[10px] font-bold px-1 py-0.5 rounded">∞ PAY</span>;
             case 'asaas': return <span className="bg-blue-600 text-white text-[10px] font-bold px-1 py-0.5 rounded">ASAAS</span>;
+            case 'stripe': return <span className="bg-purple-600 text-white text-[10px] font-bold px-1 py-0.5 rounded">STRIPE</span>;
             default: return <CreditCard size={16} />;
         }
     };
@@ -136,8 +164,8 @@ const PaymentSettingsModal: React.FC<PaymentSettingsModalProps> = ({ isOpen, onC
                                         setIsEditing(true);
                                     }}
                                     className={`p-4 rounded-xl border cursor-pointer transition-all hover:shadow-md ${editingGateway?.id === gw.id
-                                            ? 'bg-white border-diva-primary shadow-sm ring-1 ring-diva-primary'
-                                            : 'bg-white border-gray-200 hover:border-diva-primary/50'
+                                        ? 'bg-white border-diva-primary shadow-sm ring-1 ring-diva-primary'
+                                        : 'bg-white border-gray-200 hover:border-diva-primary/50'
                                         }`}
                                 >
                                     <div className="flex justify-between items-start mb-2">
@@ -229,6 +257,132 @@ const PaymentSettingsModal: React.FC<PaymentSettingsModalProps> = ({ isOpen, onC
                                             </button>
                                         </div>
                                     </div>
+                                </div>
+
+                                {/* Account & PIX Details (New Section) */}
+                                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                                    <h4 className="font-bold text-blue-800 mb-3 flex items-center text-sm">
+                                        <Smartphone size={16} className="mr-2" /> Dados para Recebimento
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-blue-700 mb-1">Legenda da Conta (Interno)</label>
+                                            <input
+                                                type="text"
+                                                value={editingGateway.bankLabel || ''}
+                                                onChange={e => setEditingGateway({ ...editingGateway, bankLabel: e.target.value })}
+                                                className="w-full p-2 border border-blue-200 rounded-lg text-sm bg-white"
+                                                placeholder="Ex: Conta Itaú - Principal"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-blue-700 mb-1">Chave PIX (Se aplicável)</label>
+                                            <input
+                                                type="text"
+                                                value={editingGateway.pixKey || ''}
+                                                onChange={e => setEditingGateway({ ...editingGateway, pixKey: e.target.value })}
+                                                className="w-full p-2 border border-blue-200 rounded-lg text-sm bg-white font-mono"
+                                                placeholder="Ex: 53.123.456/0001-90"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Integração</label>
+                                        <select
+                                            value={editingGateway.integrationType}
+                                            onChange={e => setEditingGateway({ ...editingGateway, integrationType: e.target.value as any })}
+                                            className="w-full p-2 border border-gray-300 rounded-lg bg-white"
+                                        >
+                                            <option value="manual">Manual (Registro Simples)</option>
+                                            <option value="api">API (Automático)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Ambiente de Uso</label>
+                                        <select
+                                            value={editingGateway.scope}
+                                            onChange={e => setEditingGateway({ ...editingGateway, scope: e.target.value as any })}
+                                            className="w-full p-2 border border-gray-300 rounded-lg bg-white"
+                                        >
+                                            <option value="all">Todos (Físico e Online)</option>
+                                            <option value="pos_only">Apenas Recepção (POS)</option>
+                                            <option value="online_only">Apenas Online (Checkout)</option>
+                                        </select>
+                                    </div>
+                                    {editingGateway.integrationType === 'api' && (
+                                        <div className="md:col-span-2 animate-in fade-in">
+                                            <label className="block text-sm font-bold text-gray-700 mb-1">Chave da API (Token)</label>
+                                            <input
+                                                type="password"
+                                                value={editingGateway.apiKey || ''}
+                                                onChange={e => setEditingGateway({ ...editingGateway, apiKey: e.target.value })}
+                                                placeholder="sk_live_..."
+                                                className="w-full p-2 border border-gray-300 rounded-lg bg-white font-mono"
+                                            />
+                                            <p className="text-xs text-gray-400 mt-1">Sua chave API é armazenada de forma segura.</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <hr className="border-gray-100" />
+
+                                {/* Sales Policy Rules */}
+                                <div>
+                                    <h4 className="font-bold text-gray-800 mb-4 flex items-center">
+                                        <Settings size={18} className="mr-2 text-diva-primary" /> Política de Vendas (Parcelamento)
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 mb-1">Máximo de Parcelas</label>
+                                            <select
+                                                value={editingGateway.installmentRule?.maxInstallments || 12}
+                                                onChange={e => setEditingGateway({ ...editingGateway, installmentRule: { ...editingGateway.installmentRule, maxInstallments: Number(e.target.value) } })}
+                                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                            >
+                                                {[...Array(18)].map((_, i) => <option key={i + 1} value={i + 1}>{i + 1}x</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 mb-1">Sem Juros Até</label>
+                                            <select
+                                                value={editingGateway.installmentRule?.maxFreeInstallments || 1}
+                                                onChange={e => setEditingGateway({ ...editingGateway, installmentRule: { ...editingGateway.installmentRule, maxFreeInstallments: Number(e.target.value) } })}
+                                                className="w-full p-2 border border-gray-300 rounded-lg"
+                                            >
+                                                {[...Array(18)].map((_, i) => <option key={i + 1} value={i + 1}>{i + 1}x</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="flex flex-col justify-end pb-2">
+                                            <label className="flex items-center cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={editingGateway.installmentRule?.buyerPaysInterest || false}
+                                                    onChange={e => setEditingGateway({ ...editingGateway, installmentRule: { ...editingGateway.installmentRule, buyerPaysInterest: e.target.checked } })}
+                                                    className="w-4 h-4 text-diva-primary rounded border-gray-300 mr-2"
+                                                />
+                                                <span className="text-sm font-medium text-gray-700">Repassar juros ao cliente?</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    {(editingGateway.installmentRule?.maxFreeInstallments < editingGateway.installmentRule?.maxInstallments) && (
+                                        <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg animate-in fade-in">
+                                            <label className="block text-xs font-bold text-yellow-800 mb-1">Taxa de Juros Mensal (%) - Cobrada a partir da {editingGateway.installmentRule.maxFreeInstallments + 1}ª parcela</label>
+                                            <div className="flex items-center">
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    value={editingGateway.installmentRule?.interestRate || 0}
+                                                    onChange={e => setEditingGateway({ ...editingGateway, installmentRule: { ...editingGateway.installmentRule, interestRate: Number(e.target.value) } })}
+                                                    className="w-24 p-2 border border-yellow-300 rounded-lg bg-white font-bold text-yellow-900"
+                                                />
+                                                <span className="ml-2 text-sm text-yellow-700">% ao mês (Juros Simples/Composto)</span>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <hr className="border-gray-100" />

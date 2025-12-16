@@ -1,7 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../../services/supabase';
 import { useToast } from '../../ui/ToastContext';
-import { Plus, Edit2, Trash2, Save, Image as ImageIcon, X, ExternalLink, RefreshCw } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, Image as ImageIcon, X, ExternalLink, RefreshCw, Bold, Italic, Link2, List, Type, Heading2, Heading3 } from 'lucide-react';
+
+const ToolbarBtn: React.FC<{ icon?: React.ReactNode, label?: string, title: string, onClick: () => void }> = ({ icon, label, title, onClick }) => (
+    <button
+        onClick={(e) => { e.preventDefault(); onClick(); }}
+        className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors text-xs font-bold flex items-center gap-1"
+        title={title}
+    >
+        {icon}
+        {label && <span>{label}</span>}
+    </button>
+);
 
 interface BlogPost {
     id: string;
@@ -96,15 +107,15 @@ const BlogEditorModule: React.FC = () => {
             let error;
             if (currentPost.id) {
                 // Update
-                const { error: updateError } = await supabase
-                    .from('saas_posts')
+                const { error: updateError } = await (supabase
+                    .from('saas_posts') as any)
                     .update(postData)
                     .eq('id', currentPost.id);
                 error = updateError;
             } else {
                 // Create
-                const { data, error: insertError } = await supabase
-                    .from('saas_posts')
+                const { data, error: insertError } = await (supabase
+                    .from('saas_posts') as any)
                     .insert([postData])
                     .select()
                     .single();
@@ -123,8 +134,30 @@ const BlogEditorModule: React.FC = () => {
 
         } catch (error: any) {
             console.error(error);
-            addToast('Erro ao salvar artigo.', 'error');
+            addToast(`Erro ao salvar: ${error.message || error.details || 'Tabela não encontrada?'}`, 'error');
         }
+    };
+
+    const insertTag = (prefix: string, suffix: string) => {
+        const textarea = document.getElementById('content-editor') as HTMLTextAreaElement;
+        if (!textarea) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = currentPost.content || '';
+        const before = text.substring(0, start);
+        const selection = text.substring(start, end);
+        const after = text.substring(end);
+
+        const newText = before + prefix + selection + suffix + after;
+
+        setCurrentPost(prev => ({ ...prev, content: newText }));
+
+        // Restore cursor/selection after update
+        setTimeout(() => {
+            textarea.focus();
+            textarea.setSelectionRange(start + prefix.length, end + prefix.length);
+        }, 0);
     };
 
     if (isEditing) {
@@ -163,7 +196,10 @@ const BlogEditorModule: React.FC = () => {
                                     // Auto-generate slug if new
                                     const updates: any = { title };
                                     if (!currentPost.id) {
-                                        updates.slug = title.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+                                        updates.slug = title.toLowerCase()
+                                            .replace(/[^\w\s-]/g, '') // Remove special chars
+                                            .replace(/\s+/g, '-')     // Space to hyphen
+                                            .replace(/-+/g, '-');     // Collapse hyphens
                                     }
                                     setCurrentPost(prev => ({ ...prev, ...updates }));
                                 }}
@@ -184,20 +220,43 @@ const BlogEditorModule: React.FC = () => {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-400 mb-2">Conteúdo (HTML/Markdow)</label>
-                            <div className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden">
-                                <div className="bg-slate-900 px-3 py-2 border-b border-slate-700 flex gap-2 text-xs text-slate-400">
-                                    <span>Editor Simples (HTML Suportado)</span>
+                            <label className="block text-sm font-medium text-slate-400 mb-2">Conteúdo (Editor Visual)</label>
+                            <div className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden focus-within:ring-1 focus-within:ring-purple-500 transition-all">
+                                {/* Toolbar */}
+                                <div className="bg-slate-900 border-b border-slate-700 p-2 flex flex-wrap gap-1 sticky top-0 z-10">
+                                    <ToolbarBtn icon={<Bold size={16} />} title="Negrito (Ctrl+B)" onClick={() => insertTag('<b>', '</b>')} />
+                                    <ToolbarBtn icon={<Italic size={16} />} title="Itálico (Ctrl+I)" onClick={() => insertTag('<i>', '</i>')} />
+                                    <div className="w-px h-6 bg-slate-700 mx-1 self-center" />
+                                    <ToolbarBtn icon={<Heading2 size={16} />} title="Subtítulo H2" onClick={() => insertTag('<h2>', '</h2>')} />
+                                    <ToolbarBtn icon={<Heading3 size={16} />} title="Tópico H3" onClick={() => insertTag('<h3>', '</h3>')} />
+                                    <ToolbarBtn icon={<Type size={16} />} title="Parágrafo" onClick={() => insertTag('<p>', '</p>')} />
+                                    <div className="w-px h-6 bg-slate-700 mx-1 self-center" />
+                                    <ToolbarBtn icon={<List size={16} />} title="Lista" onClick={() => insertTag('<ul>\n<li>', '</li>\n</ul>')} />
+                                    <ToolbarBtn icon={<Link2 size={16} />} title="Link" onClick={() => {
+                                        const url = prompt('URL do link:');
+                                        if (url) insertTag(`<a href="${url}" target="_blank" class="text-purple-400 underline">`, '</a>');
+                                    }} />
+                                    <div className="w-px h-6 bg-slate-700 mx-1 self-center" />
+                                    <ToolbarBtn label="CTA" title="Botão de Chamada" onClick={() => insertTag('<a href="/#/tools/revenue-calculator" class="inline-block px-6 py-3 bg-purple-600 text-white font-bold rounded-full hover:bg-purple-500 transition-colors my-4">', '</a>')} />
+                                    <ToolbarBtn label="Comparativo" title="Inserir Comparativo Retrátil" onClick={() => insertTag(
+                                        '<details class="mb-4 bg-slate-900 border border-slate-700 rounded-lg overflow-hidden"><summary class="cursor-pointer p-4 font-bold text-white flex items-center gap-2 hover:bg-slate-800 transition-colors">❓ Por que I\'mdoc é melhor?</summary><div class="p-4 border-t border-slate-800 overflow-x-auto"><table class="w-full text-left border-collapse rounded-lg"><thead><tr class="bg-slate-800 text-purple-300"><th class="p-3">Diferencial</th><th class="p-3">I\'mdoc SaaS</th><th class="p-3">Concorrência</th></tr></thead><tbody class="text-sm">',
+                                        '<tr class="border-b border-slate-700"><td class="p-3 font-bold text-white">IA Generativa</td><td class="p-3 text-green-400">✅ Nativa</td><td class="p-3 text-slate-500">❌ Chatbot</td></tr></tbody></table></div></details>'
+                                    )} />
                                 </div>
+
                                 <textarea
+                                    id="content-editor"
                                     value={currentPost.content || ''}
                                     onChange={e => setCurrentPost(prev => ({ ...prev, content: e.target.value }))}
                                     rows={20}
                                     className="w-full bg-slate-800 p-4 text-white focus:outline-none font-mono text-sm leading-relaxed"
-                                    placeholder="<p>Escreva seu conteúdo aqui...</p>"
+                                    placeholder="Escreva seu artigo aqui... Use a barra acima para formatar."
                                 />
                             </div>
-                            <p className="text-xs text-slate-500 mt-2">Dica: Use tags HTML como &lt;h2&gt;, &lt;p&gt;, &lt;ul&gt; para formatar.</p>
+                            <p className="text-xs text-slate-500 mt-2 flex justify-between">
+                                <span>Dica: Selecione o texto e clique nos botões para formatar.</span>
+                                <span>Suporta HTML e Markdown básico.</span>
+                            </p>
                         </div>
                     </div>
 
