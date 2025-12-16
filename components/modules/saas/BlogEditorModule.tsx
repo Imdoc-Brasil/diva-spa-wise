@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../../services/supabase';
 import { useToast } from '../../ui/ToastContext';
-import { Plus, Edit2, Trash2, Save, Image as ImageIcon, X, ExternalLink, RefreshCw, Bold, Italic, Link2, List, Type, Heading2, Heading3 } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, Image as ImageIcon, X, ExternalLink, RefreshCw, Bold, Italic, Link2, List, Type, Heading2, Heading3, Eye } from 'lucide-react';
 
 const ToolbarBtn: React.FC<{ icon?: React.ReactNode, label?: string, title: string, onClick: () => void }> = ({ icon, label, title, onClick }) => (
     <button
@@ -35,6 +35,14 @@ const BlogEditorModule: React.FC = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [currentPost, setCurrentPost] = useState<Partial<BlogPost>>({});
 
+    // Editor UI State
+    const [activeModal, setActiveModal] = useState<'none' | 'cta' | 'table'>('none');
+    const [ctaConfig, setCtaConfig] = useState({ text: 'Começar Agora', url: '/#/saas', color: 'purple' });
+    const [tableRows, setTableRows] = useState<{ feature: string; us: boolean; them: boolean }[]>([
+        { feature: 'IA Nativa', us: true, them: false },
+        { feature: 'Suporte 24h', us: true, them: false }
+    ]);
+
     useEffect(() => {
         fetchPosts();
     }, []);
@@ -56,16 +64,142 @@ const BlogEditorModule: React.FC = () => {
     };
 
     const handleCreateNew = () => {
+        const IMDOC_MANIFESTO = `
+<h2>🚀 Por que o I'mDoc SaaS é um sistema incrível?</h2>
+<p>Projetado pelo laboratório de IA de última geração, o <strong>I'mDoc</strong> revoluciona a gestão com design avançado, segurança de ponta e base de conhecimento. Não é apenas um software; é um ecossistema projetado com <strong>Inteligência Artificial</strong> e a <strong>Lógica Dominante do Serviço (SDL) de Philip Kotler</strong>.</p>
+
+<h3>🧠 Tecnologia & Inteligência</h3>
+<ul>
+<li><strong>Design & UX:</strong> Recursos avançados de design e comunicação baseados nos padrões Google e Meta.</li>
+<li><strong>IA Generativa:</strong> Integrado nativamente às APIs mais atuais do <strong>ChatGPT e Gemini</strong> para automação de textos e insights.</li>
+<li><strong>Segurança:</strong> Módulo de Compliance e LGPD nativos para gestão da segurança do paciente e do colaborador.</li>
+</ul>
+
+<h3>💰 Financeiro & Contábil 360º</h3>
+<p>Esqueça a complexidade. O I'mDoc cuida da saúde financeira da clínica:</p>
+<ul>
+<li><strong>Emissão de Notas Fiscais:</strong> Automatizada e integrada.</li>
+<li><strong>Busca de Notas:</strong> Monitoramento automático de notas emitidas por fornecedores.</li>
+<li><strong>Elisão Fiscal Inteligente:</strong> Configuração para evitar bitributação e suporte total para <strong>Equiparação Hospitalar</strong> (reduzindo significativamente a carga tributária).</li>
+<li><strong>I'mDoc Pay:</strong> Configure regras de repasse automático (Split) para prestadores direto no sistema.</li>
+<li><strong>I'mDoc Fintech:</strong> Acesso facilitado a capital de giro e assessoria financeira (Em breve).</li>
+</ul>
+
+<h3>📈 Marketing & Vendas de Alta Performance</h3>
+<ul>
+<li><strong>Matriz RFM:</strong> Rankeamento automático de pacientes (Recência, Frequência, Valor).</li>
+<li><strong>Omnichannel:</strong> Integração com Instagram, X, TikTok e Página de Vendas White Label.</li>
+<li><strong>Clube de Fidelidade:</strong> Gestão de programas de pontos e pacotes de tratamento recorrentes.</li>
+<li><strong>Marketplace:</strong> Venda produtos de referência ou autorais diretamente pela plataforma.</li>
+</ul>
+
+<h3>🏥 Operacional & Qualidade</h3>
+<ul>
+<li><strong>Padronização (POPs):</strong> Protocolos digitais de diluição, limpeza, manutenção e PGRSS.</li>
+<li><strong>Gestão de Estoque:</strong> Controle rigoroso de insumos e enxoval.</li>
+<li><strong>Gestão de Documentos:</strong> Prontuário e contratos digitais seguros.</li>
+</ul>
+
+
+<h3>👥 Gestão de Pessoas & Cultura</h3>
+<ul>
+<li><strong>Metas OKR:</strong> Gestão de desempenho com registro de pontualidade e meritocracia.</li>
+<li><strong>Universidade Corporativa:</strong> Área de streaming para treinamentos e certificação dos colaboradores.</li>
+<li><strong>Programa de Gratificação:</strong> Bonificação baseada em resultados reais e indicadores diretos.</li>
+</ul>
+
+<p><strong>O I'mDoc SaaS não é apenas uma ferramenta, é o parceiro estratégico para o crescimento exponencial da sua clínica.</strong></p>
+
+<h3>🆚 Comparativo de Mercado (Raio-X)</h3>
+
+<details class="mb-4 bg-slate-900 border border-slate-700 rounded-lg overflow-hidden" open>
+  <summary class="cursor-pointer p-4 font-bold text-white flex items-center justify-between hover:bg-slate-800 transition-colors list-none">
+    <span class="flex items-center gap-2">🏆 Por que I'mdoc SaaS é superior ao Doctoralia Pro + Feegow?</span>
+    <span class="text-slate-500 text-xs">▼</span>
+  </summary>
+  <div class="p-4 border-t border-slate-700 bg-slate-900/50 overflow-x-auto">
+    <table class="w-full text-left border-collapse">
+       <thead>
+         <tr class="bg-slate-800 text-slate-400 text-xs uppercase"><th class="p-3">Recurso</th><th class="p-3 text-diva-primary">I'mDoc SaaS</th><th class="p-3">Doctoralia + Feegow</th></tr>
+       </thead>
+       <tbody class="text-sm divide-y divide-slate-700">
+         <tr><td class="p-3 font-medium text-white">Ecossistema Único</td><td class="p-3 text-green-400">✅ Tudo Integrado</td><td class="p-3 text-red-400">❌ Integração Limitada</td></tr>
+         <tr><td class="p-3 font-medium text-white">IA Generativa Nativa</td><td class="p-3 text-green-400">✅ ChatGPT/Gemini</td><td class="p-3 text-red-400">❌ Não Possui</td></tr>
+         <tr><td class="p-3 font-medium text-white">Equiparação Hospitalar</td><td class="p-3 text-green-400">✅ Nativo</td><td class="p-3 text-red-400">❌ Apenas Básico</td></tr>
+         <tr><td class="p-3 font-medium text-white">Design Premium</td><td class="p-3 text-green-400">✅ Padrão Google/Meta</td><td class="p-3 text-yellow-500">⚠️ Padrão Antigo</td></tr>
+       </tbody>
+    </table>
+  </div>
+</details>
+
+<details class="mb-4 bg-slate-900 border border-slate-700 rounded-lg overflow-hidden">
+  <summary class="cursor-pointer p-4 font-bold text-white flex items-center justify-between hover:bg-slate-800 transition-colors list-none">
+    <span class="flex items-center gap-2">⚔️ Por que I'mdoc SaaS é superior ao Gestão DS + ChatGDS?</span>
+    <span class="text-slate-500 text-xs">▼</span>
+  </summary>
+  <div class="p-4 border-t border-slate-700 bg-slate-900/50 overflow-x-auto">
+    <table class="w-full text-left border-collapse">
+       <thead>
+         <tr class="bg-slate-800 text-slate-400 text-xs uppercase"><th class="p-3">Recurso</th><th class="p-3 text-diva-primary">I'mDoc SaaS</th><th class="p-3">Gestão DS + Chat</th></tr>
+       </thead>
+       <tbody class="text-sm divide-y divide-slate-700">
+         <tr><td class="p-3 font-medium text-white">Lógica de Serviço (SDL)</td><td class="p-3 text-green-400">✅ Foco em Valor</td><td class="p-3 text-yellow-500">⚠️ Foco em Agenda</td></tr>
+         <tr><td class="p-3 font-medium text-white">Matriz RFM Automática</td><td class="p-3 text-green-400">✅ Sim</td><td class="p-3 text-red-400">❌ Não</td></tr>
+         <tr><td class="p-3 font-medium text-white">Marketplace & Franquias</td><td class="p-3 text-green-400">✅ Sim</td><td class="p-3 text-red-400">❌ Não</td></tr>
+       </tbody>
+    </table>
+  </div>
+</details>
+
+<details class="mb-4 bg-slate-900 border border-slate-700 rounded-lg overflow-hidden">
+  <summary class="cursor-pointer p-4 font-bold text-white flex items-center justify-between hover:bg-slate-800 transition-colors list-none">
+    <span class="flex items-center gap-2">💎 Por que I'mdoc é superior ao Clínica Experts?</span>
+    <span class="text-slate-500 text-xs">▼</span>
+  </summary>
+  <div class="p-4 border-t border-slate-700 bg-slate-900/50 overflow-x-auto">
+    <table class="w-full text-left border-collapse">
+       <thead>
+         <tr class="bg-slate-800 text-slate-400 text-xs uppercase"><th class="p-3">Recurso</th><th class="p-3 text-diva-primary">I'mDoc SaaS</th><th class="p-3">Clínica Experts</th></tr>
+       </thead>
+       <tbody class="text-sm divide-y divide-slate-700">
+         <tr><td class="p-3 font-medium text-white">Universidade Corporativa</td><td class="p-3 text-green-400">✅ Streaming Nativo</td><td class="p-3 text-red-400">❌ Externo</td></tr>
+         <tr><td class="p-3 font-medium text-white">Gestão OKR & Metas</td><td class="p-3 text-green-400">✅ Sim</td><td class="p-3 text-red-400">❌ Não</td></tr>
+         <tr><td class="p-3 font-medium text-white">Split de Pagamentos</td><td class="p-3 text-green-400">✅ I'mDoc Pay</td><td class="p-3 text-red-400">❌ Não</td></tr>
+       </tbody>
+    </table>
+  </div>
+</details>
+
+<details class="mb-4 bg-slate-900 border border-slate-700 rounded-lg overflow-hidden">
+  <summary class="cursor-pointer p-4 font-bold text-white flex items-center justify-between hover:bg-slate-800 transition-colors list-none">
+    <span class="flex items-center gap-2">🚀 Por que I'mdoc é superior ao Amplimed?</span>
+    <span class="text-slate-500 text-xs">▼</span>
+  </summary>
+  <div class="p-4 border-t border-slate-700 bg-slate-900/50 overflow-x-auto">
+    <table class="w-full text-left border-collapse">
+       <thead>
+         <tr class="bg-slate-800 text-slate-400 text-xs uppercase"><th class="p-3">Recurso</th><th class="p-3 text-diva-primary">I'mDoc SaaS</th><th class="p-3">Amplimed</th></tr>
+       </thead>
+       <tbody class="text-sm divide-y divide-slate-700">
+         <tr><td class="p-3 font-medium text-white">Experiência do Usuário</td><td class="p-3 text-green-400">✅ Design 2025</td><td class="p-3 text-yellow-500">⚠️ Design Funcional</td></tr>
+         <tr><td class="p-3 font-medium text-white">CRM & Funil de Vendas</td><td class="p-3 text-green-400">✅ Avançado</td><td class="p-3 text-yellow-500">⚠️ Básico</td></tr>
+         <tr><td class="p-3 font-medium text-white">Clube de Assinatura</td><td class="p-3 text-green-400">✅ Nativo</td><td class="p-3 text-red-400">❌ Não</td></tr>
+       </tbody>
+    </table>
+  </div>
+</details>
+`;
+
         setCurrentPost({
-            title: '',
-            slug: '',
-            summary: '',
-            content: '',
+            title: 'Por que o I\'mdoc Saas é um sistema incrível?',
+            slug: 'por-que-o-imdoc-saas-e-incrivel',
+            summary: 'Descubra como a IA e a Lógica Dominante do Serviço transformam a gestão da sua clínica.',
+            content: IMDOC_MANIFESTO,
             author_name: 'Equipe I\'mdoc',
-            read_time_minutes: 5,
-            tags: [],
+            read_time_minutes: 7,
+            tags: ['Tecnologia', 'Inovação', 'IA', 'Gestão Financeira'],
             published: false,
-            cover_image: ''
+            cover_image: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072&auto=format&fit=crop'
         });
         setIsEditing(true);
     };
@@ -88,6 +222,12 @@ const BlogEditorModule: React.FC = () => {
     };
 
     const handleSave = async () => {
+        if (!supabase) {
+            addToast('Erro de Conexão: Supabase não configurado. Verifique suas chaves .env', 'error');
+            console.warn('Supabase client is null. Cannot save post.');
+            return;
+        }
+
         if (!currentPost.title || !currentPost.slug) {
             addToast('Título e Slug são obrigatórios.', 'warning');
             return;
@@ -134,7 +274,12 @@ const BlogEditorModule: React.FC = () => {
 
         } catch (error: any) {
             console.error(error);
-            addToast(`Erro ao salvar: ${error.message || error.details || 'Tabela não encontrada?'}`, 'error');
+            const msg = error.message || 'Erro desconhecido';
+            if (msg.includes('relation "saas_posts" does not exist')) {
+                addToast('ERRO CRÍTICO: Tabela "saas_posts" não existe. Rode o SQL de migração.', 'error');
+            } else {
+                addToast(`Erro ao salvar: ${msg}`, 'error');
+            }
         }
     };
 
@@ -221,41 +366,180 @@ const BlogEditorModule: React.FC = () => {
 
                         <div>
                             <label className="block text-sm font-medium text-slate-400 mb-2">Conteúdo (Editor Visual)</label>
-                            <div className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden focus-within:ring-1 focus-within:ring-purple-500 transition-all">
-                                {/* Toolbar */}
-                                <div className="bg-slate-900 border-b border-slate-700 p-2 flex flex-wrap gap-1 sticky top-0 z-10">
-                                    <ToolbarBtn icon={<Bold size={16} />} title="Negrito (Ctrl+B)" onClick={() => insertTag('<b>', '</b>')} />
-                                    <ToolbarBtn icon={<Italic size={16} />} title="Itálico (Ctrl+I)" onClick={() => insertTag('<i>', '</i>')} />
-                                    <div className="w-px h-6 bg-slate-700 mx-1 self-center" />
-                                    <ToolbarBtn icon={<Heading2 size={16} />} title="Subtítulo H2" onClick={() => insertTag('<h2>', '</h2>')} />
-                                    <ToolbarBtn icon={<Heading3 size={16} />} title="Tópico H3" onClick={() => insertTag('<h3>', '</h3>')} />
-                                    <ToolbarBtn icon={<Type size={16} />} title="Parágrafo" onClick={() => insertTag('<p>', '</p>')} />
-                                    <div className="w-px h-6 bg-slate-700 mx-1 self-center" />
-                                    <ToolbarBtn icon={<List size={16} />} title="Lista" onClick={() => insertTag('<ul>\n<li>', '</li>\n</ul>')} />
-                                    <ToolbarBtn icon={<Link2 size={16} />} title="Link" onClick={() => {
-                                        const url = prompt('URL do link:');
-                                        if (url) insertTag(`<a href="${url}" target="_blank" class="text-purple-400 underline">`, '</a>');
-                                    }} />
-                                    <div className="w-px h-6 bg-slate-700 mx-1 self-center" />
-                                    <ToolbarBtn label="CTA" title="Botão de Chamada" onClick={() => insertTag('<a href="/#/tools/revenue-calculator" class="inline-block px-6 py-3 bg-purple-600 text-white font-bold rounded-full hover:bg-purple-500 transition-colors my-4">', '</a>')} />
-                                    <ToolbarBtn label="Comparativo" title="Inserir Comparativo Retrátil" onClick={() => insertTag(
-                                        '<details class="mb-4 bg-slate-900 border border-slate-700 rounded-lg overflow-hidden"><summary class="cursor-pointer p-4 font-bold text-white flex items-center gap-2 hover:bg-slate-800 transition-colors">❓ Por que I\'mdoc é melhor?</summary><div class="p-4 border-t border-slate-800 overflow-x-auto"><table class="w-full text-left border-collapse rounded-lg"><thead><tr class="bg-slate-800 text-purple-300"><th class="p-3">Diferencial</th><th class="p-3">I\'mdoc SaaS</th><th class="p-3">Concorrência</th></tr></thead><tbody class="text-sm">',
-                                        '<tr class="border-b border-slate-700"><td class="p-3 font-bold text-white">IA Generativa</td><td class="p-3 text-green-400">✅ Nativa</td><td class="p-3 text-slate-500">❌ Chatbot</td></tr></tbody></table></div></details>'
-                                    )} />
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[600px]">
+                                {/* Editor Column */}
+                                <div className="flex flex-col h-full bg-slate-800 border border-slate-700 rounded-lg overflow-hidden focus-within:ring-1 focus-within:ring-purple-500 transition-all">
+                                    <div className="bg-slate-900 border-b border-slate-700 p-2 flex flex-wrap gap-1 items-center shrink-0">
+                                        <span className="text-[10px] uppercase font-bold text-slate-500 mr-2">Editor</span>
+                                        <ToolbarBtn icon={<Bold size={16} />} title="Negrito (Ctrl+B)" onClick={() => insertTag('<b>', '</b>')} />
+                                        <ToolbarBtn icon={<Italic size={16} />} title="Itálico (Ctrl+I)" onClick={() => insertTag('<i>', '</i>')} />
+                                        <div className="w-px h-4 bg-slate-700 mx-1" />
+                                        <ToolbarBtn icon={<Heading2 size={16} />} title="Subtítulo H2" onClick={() => insertTag('<h2>', '</h2>')} />
+                                        <ToolbarBtn icon={<Heading3 size={16} />} title="Tópico H3" onClick={() => insertTag('<h3>', '</h3>')} />
+                                        <ToolbarBtn icon={<Type size={16} />} title="Parágrafo" onClick={() => insertTag('<p>', '</p>')} />
+                                        <div className="w-px h-4 bg-slate-700 mx-1" />
+                                        <ToolbarBtn icon={<List size={16} />} title="Lista" onClick={() => insertTag('<ul>\n<li>', '</li>\n</ul>')} />
+                                        <ToolbarBtn icon={<Link2 size={16} />} title="Link" onClick={() => {
+                                            const url = prompt('URL do link:');
+                                            if (url) insertTag(`<a href="${url}" target="_blank" class="text-purple-400 underline">`, '</a>');
+                                        }} />
+                                        <div className="w-px h-4 bg-slate-700 mx-1" />
+                                        <ToolbarBtn label="CTA" title="Botão de Chamada" onClick={() => setActiveModal('cta')} />
+                                        <ToolbarBtn label="Comparativo" title="Tabela de Comparação" onClick={() => setActiveModal('table')} />
+                                    </div>
+
+                                    {/* MODALS (POPOVERS) FOR GENERATORS */}
+                                    {activeModal !== 'none' && (
+                                        <div className="absolute inset-x-0 top-14 mx-auto w-[90%] md:w-[400px] z-50 bg-slate-900 border border-slate-600 rounded-xl shadow-2xl p-4 animate-in fade-in zoom-in-95 duration-200">
+                                            <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-700">
+                                                <h4 className="font-bold text-white flex items-center gap-2">
+                                                    {activeModal === 'cta' ? 'Configurar Botão (CTA)' : 'Criar Comparativo'}
+                                                </h4>
+                                                <button onClick={() => setActiveModal('none')}><X size={16} className="text-slate-400 hover:text-white" /></button>
+                                            </div>
+
+                                            {activeModal === 'cta' && (
+                                                <div className="space-y-3">
+                                                    <div>
+                                                        <label className="text-xs text-slate-400 block mb-1">Texto do Botão</label>
+                                                        <input
+                                                            value={ctaConfig.text}
+                                                            onChange={e => setCtaConfig({ ...ctaConfig, text: e.target.value })}
+                                                            className="w-full bg-slate-800 border-slate-700 rounded p-2 text-sm text-white"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-xs text-slate-400 block mb-1">Link de Destino</label>
+                                                        <input
+                                                            value={ctaConfig.url}
+                                                            onChange={e => setCtaConfig({ ...ctaConfig, url: e.target.value })}
+                                                            className="w-full bg-slate-800 border-slate-700 rounded p-2 text-sm text-white font-mono"
+                                                        />
+                                                    </div>
+                                                    <div className="flex gap-2 pt-2">
+                                                        <button
+                                                            onClick={() => {
+                                                                const colorClass = ctaConfig.color === 'purple' ? 'bg-purple-600 hover:bg-purple-500' : 'bg-green-600 hover:bg-green-500';
+                                                                const html = `<div class="my-8 text-center"><a href="${ctaConfig.url}" class="inline-block px-8 py-4 ${colorClass} text-white font-bold rounded-full transition-all transform hover:scale-105 no-underline shadow-lg text-lg">${ctaConfig.text}</a></div>`;
+                                                                insertTag(html, '');
+                                                                setActiveModal('none');
+                                                            }}
+                                                            className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded text-sm transition-colors"
+                                                        >
+                                                            Inserir Botão
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {activeModal === 'table' && (
+                                                <div className="space-y-3">
+                                                    <div className="max-h-60 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                                                        {tableRows.map((row, idx) => (
+                                                            <div key={idx} className="flex gap-2 items-center bg-slate-800 p-2 rounded">
+                                                                <input
+                                                                    value={row.feature}
+                                                                    onChange={e => {
+                                                                        const newRows = [...tableRows];
+                                                                        newRows[idx].feature = e.target.value;
+                                                                        setTableRows(newRows);
+                                                                    }}
+                                                                    placeholder="Recurso..."
+                                                                    className="flex-1 bg-transparent border-none text-sm text-white focus:ring-0 px-0"
+                                                                />
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const newRows = [...tableRows];
+                                                                        newRows[idx].us = !newRows[idx].us;
+                                                                        setTableRows(newRows);
+                                                                    }}
+                                                                    className={`p-1 rounded ${row.us ? 'text-green-400 bg-green-400/10' : 'text-slate-600 bg-slate-700'}`}
+                                                                >
+                                                                    Nós
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const newRows = [...tableRows];
+                                                                        newRows[idx].them = !newRows[idx].them;
+                                                                        setTableRows(newRows);
+                                                                    }}
+                                                                    className={`p-1 rounded ${row.them ? 'text-green-400 bg-green-400/10' : 'text-red-400 bg-red-400/10'}`}
+                                                                >
+                                                                    Eles (❌)
+                                                                </button>
+                                                                <button onClick={() => setTableRows(tableRows.filter((_, i) => i !== idx))}><X size={14} className="text-slate-500" /></button>
+                                                            </div>
+                                                        ))}
+                                                        <button
+                                                            onClick={() => setTableRows([...tableRows, { feature: '', us: true, them: false }])}
+                                                            className="w-full py-1 border border-slate-700 border-dashed rounded text-xs text-slate-400 hover:text-white"
+                                                        >
+                                                            + Adicionar Linha
+                                                        </button>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => {
+                                                            const rowsHtml = tableRows.map(row => `
+                                                                <tr class="border-b border-slate-700/50 hover:bg-slate-800/30">
+                                                                    <td class="p-3 font-medium text-slate-200">${row.feature}</td>
+                                                                    <td class="p-3 text-center">${row.us ? '✅' : '❌'}</td>
+                                                                    <td class="p-3 text-center opacity-60">${row.them ? '✅' : '❌'}</td>
+                                                                </tr>
+                                                            `).join('');
+
+                                                            const tableHtml = `
+                                                                <div class="my-8 overflow-hidden rounded-xl border border-slate-700 bg-slate-900/50 shadow-sm">
+                                                                    <table class="w-full text-left border-collapse">
+                                                                        <thead>
+                                                                            <tr class="bg-slate-800 text-slate-400 text-xs uppercase tracking-wider">
+                                                                                <th class="p-3 font-medium">Diferencial</th>
+                                                                                <th class="p-3 text-center font-bold text-diva-primary">I'mDoc</th>
+                                                                                <th class="p-3 text-center">Outros</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody class="text-sm">
+                                                                            ${rowsHtml}
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            `;
+                                                            insertTag(tableHtml, '');
+                                                            setActiveModal('none');
+                                                        }}
+                                                        className="w-full bg-diva-primary hover:bg-diva-dark text-white font-bold py-2 rounded text-sm transition-colors"
+                                                    >
+                                                        Inserir Tabela
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                    <textarea
+                                        id="content-editor"
+                                        value={currentPost.content || ''}
+                                        onChange={e => setCurrentPost(prev => ({ ...prev, content: e.target.value }))}
+                                        className="flex-1 w-full bg-slate-800 p-4 text-slate-300 focus:outline-none font-mono text-sm leading-relaxed resize-none custom-scrollbar"
+                                        placeholder="Escreva seu artigo aqui (HTML/Texto)..."
+                                    />
                                 </div>
 
-                                <textarea
-                                    id="content-editor"
-                                    value={currentPost.content || ''}
-                                    onChange={e => setCurrentPost(prev => ({ ...prev, content: e.target.value }))}
-                                    rows={20}
-                                    className="w-full bg-slate-800 p-4 text-white focus:outline-none font-mono text-sm leading-relaxed"
-                                    placeholder="Escreva seu artigo aqui... Use a barra acima para formatar."
-                                />
+                                {/* Preview Column */}
+                                <div className="flex flex-col h-full bg-slate-950 border border-slate-800 rounded-lg overflow-hidden">
+                                    <div className="bg-slate-900 border-b border-slate-800 p-2 flex items-center shrink-0">
+                                        <span className="text-[10px] uppercase font-bold text-slate-500 flex items-center gap-2">
+                                            <Eye size={12} /> Preview em Tempo Real
+                                        </span>
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                                        <article
+                                            className="prose prose-invert prose-lg max-w-none prose-headings:font-bold prose-headings:text-white prose-p:text-slate-300 prose-a:text-purple-400 prose-strong:text-white prose-li:text-slate-300"
+                                            dangerouslySetInnerHTML={{ __html: currentPost.content || '<p class="text-slate-600 italic">O conteúdo aparecerá aqui...</p>' }}
+                                        />
+                                    </div>
+                                </div>
                             </div>
                             <p className="text-xs text-slate-500 mt-2 flex justify-between">
-                                <span>Dica: Selecione o texto e clique nos botões para formatar.</span>
-                                <span>Suporta HTML e Markdown básico.</span>
+                                <span>Edite o HTML à esquerda e veja o resultado à direita.</span>
                             </p>
                         </div>
                     </div>
