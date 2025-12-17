@@ -14,15 +14,11 @@ interface NewAppointmentModalProps {
 }
 
 // Mock Service Options (In real app, fetch from Settings/Services)
-const services = [
-  { name: 'Depilação a Laser - Perna', price: 250, duration: 30 },
-  { name: 'Limpeza de Pele', price: 150, duration: 60 },
-  { name: 'Botox (3 Regiões)', price: 1200, duration: 45 },
-  { name: 'Drenagem Linfática', price: 180, duration: 60 },
-];
+// Mock Service Options Removed - Now using real data from Context
+
 
 const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClose, appointmentToEdit, initialData }) => {
-  const { addAppointment, updateAppointment, appointments, clients, staff, rooms, selectedUnitId } = useUnitData();
+  const { addAppointment, updateAppointment, appointments, clients, staff, rooms, selectedUnitId, services } = useUnitData();
   const { addToast } = useToast();
   const [isNewClientModalOpen, setIsNewClientModalOpen] = useState(false);
   const [conflictWarning, setConflictWarning] = useState<string | null>(null);
@@ -31,7 +27,7 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClo
 
   const initialFormState = {
     clientId: '',
-    serviceName: services[0].name,
+    serviceName: services.length > 0 ? services[0].name : '',
     date: new Date().toISOString().split('T')[0],
     time: '09:00',
     staffName: '', // Will use staff[0] ID if available
@@ -62,7 +58,7 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClo
         setFormData({
           ...initialFormState,
           clientId: initialData.clientId || '',
-          serviceName: initialData.serviceName || services[0].name,
+          serviceName: initialData.serviceName || (services.length > 0 ? services[0].name : ''),
           staffName: initialData.staffName || '',
           status: AppointmentStatus.SCHEDULED,
           referralSource: 'instagram',

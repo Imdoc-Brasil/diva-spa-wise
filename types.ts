@@ -367,7 +367,7 @@ export interface InvoiceItem {
     type: 'service' | 'product';
 }
 
-export type PaymentMethod = 'credit_card' | 'debit_card' | 'pix' | 'cash' | 'package' | 'split';
+export type PaymentMethod = 'credit_card' | 'debit_card' | 'pix' | 'cash' | 'package' | 'split' | 'boleto' | 'bank_transfer' | 'invoice_30d';
 
 export interface Promotion {
     id: string;
@@ -571,16 +571,22 @@ export interface Kudo {
 export interface Product {
     id: string;
     organizationId: string; // ← NOVO: ID da organização
-    name: string;
+    name: string; // "Nome Comercial"
+    activeIngredients?: string; // "Princípios Ativos"
+    presentation?: string; // "Apresentação" (Frasco, Ampola, Caixa)
+    contentQuantity?: number; // "Contendo" (ex: 5, 100)
+    contentUnit?: string; // "Unidade" (ex: ml, ui, g, un)
+
     description?: string;
-    price: number;
-    costPrice?: number;
+    price: number; // Preço Base de Venda
+    costPrice?: number; // Custo Médio
     category: ProductCategory;
-    stock?: number; // Estoque Global (Legado ou Consolidado)
+    stock?: number; // Estoque Global
     stockByUnit?: { [unitId: string]: number }; // Novo: Estoque por Unidade
     minStockLevel?: number;
-    batchNumber?: string;
-    expirationDate?: string;
+    batchNumber?: string; // Lote Atual (informativo)
+    expirationDate?: string; // Validade Atual (informativa)
+    lastInvoice?: string; // Última NF (informativa)
     supplier?: string;
     isPromotion?: boolean;
     loyaltyPoints?: number;
