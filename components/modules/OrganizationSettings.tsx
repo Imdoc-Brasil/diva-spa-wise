@@ -5,12 +5,14 @@ import { useData } from '../context/DataContext';
 import { Save, Plus, Users, Building, CreditCard, Mail, Trash2, Shield, MoreHorizontal, User as UserIcon, ShoppingBag } from 'lucide-react';
 import { Organization, UserRole } from '../../types';
 
+import ClientSubscription from './saas/ClientSubscription';
+
 const OrganizationSettings: React.FC = () => {
     const { organization, setOrganization } = useOrganization();
     const { members, inviteMember, removeMember, updateMemberRole } = useData();
 
     // Tab State
-    const [activeTab, setActiveTab] = useState<'general' | 'team'>('general');
+    const [activeTab, setActiveTab] = useState<'general' | 'team' | 'subscription'>('general');
 
     // General Settings State
     const [formState, setFormState] = useState<Organization | null>(null);
@@ -51,18 +53,24 @@ const OrganizationSettings: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="flex border-b border-gray-200 gap-6">
+                <div className="flex border-b border-gray-200 gap-6 overflow-x-auto">
                     <button
                         onClick={() => setActiveTab('general')}
-                        className={`pb-3 px-1 text-sm font-medium transition-all ${activeTab === 'general' ? 'border-b-2 border-diva-primary text-diva-primary' : 'text-gray-500 hover:text-gray-700'}`}
+                        className={`pb-3 px-1 text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'general' ? 'border-b-2 border-diva-primary text-diva-primary' : 'text-gray-500 hover:text-gray-700'}`}
                     >
                         Dados da Organização
                     </button>
                     <button
                         onClick={() => setActiveTab('team')}
-                        className={`pb-3 px-1 text-sm font-medium transition-all ${activeTab === 'team' ? 'border-b-2 border-diva-primary text-diva-primary' : 'text-gray-500 hover:text-gray-700'}`}
+                        className={`pb-3 px-1 text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'team' ? 'border-b-2 border-diva-primary text-diva-primary' : 'text-gray-500 hover:text-gray-700'}`}
                     >
                         Equipe e Permissões
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('subscription')}
+                        className={`pb-3 px-1 text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'subscription' ? 'border-b-2 border-diva-primary text-diva-primary' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                        Assinatura & Faturas
                     </button>
                 </div>
             </div>
@@ -415,6 +423,11 @@ const OrganizationSettings: React.FC = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* TAB: SUBSCRIPTION */}
+            {activeTab === 'subscription' && (
+                <ClientSubscription />
             )}
         </div>
     );

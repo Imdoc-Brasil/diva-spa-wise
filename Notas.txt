@@ -1,0 +1,3 @@
+[x] 1. Persistência de Dados (Supabase): Implementado via SQL e AutomationService.
+[x] 2. Área do Cliente (Subscriber Portal): Criado módulo "Minha Assinatura" dentro de Configurações da Organização.
+[x] 3. Review de Deploy: Build verificado pelo usuário. Pronto para subir!
