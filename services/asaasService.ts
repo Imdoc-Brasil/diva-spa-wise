@@ -84,9 +84,10 @@ export const asaasService = {
     /**
      * Listar Assinaturas (Subscriptions)
      */
-    listSubscriptions: async () => {
+    listSubscriptions: async (customerId?: string) => {
         try {
-            const response = await fetch(`${ASAAS_API_URL}/subscriptions?limit=20`, {
+            const url = `${ASAAS_API_URL}/subscriptions?limit=20${customerId ? `&customer=${customerId}` : ''}`;
+            const response = await fetch(url, {
                 headers: getHeaders()
             });
             return await response.json();
@@ -99,9 +100,10 @@ export const asaasService = {
     /**
      * Listar Cobranças (Payments)
      */
-    listPayments: async () => {
+    listPayments: async (customerId?: string) => {
         try {
-            const response = await fetch(`${ASAAS_API_URL}/payments?limit=20`, {
+            const url = `${ASAAS_API_URL}/payments?limit=20${customerId ? `&customer=${customerId}` : ''}`;
+            const response = await fetch(url, {
                 headers: getHeaders()
             });
             return await response.json();

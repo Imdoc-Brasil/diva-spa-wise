@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useOrganization } from '../context/OrganizationContext';
 import { useData } from '../context/DataContext';
 import { Save, Plus, Users, Building, CreditCard, Mail, Trash2, Shield, MoreHorizontal, User as UserIcon, ShoppingBag } from 'lucide-react';
@@ -10,9 +11,18 @@ import ClientSubscription from './saas/ClientSubscription';
 const OrganizationSettings: React.FC = () => {
     const { organization, setOrganization } = useOrganization();
     const { members, inviteMember, removeMember, updateMemberRole } = useData();
+    const [searchParams] = useSearchParams();
 
     // Tab State
+    // Default to 'general' unless URL param says otherwise
     const [activeTab, setActiveTab] = useState<'general' | 'team' | 'subscription'>('general');
+
+    useEffect(() => {
+        const tabParam = searchParams.get('tab');
+        if (tabParam === 'subscription' || tabParam === 'team' || tabParam === 'general') {
+            setActiveTab(tabParam as any);
+        }
+    }, [searchParams]);
 
     // General Settings State
     const [formState, setFormState] = useState<Organization | null>(null);

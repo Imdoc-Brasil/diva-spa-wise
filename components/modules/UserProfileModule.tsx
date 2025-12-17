@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { User, UserPreferences } from '../../types';
-import { User as UserIcon, Shield, Bell, Globe, Smartphone, LogOut, Save, Key, Mail, Edit2, Camera, Moon, Sun, Laptop, Settings } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { User as UserIcon, Shield, Bell, Globe, Smartphone, LogOut, Save, Key, Mail, Edit2, Camera, Moon, Sun, Laptop, Settings, CreditCard } from 'lucide-react';
 import { useToast } from '../ui/ToastContext';
 import { useData } from '../context/DataContext';
 
@@ -18,6 +19,7 @@ const defaultPreferences: UserPreferences = {
 
 const UserProfileModule: React.FC<UserProfileModuleProps> = ({ user, onLogout }) => {
     const { addToast } = useToast();
+    const navigate = useNavigate();
     const { updateUser } = useData();
     const [activeTab, setActiveTab] = useState<'general' | 'security' | 'preferences'>('general');
     const [profile, setProfile] = useState({
@@ -191,6 +193,27 @@ const UserProfileModule: React.FC<UserProfileModuleProps> = ({ user, onLogout })
                                     <Save size={18} className="mr-2" /> Salvar Alterações
                                 </button>
                             </div>
+
+                            {/* ADMIN SHORTCUT: SUBSCRIPTION */}
+                            {(user.role === 'admin' || user.role === 'manager') && (
+                                <div className="mt-8 bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl p-6 text-white flex justify-between items-center shadow-lg">
+                                    <div>
+                                        <h3 className="font-bold text-lg flex items-center gap-2">
+                                            <CreditCard size={20} className="text-purple-400" />
+                                            Assinatura da Clínica
+                                        </h3>
+                                        <p className="text-slate-300 text-sm mt-1">
+                                            Gerencie faturas, downloads e upgrades do plano.
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => navigate('/settings/organization?tab=subscription')}
+                                        className="bg-white text-slate-900 px-4 py-2 rounded-lg font-bold text-sm hover:bg-gray-100 transition-colors"
+                                    >
+                                        Gerenciar Plano
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
 

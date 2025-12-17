@@ -137,6 +137,9 @@ export interface Organization {
     // Configurações
     settings: OrganizationSettings;
 
+    // Integrações Externas / IDs
+    asaasCustomerId?: string; // ID do cliente no Asaas (cus_...)
+
     // Metadata
     createdAt: string;
     activatedAt?: string;

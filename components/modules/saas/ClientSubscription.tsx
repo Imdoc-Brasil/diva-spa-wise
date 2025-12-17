@@ -5,6 +5,8 @@ import { CheckCircle, AlertCircle, Clock, FileText, CreditCard, ChevronRight, St
 import { SAAS_PLANS_CONFIG } from './saasPlans';
 import { SaaSPlan } from '../../../types_saas';
 
+import { asaasService } from '../../../services/asaasService';
+
 // Mock Invoice Type
 interface Invoice {
     id: string;
@@ -17,17 +19,43 @@ interface Invoice {
 const ClientSubscription: React.FC = () => {
     const { organization } = useOrganization();
     const [invoices, setInvoices] = useState<Invoice[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
 
-    // Simulate fetching invoices from Asaas
     useEffect(() => {
-        // Mock data
-        const mockInvoices: Invoice[] = [
-            { id: 'inv_01', date: new Date().toISOString(), amount: 199.90, status: 'pending', pdfUrl: '#' },
-            { id: 'inv_02', date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), amount: 199.90, status: 'paid', pdfUrl: '#' },
-            { id: 'inv_03', date: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(), amount: 199.90, status: 'paid', pdfUrl: '#' },
-        ];
-        setInvoices(mockInvoices);
-    }, []);
+        const fetchInvoices = async () => {
+            if (organization?.asaasCustomerId) {
+                setIsLoading(true);
+                try {
+                    const response = await asaasService.listPayments(organization.asaasCustomerId);
+                    // Map Asaas Data
+                    const mapped: Invoice[] = (response.data || []).map((p: any) => ({
+                        id: p.id,
+                        date: p.dateCreated, // ou p.dueDate
+                        amount: p.value,
+                        status: (p.status === 'RECEIVED' || p.status === 'CONFIRMED' || p.status === 'PAID') ? 'paid'
+                            : (p.status === 'OVERDUE') ? 'overdue'
+                                : 'pending',
+                        pdfUrl: p.invoiceUrl || p.bankSlipUrl || '#'
+                    }));
+                    setInvoices(mapped);
+                } catch (error) {
+                    console.error('Error fetching Asaas payments:', error);
+                } finally {
+                    setIsLoading(false);
+                }
+            } else {
+                // Mock data Fallback
+                const mockInvoices: Invoice[] = [
+                    { id: 'inv_01', date: new Date().toISOString(), amount: 199.90, status: 'pending', pdfUrl: '#' },
+                    { id: 'inv_02', date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), amount: 199.90, status: 'paid', pdfUrl: '#' },
+                    { id: 'inv_03', date: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(), amount: 199.90, status: 'paid', pdfUrl: '#' },
+                ];
+                setInvoices(mockInvoices);
+            }
+        };
+
+        fetchInvoices();
+    }, [organization?.asaasCustomerId]);
 
     const currentPlan = SAAS_PLANS_CONFIG[organization?.subscriptionPlanId as SaaSPlan] || SAAS_PLANS_CONFIG[SaaSPlan.GROWTH];
 
