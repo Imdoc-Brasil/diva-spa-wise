@@ -45,6 +45,9 @@ export interface SaaSLead {
     trialStartDate?: string;
     zipCode?: string;
     tasks?: SaaSTask[];
+    tags?: string[]; // Etiquetas para segmentação (ex: "Calculadora", "Ebook")
+    metadata?: Record<string, any>; // Dados ricos (ex: Resultado da Calculadora)
+    attachments?: string[]; // URLs de arquivos gerados/enviados
     createdAt: string;
     updatedAt: string;
 }

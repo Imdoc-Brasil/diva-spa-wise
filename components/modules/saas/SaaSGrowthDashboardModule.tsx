@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react';
 import { useData } from '../../context/DataContext';
 import { SaaSLead, SaaSLeadStage, SaaSPlan } from '../../../types';
-import { TrendingUp, Users, DollarSign, Target, ArrowRight, Zap, Filter, Award, BarChart3, Activity } from 'lucide-react';
+import { TrendingUp, Users, DollarSign, Target, ArrowRight, Zap, Filter, Award, BarChart3 } from 'lucide-react';
 
-const SaaSDashboard: React.FC = () => {
+const SaaSGrowthDashboardModule: React.FC = () => {
     const { saasLeads, saasSubscribers } = useData();
 
     // --- 1. FUNNEL HACKING METRICS ---
@@ -60,79 +60,72 @@ const SaaSDashboard: React.FC = () => {
 
     return (
         <div className="h-full overflow-y-auto p-2 space-y-8 pb-20">
-            {/* HEADER */}
+            {/* HERDER */}
             <div className="flex justify-between items-end">
                 <div>
-                    <h2 className="text-3xl font-black text-white italic tracking-tighter flex items-center gap-2">
-                        <Activity className="text-yellow-500" />
-                        GROWTH<span className="text-yellow-500">HACKING</span>
+                    <h2 className="text-3xl font-black text-white italic tracking-tighter">
+                        GROWTH<span className="text-yellow-500">HACKING</span> DASHBOARD
                     </h2>
-                    <p className="text-slate-400 font-medium">Pipeline Command Center (ClickFunnels Style)</p>
+                    <p className="text-slate-400 font-medium">Visão estratégica do funil e oportunidades de alta conversão.</p>
                 </div>
-                <div className="flex gap-6">
-                    <div className="text-right border-r border-white/10 pr-6">
-                        <p className="text-xs text-slate-500 uppercase font-bold">Potencial Oculto (Calculadora)</p>
-                        <p className="text-xl font-black text-purple-400">{formatCurrency(metrics.hiddenRevenuePotencial)}</p>
-                    </div>
+                <div className="flex gap-4">
                     <div className="text-right">
                         <p className="text-xs text-slate-500 uppercase font-bold">Valor em Pipeline</p>
-                        <p className="text-2xl font-black text-emerald-400 drop-shadow-lg">{formatCurrency(metrics.totalPipelineValue)}</p>
+                        <p className="text-2xl font-black text-emerald-400">{formatCurrency(metrics.totalPipelineValue)}</p>
                     </div>
                 </div>
             </div>
 
             {/* KPI CARDS - FUNNEL STEPS */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl relative overflow-hidden group hover:border-blue-500 transition-colors shadow-lg">
+            <div className="grid grid-cols-4 gap-4">
+                <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl relative overflow-hidden group hover:border-blue-500 transition-colors">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                         <Users size={64} className="text-blue-500" />
                     </div>
                     <p className="text-blue-400 font-bold text-sm mb-2 uppercase tracking-wider">01. Leads Capturados</p>
                     <h3 className="text-4xl font-black text-white mb-2">{metrics.totalLeads}</h3>
-                    <p className="text-slate-500 text-xs font-medium">Topo do Funil</p>
+                    <p className="text-slate-500 text-xs">Novos contatos no topo do funil.</p>
                 </div>
 
-                <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl relative overflow-hidden group hover:border-yellow-500 transition-colors shadow-lg">
+                <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl relative overflow-hidden group hover:border-yellow-500 transition-colors">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                         <Target size={64} className="text-yellow-500" />
                     </div>
                     <p className="text-yellow-400 font-bold text-sm mb-2 uppercase tracking-wider">02. Qualificados</p>
                     <h3 className="text-4xl font-black text-white mb-2">{metrics.qualifiedLeads}</h3>
-                    <p className="text-slate-500 text-xs font-medium">Lead Quente (Hot)</p>
+                    <p className="text-slate-500 text-xs">Leads com perfil ideal de compra.</p>
                 </div>
 
-                <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl relative overflow-hidden group hover:border-purple-500 transition-colors shadow-lg">
+                <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl relative overflow-hidden group hover:border-purple-500 transition-colors">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                         <Zap size={64} className="text-purple-500" />
                     </div>
                     <p className="text-purple-400 font-bold text-sm mb-2 uppercase tracking-wider">03. Em Trial Ativo</p>
                     <h3 className="text-4xl font-black text-white mb-2">{metrics.activeTrials}</h3>
-                    <p className="text-slate-500 text-xs font-medium">Onboarding em progresso</p>
+                    <p className="text-slate-500 text-xs">Testando a plataforma agora.</p>
                 </div>
 
-                <div className="bg-gradient-to-br from-emerald-900/50 to-slate-900 border border-emerald-500/30 p-6 rounded-2xl relative overflow-hidden group hover:border-emerald-500 transition-colors shadow-lg shadow-emerald-900/10">
+                <div className="bg-gradient-to-br from-emerald-900/50 to-slate-900 border border-emerald-500/30 p-6 rounded-2xl relative overflow-hidden group hover:border-emerald-500 transition-colors">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                         <DollarSign size={64} className="text-emerald-500" />
                     </div>
-                    <p className="text-emerald-400 font-bold text-sm mb-2 uppercase tracking-wider">04. Close (Assinantes)</p>
+                    <p className="text-emerald-400 font-bold text-sm mb-2 uppercase tracking-wider">04. Vendas (MRR)</p>
                     <h3 className="text-4xl font-black text-white mb-2">{metrics.totalSubscribers}</h3>
-                    <div className="inline-flex items-center gap-1 bg-emerald-500/20 px-2 py-1 rounded text-emerald-300 text-xs font-bold">
-                        Conv: {(Number(metrics.conversionRate)).toFixed(1)}% <TrendingUp size={12} />
-                    </div>
+                    <p className="text-emerald-200/50 text-xs font-bold">Taxa de Conversão: {metrics.conversionRate}%</p>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* DREAM 100 LIST */}
                 <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
-                    <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 backdrop-blur-sm">
+                    <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-yellow-500/10 rounded-lg">
                                 <Award className="text-yellow-500" size={24} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-xl text-white">Dream 100 List ("Whales")</h3>
-                                <p className="text-xs text-slate-400">Leads de alto valor identificados pelo algoritmo.</p>
+                                <h3 className="font-bold text-xl text-white">Dream 100 List</h3>
+                                <p className="text-xs text-slate-400">Suas maiores oportunidades de faturamento ("Whales")</p>
                             </div>
                         </div>
                         <button className="px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-black text-xs font-bold rounded-lg transition-colors uppercase tracking-wide">
@@ -140,28 +133,23 @@ const SaaSDashboard: React.FC = () => {
                         </button>
                     </div>
 
-                    <div className="divide-y divide-slate-800 overflow-y-auto max-h-[400px]">
+                    <div className="divide-y divide-slate-800">
                         {dream100.length === 0 ? (
-                            <div className="p-12 text-center text-slate-500 italic flex flex-col items-center">
-                                <Target size={48} className="mb-4 opacity-20" />
-                                Nenhuma "Baleia" identificada ainda.<br />
-                                <span className="text-xs">Leads com potencial maior que R$ 50k ou Plano Empire aparecerão aqui.</span>
+                            <div className="p-12 text-center text-slate-500 italic">
+                                Sincronize leads ou aguarde novas conversões de alto valor.
                             </div>
                         ) : (
                             dream100.map((lead, idx) => (
                                 <div key={lead.id} className="p-6 flex items-center justify-between hover:bg-slate-800/50 transition-colors group">
                                     <div className="flex items-center gap-4">
-                                        <div className="font-black text-3xl text-slate-800 w-10 flex justify-center">#{idx + 1}</div>
+                                        <div className="font-black text-3xl text-slate-700 w-8">#{idx + 1}</div>
                                         <div>
-                                            <h4 className="font-bold text-white text-lg flex items-center gap-2">
-                                                {lead.clinicName}
-                                                {lead.planInterest === SaaSPlan.EMPIRE && <Award size={14} className="text-yellow-500" />}
-                                            </h4>
+                                            <h4 className="font-bold text-white text-lg">{lead.clinicName}</h4>
                                             <div className="flex items-center gap-2 text-sm text-slate-400">
                                                 <span>{lead.name}</span>
                                                 <span className="w-1 h-1 bg-slate-600 rounded-full"></span>
-                                                <span className={`${lead.metadata?.calculator ? 'text-purple-400 font-bold' : 'text-slate-400'}`}>
-                                                    {lead.metadata?.calculator ? '🎯 Via Calculadora' : (lead.source || 'Outros')}
+                                                <span className={lead.metadata?.calculator ? 'text-purple-400' : 'text-slate-400'}>
+                                                    {lead.metadata?.calculator ? 'Via Calculadora' : (lead.source || 'Outros')}
                                                 </span>
                                             </div>
                                         </div>
@@ -169,14 +157,14 @@ const SaaSDashboard: React.FC = () => {
 
                                     <div className="flex items-center gap-8">
                                         <div className="text-right">
-                                            <p className="text-[10px] text-slate-500 uppercase font-bold">Potencial</p>
-                                            <p className="text-md font-bold text-purple-400">{formatCurrency(lead.metadata?.calculator?.results?.potentialRevenue || 0)}</p>
+                                            <p className="text-[10px] text-slate-500 uppercase font-bold">Potencial Identificado</p>
+                                            <p className="text-lg font-bold text-purple-400">{formatCurrency(lead.metadata?.calculator?.results?.potentialRevenue || 0)}</p>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-[10px] text-slate-500 uppercase font-bold">Contrato Est.</p>
+                                            <p className="text-[10px] text-slate-500 uppercase font-bold">Valor do Contrato</p>
                                             <p className="text-xl font-bold text-emerald-400">{formatCurrency(lead.estimatedValue || 0)}</p>
                                         </div>
-                                        <button className="p-3 bg-slate-800 hover:bg-white hover:text-black rounded-xl text-slate-400 transition-all transform hover:scale-110 shadow-lg group-hover:shadow-xl">
+                                        <button className="p-3 bg-slate-800 hover:bg-white hover:text-black rounded-xl text-slate-400 transition-all transform hover:scale-110 shadow-lg">
                                             <ArrowRight size={20} />
                                         </button>
                                     </div>
@@ -186,49 +174,44 @@ const SaaSDashboard: React.FC = () => {
                     </div>
                 </div>
 
-                {/* VISUAL & HOOKS */}
+                {/* HOOKS PERFORMANCE */}
                 <div className="space-y-6">
-                    {/* Source Visualizer */}
-                    <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl h-full flex flex-col">
+                    <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
                         <div className="flex items-center gap-3 mb-6">
                             <div className="p-2 bg-purple-500/10 rounded-lg">
                                 <BarChart3 className="text-purple-500" size={24} />
                             </div>
                             <div>
                                 <h3 className="font-bold text-xl text-white">Performance de Origem</h3>
-                                <p className="text-xs text-slate-400">Winning Hooks</p>
+                                <p className="text-xs text-slate-400">De onde vem o dinheiro?</p>
                             </div>
                         </div>
 
-                        <div className="flex-1 space-y-5 overflow-y-auto">
+                        <div className="space-y-4">
                             {sourceStats.map(([source, stats], idx) => (
                                 <div key={source} className="relative">
-                                    <div className="flex justify-between items-end mb-2 z-10 relative">
+                                    <div className="flex justify-between items-end mb-1 z-10 relative">
                                         <span className="font-bold text-sm text-white">{source}</span>
                                         <span className="font-mono text-xs text-emerald-400 font-bold">{formatCurrency(stats.value)}</span>
                                     </div>
-                                    <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden">
+                                    <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
                                         <div
-                                            className={`h-full rounded-full transition-all duration-1000 ${idx === 0 ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'bg-slate-600'}`}
-                                            style={{ width: `${metrics.totalPipelineValue > 0 ? (stats.value / metrics.totalPipelineValue) * 100 : 0}%` }}
+                                            className={`h-full rounded-full ${idx === 0 ? 'bg-purple-500' : 'bg-slate-600'}`}
+                                            style={{ width: `${(stats.value / metrics.totalPipelineValue) * 100}%` }}
                                         ></div>
                                     </div>
-                                    <p className="text-right text-[10px] text-slate-500 mt-1 font-bold">{stats.count} leads</p>
+                                    <p className="text-right text-[10px] text-slate-500 mt-1">{stats.count} leads</p>
                                 </div>
                             ))}
                         </div>
                     </div>
 
-                    {/* CTA Action Card */}
-                    <div className="bg-gradient-to-br from-yellow-500 to-orange-600 p-6 rounded-3xl text-white shadow-xl shadow-yellow-900/30 transform hover:scale-[1.02] transition-transform cursor-pointer">
-                        <div className="flex justify-between items-start mb-4">
-                            <Zap className="text-white" size={32} />
-                            <span className="bg-white/20 px-2 py-1 rounded text-xs font-bold uppercase">Ação Recomendada</span>
-                        </div>
-                        <h3 className="font-black text-2xl italic mb-2 tracking-tight">PRECISA ESCALAR?</h3>
-                        <p className="opacity-90 mb-6 text-sm leading-relaxed font-medium">Você tem <span className="font-black text-white bg-black/10 px-1 rounded">R$ {formatCurrency(metrics.hiddenRevenuePotencial)}</span> de potencial inexplorado apenas nos leads da calculadora.</p>
-                        <button className="w-full bg-white text-orange-700 font-bold py-3 rounded-xl hover:bg-slate-100 transition-colors shadow-lg flex items-center justify-center gap-2">
-                            Disparar Campanha WhatsApp <ArrowRight size={16} />
+                    {/* ACTION CARD */}
+                    <div className="bg-gradient-to-br from-yellow-600 to-orange-600 p-6 rounded-3xl text-white shadow-lg shadow-yellow-900/20">
+                        <h3 className="font-black text-2xl italic mb-2">PRECISA ESCALAR?</h3>
+                        <p className="opacity-90 mb-6 text-sm">Você tem R$ {formatCurrency(metrics.hiddenRevenuePotencial)} de potencial inexplorado na sua base de leads atual.</p>
+                        <button className="w-full bg-white text-orange-700 font-bold py-3 rounded-xl hover:bg-slate-100 transition-colors shadow-lg">
+                            Criar Nova Campanha
                         </button>
                     </div>
                 </div>
@@ -237,4 +220,4 @@ const SaaSDashboard: React.FC = () => {
     );
 };
 
-export default SaaSDashboard;
+export default SaaSGrowthDashboardModule;

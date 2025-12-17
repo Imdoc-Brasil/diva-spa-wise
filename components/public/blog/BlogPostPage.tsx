@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../../services/supabase';
-import { ArrowLeft, Calendar, User, Clock, Share2, Facebook, Twitter, Linkedin, Link as LinkIcon } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Clock, Share2, Facebook, Twitter, Linkedin, Link as LinkIcon, Zap } from 'lucide-react';
 
 interface BlogPost {
     id: string;
@@ -123,9 +123,14 @@ const BlogPostPage: React.FC = () => {
                             <div className="bg-gradient-to-br from-purple-900/50 to-indigo-900/50 border border-purple-500/20 p-6 rounded-2xl">
                                 <h4 className="font-bold text-white mb-2">Gostou da dica?</h4>
                                 <p className="text-sm text-slate-300 mb-4">Aplique isso na sua clínica agora com o I'mDoc.</p>
-                                <button onClick={() => navigate('/signup')} className="w-full bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold py-3 rounded-xl transition-colors">
-                                    Testar Grátis
-                                </button>
+                                <div className="space-y-3">
+                                    <button onClick={() => navigate('/tools/revenue-calculator')} className="w-full bg-white hover:bg-slate-200 text-purple-900 text-sm font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2">
+                                        <Zap size={16} /> Calcular Potencial
+                                    </button>
+                                    <button onClick={() => navigate('/signup')} className="w-full bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold py-3 rounded-xl transition-colors">
+                                        Testar Grátis
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -109,6 +109,15 @@ const BlogEditorModule: React.FC = () => {
 
 <p><strong>O I'mDoc SaaS não é apenas uma ferramenta, é o parceiro estratégico para o crescimento exponencial da sua clínica.</strong></p>
 
+<div class="my-12 p-8 bg-gradient-to-r from-purple-900/50 to-indigo-900/50 rounded-2xl border border-purple-500/30 text-center not-prose">
+    <h3 class="text-2xl font-bold text-white mb-4">Quanto dinheiro você está deixando na mesa?</h3>
+    <p class="text-slate-300 mb-6">Nossa IA analisa seus números e revela o potencial oculto da sua clínica em segundos.</p>
+    <a href="/#/tools/revenue-calculator" class="inline-flex items-center gap-2 px-8 py-4 bg-white text-purple-900 font-bold rounded-full hover:bg-slate-200 transition-colors shadow-lg hover:scale-105 transform duration-200 no-underline">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        Calcular Potencial de Receita
+    </a>
+</div>
+
 <h3>Comparativo de Mercado (Raio-X)</h3>
 
 <details class="mb-4 bg-slate-900 border border-slate-700 rounded-lg overflow-hidden group" open>

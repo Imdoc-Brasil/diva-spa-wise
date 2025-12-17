@@ -65,6 +65,7 @@ import SubscribersModule from './components/modules/saas/SubscribersModule';
 import SaaSDashboard from './components/modules/saas/SaaSDashboard';
 import SaaSFinanceModule from './components/modules/saas/SaaSFinanceModule';
 import SalesPageEditorModule from './components/modules/saas/SalesPageEditorModule';
+import SaaSMarketingModule from './components/modules/saas/SaaSMarketingModule';
 import AnalyticsManager from './components/ui/AnalyticsManager';
 import { OrganizationSetup } from './components/auth/OrganizationSetup';
 
@@ -132,6 +133,7 @@ const AppContent: React.FC = () => {
                             <Route path="subscribers" element={<SubscribersModule />} />
                             <Route path="finance" element={<SaaSFinanceModule />} />
                             <Route path="cms" element={<SalesPageEditorModule />} />
+                            <Route path="marketing" element={<SaaSMarketingModule />} />
                         </Route>
 
                         {/* MAIN APP ROUTES (WITH LAYOUT) */}

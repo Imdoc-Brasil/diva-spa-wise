@@ -7,9 +7,11 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { useToast } from '../../ui/ToastContext';
 import { supabase } from '../../../services/supabase';
 
+import jsPDF from 'jspdf';
+import { automationService } from '../../../services/saas/AutomationService';
+
 const RevenueCalculatorPage: React.FC = () => {
     const navigate = useNavigate();
-    const { addSaaSLead } = useData();
     const { addToast } = useToast();
 
     // Steps: 0 = Intro, 1 = Type & Basic, 2 = Details, 3 = Lead, 4 = Result
@@ -31,12 +33,6 @@ const RevenueCalculatorPage: React.FC = () => {
 
     // Calculation Logic
     const calculatePotential = () => {
-        // Factors derived from user request formulas
-        // 20min factor: 10 * 500 = 5000
-        // 30min factor: 9 * 600 = 5400
-        // 60min factor: 6 * 1000 = 6000
-        // 90min factor: 5 * 1500 = 7500
-
         let multiplier = 0;
         if (tmd === 20) multiplier = 10 * 4 * 500;
         if (tmd === 30) multiplier = 9 * 4 * 600;
@@ -59,13 +55,76 @@ const RevenueCalculatorPage: React.FC = () => {
     };
 
     const results = calculatePotential();
+    const formatCurrency = (val: number) =>
+        new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(val);
+
+    const generateReportPDF = () => {
+        const doc = new jsPDF();
+
+        // Colors
+        const purple = '#7f30ac';
+        const slate = '#334155';
+
+        // Header
+        doc.setFillColor(127, 48, 172); // Purple
+        doc.rect(0, 0, 210, 40, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(24);
+        doc.setFont('helvetica', 'bold');
+        doc.text("Relatório de Potencial", 105, 25, { align: 'center' });
+        doc.setFontSize(12);
+        doc.text("I'mDoc SaaS - Inteligência de Negócios", 105, 35, { align: 'center' });
+
+        // Content
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(14);
+        doc.text(`Olá, ${name}`, 20, 60);
+
+        doc.setFontSize(12);
+        doc.setTextColor(100);
+        doc.text(`Preparamos uma análise exclusiva para seu modelo de negócio (${entityType === 'professional' ? 'Profissional Liberal' : 'Clínica/Empresa'}).`, 20, 70);
+
+        // Results Box
+        doc.setFillColor(240, 240, 240);
+        doc.roundedRect(20, 85, 170, 60, 3, 3, 'F');
+
+        doc.setFontSize(16);
+        doc.setTextColor(purple);
+        doc.text("Seu Potencial Mensal Estimado", 105, 100, { align: 'center' });
+
+        doc.setFontSize(32);
+        doc.setFont('helvetica', 'bold');
+        doc.text(formatCurrency(results.potentialRevenue), 105, 120, { align: 'center' });
+
+        doc.setFontSize(12);
+        doc.setTextColor(200, 50, 50);
+        if (results.lostRevenue > 0) {
+            doc.text(`Prejuízo Oculto Atual: ${formatCurrency(results.lostRevenue)} / mês`, 105, 135, { align: 'center' });
+        }
+
+        // Details
+        doc.setTextColor(0);
+        doc.setFontSize(12);
+        doc.text("Parâmetros Utilizados:", 20, 160);
+        doc.setFontSize(10);
+        doc.text(`- Salas: ${ns}`, 25, 170);
+        doc.text(`- Turnos Semanais: ${nt}`, 25, 175);
+        doc.text(`- Tempo Médio de Atendimento: ${tmd} min`, 25, 180);
+        doc.text(`- Ocupação Projetada: ${entityType === 'professional' ? '60%' : '85%'}`, 25, 185);
+
+        // Footer
+        doc.setFontSize(10);
+        doc.setTextColor(150);
+        doc.text("Gerado automaticamente por I'mDoc AI. Este relatório é uma estimativa baseada em benchmarks de mercado.", 105, 280, { align: 'center' });
+
+        return doc.output('blob');
+    };
 
     const handleCapture = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
 
-        const lead: SaaSLead = {
-            id: `lead_calc_${Date.now()}`,
+        const leadData: Partial<SaaSLead> = {
             name,
             email,
             phone,
@@ -74,28 +133,43 @@ const RevenueCalculatorPage: React.FC = () => {
             source: 'landing_page',
             planInterest: results.potentialRevenue > 50000 ? SaaSPlan.GROWTH : SaaSPlan.START,
             status: 'active',
-            notes: `Calculadora (${entityType}): Potencial Potencial R$${results.potentialRevenue.toFixed(2)}. Atual R$${mfm.toFixed(2)}. Salas: ${ns}, Turnos: ${nt}, Tempo: ${tmd}min`,
             estimatedValue: results.potentialRevenue > 50000 ? 597 : 297,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
+        };
+
+        const contextData = {
+            calculator: {
+                results: results,
+                inputs: { entityType, ns, nt, tmd, mfm }
+            },
+            tags: ['Calculadora', 'Lead Quente']
         };
 
         try {
-            if (addSaaSLead) {
-                await addSaaSLead(lead);
-            }
+            // Generate PDF
+            const pdfBlob = generateReportPDF();
+
+            // Process via Automation Service
+            await automationService.processConversion('REVENUE_CALCULATOR', leadData, contextData, [pdfBlob]);
+
+            // Success Feedback
             setStep(4);
-            addToast('Análise gerada com sucesso!', 'success');
+            addToast('Relatório enviado para seu e-mail e WhatsApp!', 'success');
+
+            // Download PDF directly for user as well (Nice to have)
+            const url = URL.createObjectURL(pdfBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Relatorio_ImDoc_${name.split(' ')[0]}.pdf`;
+            link.click();
+            URL.revokeObjectURL(url);
+
         } catch (error) {
             console.error(error);
-            addToast('Erro ao processar.', 'error');
+            addToast('Erro ao processar sua solicitação.', 'error');
         } finally {
             setIsSubmitting(false);
         }
     };
-
-    const formatCurrency = (val: number) =>
-        new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(val);
 
     const chartData = [
         { name: 'Seu Melhor Mês', value: results.currentRevenue, color: '#94a3b8' },

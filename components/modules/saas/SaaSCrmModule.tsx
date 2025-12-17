@@ -9,6 +9,7 @@ import {
     Phone, ThumbsUp, Link, Copy
 } from 'lucide-react';
 import { asaasService } from '../../../services/asaasService';
+import { automationService } from '../../../services/saas/AutomationService';
 import { useToast } from '../../ui/ToastContext';
 import { maskPhone, maskCEP, maskCNPJ, maskCpfCnpj } from '../../../utils/masks';
 import { SAAS_PLANS_CONFIG } from './saasPlans';
@@ -84,8 +85,19 @@ const SaaSCrmModule: React.FC = () => {
     }, [saasLeads, searchTerm, sortBy, filterPlan]);
 
     const handleMove = (id: string, newStage: SaaSLeadStage) => {
-        updateSaaSLead(id, { stage: newStage });
-        addToast(`Lead movido para ${newStage}`, 'success');
+        const lead = saasLeads.find(l => l.id === id);
+        if (lead) {
+            // Optimistic update
+            updateSaaSLead(id, { stage: newStage });
+
+            // Trigger Automation
+            // We map the stage change to a trigger event
+            // e.g., 'STAGE_CHANGED_TO_TRIAL_STARTED'
+            const triggerId = `STAGE_CHANGED_TO_${newStage}`;
+            automationService.processConversion(triggerId, { ...lead, stage: newStage }, { oldStage: lead.stage });
+
+            addToast(`Lead movido para ${newStage}`, 'success');
+        }
     };
 
     const handleMoveProject = (id: string, newStage: ImplementationStage) => {
@@ -220,6 +232,9 @@ const SaaSCrmModule: React.FC = () => {
             trialStartDate: new Date().toISOString()
         });
 
+        // Trigger Automation for New Customer
+        automationService.processConversion('NEW_CUSTOMER_ONBOARDING', closingLead);
+
         // Auto-create Implementation Project
         addImplementationProject({
             id: crypto.randomUUID(),
@@ -259,13 +274,13 @@ const SaaSCrmModule: React.FC = () => {
         state: ''
     });
 
-    const handleCreateLead = () => {
+    const handleCreateLead = async () => {
         if (!newLeadData.name || !newLeadData.clinicName || !newLeadData.email || !newLeadData.phone) {
             addToast('Preencha Nome, Clínica, Email e Telefone.', 'error');
             return;
         }
 
-        addSaaSLead({
+        const newLead = {
             id: `temp_${Date.now()}`,
             name: newLeadData.name,
             clinicName: newLeadData.clinicName,
@@ -274,8 +289,8 @@ const SaaSCrmModule: React.FC = () => {
             phone: newLeadData.phone,
             planInterest: newLeadData.planInterest as SaaSPlan,
             stage: SaaSLeadStage.NEW,
-            source: 'outbound',
-            status: 'active',
+            source: 'outbound' as const,
+            status: 'active' as const,
             notes: '',
             cnpj: newLeadData.cnpj,
             address: newLeadData.address,
@@ -287,7 +302,12 @@ const SaaSCrmModule: React.FC = () => {
             estimatedValue: newLeadData.estimatedValue || 0,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
-        });
+        };
+
+        addSaaSLead(newLead);
+
+        // Trigger Automation for Manual Lead
+        await automationService.processConversion('MANUAL_LEAD_CREATED', newLead);
 
         setShowNewLeadModal(false);
         setNewLeadData({

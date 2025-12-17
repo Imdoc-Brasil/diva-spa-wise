@@ -2,7 +2,7 @@ import React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard, Users, TrendingUp, Settings,
-    LogOut, Crown, DollarSign, PieChart, Shield, Globe
+    LogOut, Crown, DollarSign, PieChart, Shield, Globe, Bot
 } from 'lucide-react';
 
 const MasterLayout: React.FC = () => {
@@ -12,6 +12,7 @@ const MasterLayout: React.FC = () => {
     const menuItems = [
         { icon: <LayoutDashboard size={20} />, label: 'Dashboard', path: '/master' },
         { icon: <TrendingUp size={20} />, label: 'CRM & Gestão', path: '/master/crm' },
+        { icon: <Bot size={20} />, label: 'Automação & Mkt', path: '/master/marketing' }, // New Marketing Module
         // Item 'Assinantes' removido para centralizar no CRM & Gestão
         { icon: <DollarSign size={20} />, label: 'Financeiro SaaS', path: '/master/finance' },
         { icon: <Globe size={20} />, label: 'CMS / Site', path: '/master/cms' }, // New CMS Module
