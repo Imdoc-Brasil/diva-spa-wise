@@ -176,7 +176,19 @@ class AutomationService {
         }
     }
 
-    // --- Execution Core ---
+    async checkConnection() {
+        if (!supabase) return { count: null, error: { message: 'Supabase client not initialized' } };
+
+        try {
+            const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout check')), 5000));
+            const op = supabase.from('marketing_templates').select('*', { count: 'exact', head: true });
+
+            // @ts-ignore
+            return await Promise.race([op, timeout]);
+        } catch (e: any) {
+            return { count: null, error: e };
+        }
+    }
 
     /**
      * Processa a entrada de um lead através de um ponto de conversão (CTA)

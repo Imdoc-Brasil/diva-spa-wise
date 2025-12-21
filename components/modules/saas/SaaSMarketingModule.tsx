@@ -43,6 +43,26 @@ const SaaSMarketingModule: React.FC = () => {
 
     // Load Campaigns on Mount
     useEffect(() => {
+        // Diagnostic: Check Connection
+        const checkConnection = async () => {
+            console.log('[Diagnostic] Checking Supabase Connection...');
+            const url = import.meta.env.VITE_SUPABASE_URL || 'MISSING';
+            console.log('[Diagnostic] Configured URL:', url);
+
+            try {
+                const { count, error } = await automationService.checkConnection();
+                if (error) {
+                    console.error('[Diagnostic] Connection Failed:', error);
+                    addToast(`Erro de Conexão: ${error.message}`, 'error');
+                } else {
+                    console.log('[Diagnostic] Connection OK. Row count:', count);
+                }
+            } catch (e) {
+                console.error('[Diagnostic] Connection Exception:', e);
+            }
+        };
+
+        checkConnection();
         loadCampaigns();
         loadTemplates(); // Load templates on mount
     }, []);
