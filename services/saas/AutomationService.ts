@@ -128,8 +128,8 @@ class AutomationService {
             channel: template.channel,
             content: template.content,
             subject: template.subject,
-            is_ai_powered: template.isAiPowered,
-            updated_at: new Date().toISOString()
+            is_ai_powered: template.isAiPowered
+            // updated_at: new Date().toISOString() // Removed to avoid error if column missing
         };
 
         const { data, error } = await supabase

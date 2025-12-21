@@ -181,9 +181,9 @@ const SaaSMarketingModule: React.FC = () => {
 
             addToast('Template salvo no Banco!', 'success');
             setTemplateEditorOpen(false);
-        } catch (error) {
-            console.error(error);
-            addToast('Erro ao salvar template no banco', 'error');
+        } catch (error: any) {
+            console.error('Save Error:', error);
+            addToast(`Erro ao salvar: ${error.message || 'Erro desconhecido'}`, 'error');
         }
     };
 
