@@ -132,26 +132,38 @@ class AutomationService {
             // updated_at: new Date().toISOString() // Removed to avoid error if column missing
         };
 
-        const { data, error } = await supabase
-            .from('marketing_templates')
-            .upsert(payload as any)
-            .select()
-            .single();
+        try {
+            console.log('[Automation] Sending Payload:', payload);
+            const { data, error } = await supabase
+                .from('marketing_templates')
+                .upsert(payload as any)
+                .select()
+                .maybeSingle();
 
-        if (error) {
-            console.error('[Automation] Error saving template:', error);
-            throw error;
+            if (error) {
+                console.error('[Automation] Supabase Error:', error);
+                throw new Error(error.message || 'Database error');
+            }
+
+            if (!data) {
+                console.warn('[Automation] No data returned (RLS blocked read?). Assuming save success.');
+                return template;
+            }
+
+            console.log('[Automation] Save Success:', data);
+            const row = data as any;
+            return {
+                id: row.id,
+                name: row.name,
+                channel: row.channel,
+                content: row.content,
+                subject: row.subject,
+                isAiPowered: row.is_ai_powered
+            };
+        } catch (err) {
+            console.error('[Automation] Save Exception:', err);
+            throw err;
         }
-
-        const row = data as any;
-        return {
-            id: row.id,
-            name: row.name,
-            channel: row.channel,
-            content: row.content,
-            subject: row.subject,
-            isAiPowered: row.is_ai_powered
-        };
     }
 
     // --- Execution Core ---
