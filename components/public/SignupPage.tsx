@@ -106,9 +106,9 @@ const SignupPage: React.FC = () => {
                         slug: orgSlug,
                         primary_color: '#9333ea',
                         subscription_status: 'trial',
-                        subscription_plan: selectedPlanId,
-                        subscription_cycle: billingCycle,
-                        trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString() // 14 days from now
+                        subscription_plan_id: selectedPlanId,
+                        billing_cycle: billingCycle,
+                        trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
                     }
                 ])
                     .select()
@@ -124,12 +124,31 @@ const SignupPage: React.FC = () => {
                     }).eq('id', authData.user.id);
 
                     if (profileError) throw profileError;
+                    if (profileError) throw profileError;
+
+                    // 3.5 Create CRM Lead (SaaS)
+                    try {
+                        await (supabase.from('saas_leads') as any).insert([{
+                            name: userName,
+                            email: userEmail,
+                            clinic_name: orgName,
+                            plan_interest: selectedPlanId,
+                            stage: 'trial_started',
+                            status: 'active',
+                            source: 'website_signup',
+                            trial_start_date: new Date().toISOString()
+                        }]);
+                    } catch (crmError) {
+                        console.error('CRM Lead Error (Ignored):', crmError);
+                        // Don't block signup if CRM fails
+                    }
                 }
 
                 // 4. Redirect
                 if (!authData.session) {
                     alert('Conta criada! Verifique seu email para confirmar antes de entrar.');
-                    navigate('/');
+                    alert('Conta criada! Verifique seu email para confirmar antes de entrar.');
+                    navigate('/login');
                 } else {
                     navigate('/?welcome=true');
                 }

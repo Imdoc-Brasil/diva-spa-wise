@@ -31,9 +31,11 @@ const SaaSMarketingModule: React.FC = () => {
     const { addToast } = useToast();
     const [activeTab, setActiveTab] = useState<'campaigns' | 'templates'>('campaigns');
     const [campaigns, setCampaigns] = useState<MarketingCampaign[]>([]);
+    const [templates, setTemplates] = useState<MessageTemplate[]>(MOCK_TEMPLATES); // State for templates
     const [isLoading, setIsLoading] = useState(true);
     const [editorOpen, setEditorOpen] = useState(false);
     const [editingCampaign, setEditingCampaign] = useState<Partial<MarketingCampaign>>({ steps: [] });
+    const [selectedStepId, setSelectedStepId] = useState<string | null>(null); // Track selected step for config
 
     // Load Campaigns on Mount
     useEffect(() => {
@@ -88,6 +90,7 @@ const SaaSMarketingModule: React.FC = () => {
             stats: { enrolled: 0, completed: 0, converted: 0 }
         });
         setEditorOpen(true);
+        setSelectedStepId(null);
     };
 
     const handleSaveCampaign = async () => {
@@ -113,7 +116,17 @@ const SaaSMarketingModule: React.FC = () => {
             ...prev,
             steps: [...(prev.steps || []), newStep]
         }));
+        setSelectedStepId(newStep.id); // Auto-select new step
     };
+
+    const updateStepConfig = (stepId: string, newConfig: any) => {
+        setEditingCampaign(prev => ({
+            ...prev,
+            steps: prev.steps?.map(s => s.id === stepId ? { ...s, config: { ...s.config, ...newConfig } } : s)
+        }));
+    };
+
+    const selectedStep = editingCampaign.steps?.find(s => s.id === selectedStepId);
 
     return (
         <div className="h-full flex flex-col p-6 space-y-6 overflow-y-auto">
@@ -266,7 +279,10 @@ const SaaSMarketingModule: React.FC = () => {
                                 {/* Steps */}
                                 {editingCampaign.steps?.map((step, idx) => (
                                     <div key={idx} className="relative group">
-                                        <div className="bg-slate-800 border-2 border-slate-700 hover:border-purple-500 p-4 rounded-xl shadow-lg relative z-10 transition-colors">
+                                        <div
+                                            onClick={() => setSelectedStepId(step.id)}
+                                            className={`border-2 p-4 rounded-xl shadow-lg relative z-10 transition-all cursor-pointer ${selectedStepId === step.id ? 'bg-slate-800 border-purple-500 ring-4 ring-purple-500/20' : 'bg-slate-800 border-slate-700 hover:border-slate-500'}`}
+                                        >
                                             <div className="flex justify-between items-start">
                                                 <div className="flex items-center gap-3">
                                                     <div className={`p-2 rounded-lg ${step.type === 'WAIT_DELAY' ? 'bg-yellow-500/20' : step.type.includes('AI') ? 'bg-purple-500/20' : 'bg-blue-500/20'}`}>
@@ -305,82 +321,185 @@ const SaaSMarketingModule: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* RIGHT: Toolbox */}
-                        <div className="w-80 bg-slate-900 border-l border-white/5 p-4 overflow-y-auto">
-                            <h3 className="font-bold text-white mb-4 text-sm uppercase tracking-wider">Ferramentas</h3>
+                        {/* RIGHT: Toolbox or Configuration */}
+                        <div className="w-80 bg-slate-900 border-l border-white/5 p-4 overflow-y-auto flex flex-col">
+                            {selectedStep ? (
+                                <div className="space-y-6 animate-in slide-in-from-right">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="font-bold text-white text-sm uppercase tracking-wider">Configuração</h3>
+                                        <button onClick={() => setSelectedStepId(null)} className="text-slate-400 hover:text-white"><LayoutTemplate size={16} /></button>
+                                    </div>
 
-                            <div className="space-y-3">
-                                <p className="text-xs text-slate-500 font-bold mb-2">Comunicação</p>
-                                <button onClick={() => addStep('SEND_EMAIL')} className="w-full flex items-center gap-3 p-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-left transition-colors group">
-                                    <Mail className="text-blue-400 group-hover:scale-110 transition-transform" size={20} />
-                                    <div>
-                                        <span className="block text-white font-bold text-sm">Enviar Email</span>
-                                        <span className="block text-slate-500 text-xs">Template ou Custom</span>
-                                    </div>
-                                </button>
-                                <button onClick={() => addStep('SEND_WHATSAPP')} className="w-full flex items-center gap-3 p-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-left transition-colors group">
-                                    <MessageCircle className="text-green-400 group-hover:scale-110 transition-transform" size={20} />
-                                    <div>
-                                        <span className="block text-white font-bold text-sm">Enviar WhatsApp</span>
-                                        <span className="block text-slate-500 text-xs">Texto ou Mídia</span>
-                                    </div>
-                                </button>
+                                    <div className="p-4 bg-slate-800 rounded-xl border border-slate-700">
+                                        <div className="flex items-center gap-3 mb-4">
+                                            {getActionIcon(selectedStep.type)}
+                                            <span className="font-bold text-white">{selectedStep.type}</span>
+                                        </div>
 
-                                <p className="text-xs text-slate-500 font-bold mb-2 mt-6">Inteligência (IA)</p>
-                                <button onClick={() => addStep('AI_GENERATE_CONTENT')} className="w-full flex items-center gap-3 p-3 bg-gradient-to-r from-purple-900/50 to-indigo-900/50 hover:from-purple-900 hover:to-indigo-900 border border-purple-500/30 rounded-xl text-left transition-colors group">
-                                    <Sparkles className="text-purple-400 group-hover:scale-110 transition-transform" size={20} />
-                                    <div>
-                                        <span className="block text-white font-bold text-sm">Gerar Conteúdo IA</span>
-                                        <span className="block text-slate-500 text-xs">Personalização dinâmica</span>
-                                    </div>
-                                </button>
+                                        {/* Dynamic Configuration Fields */}
+                                        <div className="space-y-4">
+                                            {(selectedStep.type === 'SEND_EMAIL' || selectedStep.type === 'SEND_WHATSAPP') && (
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-500 mb-2 uppercase">Selecionar Template</label>
+                                                    <select
+                                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white outline-none focus:border-purple-500"
+                                                        value={selectedStep.config.templateId || ''}
+                                                        onChange={(e) => updateStepConfig(selectedStep.id, { templateId: e.target.value })}
+                                                    >
+                                                        <option value="">-- Selecione --</option>
+                                                        {templates
+                                                            .filter(t => (selectedStep.type === 'SEND_EMAIL' && t.channel === 'email') || (selectedStep.type === 'SEND_WHATSAPP' && t.channel === 'whatsapp'))
+                                                            .map(t => (
+                                                                <option key={t.id} value={t.id}>{t.name}</option>
+                                                            ))}
+                                                    </select>
+                                                </div>
+                                            )}
 
-                                <p className="text-xs text-slate-500 font-bold mb-2 mt-6">Fluxo</p>
-                                <button onClick={() => addStep('WAIT_DELAY')} className="w-full flex items-center gap-3 p-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-left transition-colors group">
-                                    <Clock className="text-yellow-400 group-hover:scale-110 transition-transform" size={20} />
-                                    <div>
-                                        <span className="block text-white font-bold text-sm">Esperar (Delay)</span>
-                                        <span className="block text-slate-500 text-xs">Pausar o fluxo</span>
-                                    </div>
-                                </button>
-                                <button onClick={() => addStep('START_CAMPAIGN')} className="w-full flex items-center gap-3 p-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-left transition-colors group mt-3">
-                                    <Play className="text-pink-400 group-hover:scale-110 transition-transform" size={20} />
-                                    <div>
-                                        <span className="block text-white font-bold text-sm">Iniciar Outro Fluxo</span>
-                                        <span className="block text-slate-500 text-xs">Conectar automações</span>
-                                    </div>
-                                </button>
-                            </div>
+                                            {selectedStep.type === 'WAIT_DELAY' && (
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-500 mb-2 uppercase">Tempo de Espera (Minutos)</label>
+                                                    <input
+                                                        type="number"
+                                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white outline-none focus:border-purple-500"
+                                                        value={selectedStep.config.delayMinutes || 0}
+                                                        onChange={(e) => updateStepConfig(selectedStep.id, { delayMinutes: parseInt(e.target.value) })}
+                                                    />
+                                                </div>
+                                            )}
 
+                                            {selectedStep.type === 'AI_GENERATE_CONTENT' && (
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-500 mb-2 uppercase">Prompt para IA</label>
+                                                    <textarea
+                                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white outline-none focus:border-purple-500 h-32 resize-none"
+                                                        value={selectedStep.config.prompt || ''}
+                                                        onChange={(e) => updateStepConfig(selectedStep.id, { prompt: e.target.value })}
+                                                        placeholder="Ex: Escreva um email de boas vindas amigável..."
+                                                    />
+                                                    <div className="mt-2 text-xs text-purple-400 flex items-center gap-1">
+                                                        <Sparkles size={12} /> Powered by Diva AI
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={() => setSelectedStepId(null)}
+                                        className="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-lg transition-colors"
+                                    >
+                                        Concluir Edição
+                                    </button>
+                                </div>
+                            ) : (
+                                // Toolbox
+                                <>
+                                    <h3 className="font-bold text-white mb-4 text-sm uppercase tracking-wider">Ferramentas</h3>
+                                    <div className="space-y-3">
+                                        <p className="text-xs text-slate-500 font-bold mb-2">Comunicação</p>
+                                        <button onClick={() => addStep('SEND_EMAIL')} className="w-full flex items-center gap-3 p-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-left transition-colors group">
+                                            <Mail className="text-blue-400 group-hover:scale-110 transition-transform" size={20} />
+                                            <div>
+                                                <span className="block text-white font-bold text-sm">Enviar Email</span>
+                                                <span className="block text-slate-500 text-xs">Template ou Custom</span>
+                                            </div>
+                                        </button>
+                                        <button onClick={() => addStep('SEND_WHATSAPP')} className="w-full flex items-center gap-3 p-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-left transition-colors group">
+                                            <MessageCircle className="text-green-400 group-hover:scale-110 transition-transform" size={20} />
+                                            <div>
+                                                <span className="block text-white font-bold text-sm">Enviar WhatsApp</span>
+                                                <span className="block text-slate-500 text-xs">Texto ou Mídia</span>
+                                            </div>
+                                        </button>
+
+                                        <p className="text-xs text-slate-500 font-bold mb-2 mt-6">Inteligência (IA)</p>
+                                        <button onClick={() => addStep('AI_GENERATE_CONTENT')} className="w-full flex items-center gap-3 p-3 bg-gradient-to-r from-purple-900/50 to-indigo-900/50 hover:from-purple-900 hover:to-indigo-900 border border-purple-500/30 rounded-xl text-left transition-colors group">
+                                            <Sparkles className="text-purple-400 group-hover:scale-110 transition-transform" size={20} />
+                                            <div>
+                                                <span className="block text-white font-bold text-sm">Gerar Conteúdo IA</span>
+                                                <span className="block text-slate-500 text-xs">Personalização dinâmica</span>
+                                            </div>
+                                        </button>
+
+                                        <p className="text-xs text-slate-500 font-bold mb-2 mt-6">Fluxo</p>
+                                        <button onClick={() => addStep('WAIT_DELAY')} className="w-full flex items-center gap-3 p-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-left transition-colors group">
+                                            <Clock className="text-yellow-400 group-hover:scale-110 transition-transform" size={20} />
+                                            <div>
+                                                <span className="block text-white font-bold text-sm">Esperar (Delay)</span>
+                                                <span className="block text-slate-500 text-xs">Pausar o fluxo</span>
+                                            </div>
+                                        </button>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
-                </div>
+
+                    {/* BOTTOM PANEL: Related Templates Preview */}
+                    <div className="border-t border-white/10 bg-slate-900 p-6 min-h-[250px]">
+                        <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <LayoutTemplate size={16} /> Templates Utilizados neste Fluxo
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {editingCampaign.steps?.filter(s => s.config.templateId).map(step => {
+                                const tpl = templates.find(t => t.id === step.config.templateId);
+                                if (!tpl) return null;
+                                return (
+                                    <div key={step.id + '_tpl'} className="bg-slate-950 border border-slate-800 p-4 rounded-xl flex flex-col hover:border-slate-600 transition-colors">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            {tpl.channel === 'email' ? <Mail size={16} className="text-blue-400" /> : <MessageCircle size={16} className="text-green-400" />}
+                                            <span className="text-xs font-bold text-white truncate">{tpl.name}</span>
+                                            {tpl.isAiPowered && <span className="ml-auto text-[10px] text-purple-400 bg-purple-900/50 px-1.5 py-0.5 rounded flex items-center gap-1"><Sparkles size={8} /> AI</span>}
+                                        </div>
+                                        <div className="flex-1 bg-slate-900 rounded p-2 text-[10px] text-slate-400 font-mono mb-3 overflow-hidden h-20 relative">
+                                            {tpl.content}
+                                            <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-slate-900 to-transparent"></div>
+                                        </div>
+                                        <button className="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded transition-colors">
+                                            Editar Template
+                                        </button>
+                                    </div>
+                                )
+                            })}
+                            {(!editingCampaign.steps?.some(s => s.config.templateId) || editingCampaign.steps?.length === 0) && (
+                                <div className="text-slate-600 text-sm italic flex items-center gap-2">
+                                    <Plus size={16} /> Adicione passos de Email ou WhatsApp para ver os templates aqui.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                </div >
             )}
 
             {/* TEMPLATES TAB */}
-            {activeTab === 'templates' && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {MOCK_TEMPLATES.map(tpl => (
-                        <div key={tpl.id} className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                            <div className="flex items-center gap-2 mb-4">
-                                {tpl.channel === 'email' ? <Mail size={18} className="text-blue-400" /> : <MessageCircle size={18} className="text-green-400" />}
-                                <span className="text-sm font-bold text-slate-400 uppercase">{tpl.channel}</span>
-                                {tpl.isAiPowered && <span className="ml-auto flex items-center gap-1 text-[10px] font-black text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full"><Sparkles size={10} /> AI POWERED</span>}
+            {
+                activeTab === 'templates' && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {templates.map(tpl => (
+                            <div key={tpl.id} className="bg-slate-900 border border-slate-800 p-6 rounded-2xl group hover:border-purple-500/50 transition-colors">
+                                <div className="flex items-center gap-2 mb-4">
+                                    {tpl.channel === 'email' ? <Mail size={18} className="text-blue-400" /> : <MessageCircle size={18} className="text-green-400" />}
+                                    <span className="text-sm font-bold text-slate-400 uppercase">{tpl.channel}</span>
+                                    {tpl.isAiPowered && <span className="ml-auto flex items-center gap-1 text-[10px] font-black text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full"><Sparkles size={10} /> AI POWERED</span>}
+                                </div>
+                                <h3 className="font-bold text-white mb-2">{tpl.name}</h3>
+                                <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 text-xs text-slate-400 font-mono mb-4 whitespace-pre-wrap h-24 overflow-hidden relative">
+                                    {tpl.content}
+                                    <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-slate-950 to-transparent"></div>
+                                </div>
+                                <button className="w-full py-2 bg-slate-800 text-white rounded-lg text-sm font-bold hover:bg-purple-600 transition-colors">Editar Template</button>
                             </div>
-                            <h3 className="font-bold text-white mb-2">{tpl.name}</h3>
-                            <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 text-xs text-slate-400 font-mono mb-4 whitespace-pre-wrap">
-                                {tpl.content}
-                            </div>
-                            <button className="w-full py-2 bg-slate-800 text-white rounded-lg text-sm font-bold hover:bg-slate-700">Editar Template</button>
-                        </div>
-                    ))}
-                    <button className="border-2 border-dashed border-slate-800 rounded-2xl flex flex-col items-center justify-center p-8 hover:border-purple-500/50 hover:bg-purple-500/5 transition-all">
-                        <Plus size={24} className="text-slate-500 mb-2" />
-                        <span className="text-sm font-bold text-slate-400">Novo Template</span>
-                    </button>
-                </div>
-            )}
-        </div>
+                        ))}
+                        <button className="border-2 border-dashed border-slate-800 rounded-2xl flex flex-col items-center justify-center p-8 hover:border-purple-500/50 hover:bg-purple-500/5 transition-all">
+                            <Plus size={24} className="text-slate-500 mb-2" />
+                            <span className="text-sm font-bold text-slate-400">Novo Template</span>
+                        </button>
+                    </div>
+                )
+            }
+        </div >
     );
 };
 

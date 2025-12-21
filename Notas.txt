@@ -112,3 +112,8 @@ SettingsModule
 ), permitindo que você acesse esse formulário que criei e comece a cadastrar seus CNPJs.
 Vincular ao Financeiro: Atualizar a tela de "Contas a Pagar/Receber" para que, ao lançar uma conta, você possa selecionar a qual CNPJ ela pertence.
 Posso prosseguir com a inserção dessa aba de configuração?
+Vínculo de Métodos de Pagamento às Contas Fiscais.
+Automação do Split de Pagamentos.
+Ajustar Cadastro de Produto vs Entrada de Estoque. Qual prefere priorizar?"
+
+Painel de Gestão de Notas Fiscais: Criar a tela de "Controle de Emissão", onde as parcelas do Split (que criamos antes) aparecerão como "Pendentes de Nota" para a equipe administrativa processar.
