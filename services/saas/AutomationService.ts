@@ -117,51 +117,48 @@ class AutomationService {
     }
 
     async saveTemplate(template: MessageTemplate): Promise<MessageTemplate> {
-        if (!supabase) {
-            console.warn('[Automation] Mock Save Template (No DB connection)');
+        // Fallback or Direct Fetch to bypass Client issues
+        const url = import.meta.env.VITE_SUPABASE_URL;
+        const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+        if (!url || !key) {
+            console.warn('[Automation] Mock Save (No Keys)');
             return template;
         }
 
         const payload = {
-            id: template.id.length < 30 ? undefined : template.id, // Generate new UUID if temp ID
+            id: template.id.length < 30 ? undefined : template.id,
             name: template.name,
             channel: template.channel,
             content: template.content,
             subject: template.subject,
             is_ai_powered: template.isAiPowered
-            // updated_at: new Date().toISOString() // Removed to avoid error if column missing
         };
 
         try {
-            console.log('[Automation] Sending Payload (Timeout 10s):', payload);
+            console.log('[Automation] Saving via Raw Fetch:', payload);
 
-            // Timeout Promise
-            const timeout = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Timeout: O banco de dados demorou muito para responder (10s). Verifique sua conexão.')), 10000)
-            );
+            const response = await fetch(`${url}/rest/v1/marketing_templates`, {
+                method: 'POST',
+                headers: {
+                    'apikey': key,
+                    'Authorization': `Bearer ${key}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation,resolution=merge-duplicates'
+                },
+                body: JSON.stringify(payload)
+            });
 
-            // Database Operation
-            const dbOperation = supabase
-                .from('marketing_templates')
-                .upsert(payload as any)
-                .select()
-                .maybeSingle();
-
-            // Race: Operation vs Timeout
-            const { data, error } = await Promise.race([dbOperation, timeout]) as any;
-
-            if (error) {
-                console.error('[Automation] Supabase Error:', error);
-                throw new Error(error.message || 'Database error');
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(`Erro API: ${response.status} - ${text}`);
             }
 
-            if (!data) {
-                console.error('[Automation] No data returned from insert.');
-                throw new Error('Falha ao Salvar: O banco não retornou os dados. (Verifique RLS/Permissões)');
-            }
+            const data = await response.json();
+            const row = data[0];
 
-            console.log('[Automation] Save Success:', data);
-            const row = data;
+            console.log('[Automation] Save Success (Raw):', row);
+
             return {
                 id: row.id,
                 name: row.name,
@@ -170,6 +167,7 @@ class AutomationService {
                 subject: row.subject,
                 isAiPowered: row.is_ai_powered
             };
+
         } catch (err) {
             console.error('[Automation] Save Exception:', err);
             throw err;
@@ -251,11 +249,15 @@ class AutomationService {
 
     private async upsertLead(data: Partial<SaaSLead>, contextData?: any): Promise<SaaSLead> {
         // Tenta buscar lead existente por email para merge
-        const { data: existing } = await supabase
-            .from('saas_leads')
-            .select('*')
-            .eq('email', data.email)
-            .single();
+        let existing: any = null;
+        if (data.email) {
+            const { data: found } = await supabase
+                .from('saas_leads')
+                .select('*')
+                .eq('email', data.email)
+                .maybeSingle();
+            existing = found;
+        }
 
         const leadToSave = {
             ...data,
