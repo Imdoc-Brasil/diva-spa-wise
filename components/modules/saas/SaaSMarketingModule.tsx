@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
     Zap, Mail, MessageCircle, Clock, Plus, Play, Pause,
     MoreHorizontal, ArrowRight, Settings, Trash2, Bot,
-    Sparkles, LayoutTemplate, MousePointerClick
+    Sparkles, LayoutTemplate, MousePointerClick, Folder, Search
 } from 'lucide-react';
 import { useToast } from '../../ui/ToastContext';
 import { MarketingCampaign, MessageTemplate, AutomationActionType } from '../../../types_marketing';
@@ -40,6 +40,25 @@ const SaaSMarketingModule: React.FC = () => {
     // Template Editor State
     const [templateEditorOpen, setTemplateEditorOpen] = useState(false);
     const [editingTemplate, setEditingTemplate] = useState<Partial<MessageTemplate>>({});
+
+    // UI State for Campaigns
+    const [searchTerm, setSearchTerm] = useState('');
+    const [activeFolder, setActiveFolder] = useState<string>('all');
+
+    // Extract unique folders from campaigns + defaults
+    const availableFolders = React.useMemo(() => {
+        const unique = new Set(['Geral', 'Onboarding', 'Vendas']);
+        campaigns.forEach(c => c.folder && unique.add(c.folder));
+        return Array.from(unique);
+    }, [campaigns]);
+
+    const filteredCampaigns = React.useMemo(() => {
+        return campaigns.filter(c => {
+            const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesFolder = activeFolder === 'all' || (c.folder || 'Geral') === activeFolder;
+            return matchesSearch && matchesFolder;
+        });
+    }, [campaigns, searchTerm, activeFolder]);
 
     // Load Campaigns on Mount
     useEffect(() => {
@@ -145,9 +164,13 @@ const SaaSMarketingModule: React.FC = () => {
     };
 
     const handleCreateCampaign = () => {
+        const name = window.prompt('Nome da Nova Automação:', 'Nova Automação');
+        if (!name) return;
+
         setEditingCampaign({
             id: crypto.randomUUID(),
-            name: 'Nova Automação',
+            name,
+            folder: activeFolder === 'all' ? 'Geral' : activeFolder,
             status: 'draft',
             trigger: { type: 'LEAD_CREATED' },
             steps: [],
@@ -210,6 +233,23 @@ const SaaSMarketingModule: React.FC = () => {
         // Simplest: Switch to Templates tab then open editor.
         if (activeTab !== 'templates') {
             setActiveTab('templates');
+        }
+    };
+
+    const handleDeleteTemplate = async (id: string) => {
+        if (!window.confirm('Tem certeza que deseja excluir este template? Esta ação não pode ser desfeita.')) return;
+
+        try {
+            const success = await automationService.deleteTemplate(id);
+            if (success) {
+                setTemplates(prev => prev.filter(t => t.id !== id));
+                addToast('Template excluído com sucesso!', 'success');
+            } else {
+                addToast('Erro ao excluir template. Verifique conexões.', 'error');
+            }
+        } catch (error) {
+            console.error(error);
+            addToast('Erro ao excluir template', 'error');
         }
     };
 
@@ -297,65 +337,103 @@ const SaaSMarketingModule: React.FC = () => {
 
             {/* CONTENT */}
             {activeTab === 'campaigns' && !editorOpen && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {campaigns.map(camp => (
-                        <div key={camp.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 hover:border-purple-500/50 transition-colors group relative overflow-hidden">
-                            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                                <Zap size={80} />
-                            </div>
+                <div className="space-y-6">
+                    {/* Toolbar: Folders & Search */}
+                    <div className="flex flex-col md:flex-row justify-between gap-4">
+                        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                            <button
+                                onClick={() => setActiveFolder('all')}
+                                className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${activeFolder === 'all' ? 'bg-white text-slate-900 shadow' : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'}`}
+                            >
+                                <Folder size={14} className="inline mr-2" /> Todos
+                            </button>
+                            {availableFolders.map(f => (
+                                <button
+                                    key={f}
+                                    onClick={() => setActiveFolder(f)}
+                                    className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${activeFolder === f ? 'bg-white text-slate-900 shadow' : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'}`}
+                                >
+                                    <Folder size={14} className="inline mr-2" /> {f}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="relative w-full md:w-72">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                            <input
+                                type="text"
+                                placeholder="Buscar automação..."
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                                className="pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm text-white focus:border-purple-500 outline-none w-full transition-all focus:ring-2 focus:ring-purple-500/20"
+                            />
+                        </div>
+                    </div>
 
-                            <div className="flex justify-between items-start mb-4">
-                                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${camp.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-slate-700 text-slate-400'}`}>
-                                    {camp.status === 'active' ? 'Em Execução' : 'Rascunho'}
-                                </span>
-                                <button className="text-slate-500 hover:text-white"><MoreHorizontal size={20} /></button>
-                            </div>
-
-                            <h3 className="text-xl font-bold text-white mb-2">{camp.name}</h3>
-                            <div className="flex items-center gap-2 text-sm text-slate-400 mb-6">
-                                <MousePointerClick size={16} /> Gatilho: <span className="text-purple-400">{camp.trigger.type}</span>
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-2 py-4 border-t border-slate-800 mb-4">
-                                <div className="text-center">
-                                    <p className="text-2xl font-black text-white">{camp.stats.enrolled}</p>
-                                    <p className="text-[10px] text-slate-500 uppercase">Entraram</p>
-                                </div>
-                                <div className="text-center border-l border-slate-800">
-                                    <p className="text-2xl font-black text-blue-400">{camp.stats.completed}</p>
-                                    <p className="text-[10px] text-slate-500 uppercase">Concluídos</p>
-                                </div>
-                                <div className="text-center border-l border-slate-800">
-                                    <p className="text-2xl font-black text-emerald-400">{camp.stats.converted}</p>
-                                    <p className="text-[10px] text-slate-500 uppercase">Vendas</p>
-                                </div>
-                            </div>
-
-                            <div className="bg-slate-800/50 rounded-lg p-3 space-y-2">
-                                <p className="text-xs text-slate-500 uppercase font-bold mb-2">Preview do Fluxo</p>
-                                {camp.steps.slice(0, 3).map((step, idx) => (
-                                    <div key={step.id} className="flex items-center gap-3 text-sm text-slate-300">
-                                        <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center shrink-0 text-xs font-bold text-slate-400">
-                                            {idx + 1}
-                                        </div>
-                                        {getActionIcon(step.type)}
-                                        <span className="truncate">{getActionLabel(step)}</span>
-                                    </div>
+                    {/* ManyChat Style List Table */}
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="border-b border-white/5 bg-slate-950/50 text-xs text-slate-400 uppercase tracking-wider">
+                                    <th className="p-4 font-bold w-12 text-center"><Bot size={16} /></th>
+                                    <th className="p-4 font-bold">Nome da Automação</th>
+                                    <th className="p-4 font-bold">Status</th>
+                                    <th className="p-4 font-bold text-center">Inscritos</th>
+                                    <th className="p-4 font-bold text-center">Conversão</th>
+                                    <th className="p-4 font-bold text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredCampaigns.map(camp => (
+                                    <tr key={camp.id} className="border-b border-white/5 hover:bg-white/5 transition-colors group">
+                                        <td className="p-4 text-center text-slate-600">
+                                            <div className="w-2 h-2 rounded-full bg-purple-500 mx-auto"></div>
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="flex flex-col cursor-pointer" onClick={() => { setEditingCampaign(camp); setEditorOpen(true); }}>
+                                                <span className="font-bold text-white text-sm group-hover:text-purple-400 transition-colors">{camp.name}</span>
+                                                <span className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                                                    {camp.folder && <span className="bg-slate-800 border border-slate-700 px-1.5 py-0.5 rounded text-[10px] text-slate-300">{camp.folder}</span>}
+                                                    <span className="flex items-center gap-1"><Zap size={10} /> {camp.trigger.type}</span>
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="p-4">
+                                            <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${camp.status === 'active' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-slate-700/50 text-slate-400 border border-slate-600'}`}>
+                                                {camp.status === 'active' ? 'Ativo' : 'Rascunho'}
+                                            </span>
+                                        </td>
+                                        <td className="p-4 text-center">
+                                            <span className="font-mono text-sm text-slate-300">{camp.stats.enrolled}</span>
+                                        </td>
+                                        <td className="p-4 text-center">
+                                            <span className="font-mono text-sm font-bold text-purple-400">{((camp.stats.converted / (camp.stats.enrolled || 1)) * 100).toFixed(0)}%</span>
+                                        </td>
+                                        <td className="p-4 text-right">
+                                            <button
+                                                onClick={() => { setEditingCampaign(camp); setEditorOpen(true); }}
+                                                className="text-slate-500 hover:text-white p-2 hover:bg-slate-800 rounded-lg transition-colors"
+                                            >
+                                                <Settings size={18} />
+                                            </button>
+                                        </td>
+                                    </tr>
                                 ))}
-                                {camp.steps.length > 3 && (
-                                    <div className="text-center text-xs text-slate-500 pt-1">+ {camp.steps.length - 3} passos</div>
-                                )}
-                            </div>
-                        </div>
-                    ))}
+                            </tbody>
+                        </table>
 
-                    {/* Blank State Card */}
-                    <button onClick={handleCreateCampaign} className="border-2 border-dashed border-slate-800 rounded-2xl flex flex-col items-center justify-center p-8 hover:border-purple-500/50 hover:bg-purple-500/5 transition-all group">
-                        <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                            <Plus size={32} className="text-slate-500 group-hover:text-purple-400" />
-                        </div>
-                        <h3 className="font-bold text-slate-400 group-hover:text-white">Criar Nova Automação</h3>
-                    </button>
+                        {filteredCampaigns.length === 0 && (
+                            <div className="py-16 text-center text-slate-500 flex flex-col items-center">
+                                <div className="w-16 h-16 bg-slate-800/50 rounded-full flex items-center justify-center mb-4">
+                                    <Bot size={32} className="opacity-40" />
+                                </div>
+                                <h3 className="text-lg font-bold text-slate-300 mb-1">Nenhuma automação encontrada</h3>
+                                <p className="text-sm max-w-xs mx-auto mb-6">Comece criando um novo fluxo automatizado para engajar seus leads.</p>
+                                <button onClick={handleCreateCampaign} className="px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-lg transition-colors flex items-center gap-2">
+                                    <Plus size={18} /> Criar Nova Automação
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
 
@@ -622,12 +700,21 @@ const SaaSMarketingModule: React.FC = () => {
                                 {tpl.content}
                                 <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-slate-950 to-transparent"></div>
                             </div>
-                            <button
-                                onClick={() => handleEditTemplate(tpl)}
-                                className="w-full py-2 bg-slate-800 text-white rounded-lg text-sm font-bold hover:bg-purple-600 transition-colors"
-                            >
-                                Editar Template
-                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => handleEditTemplate(tpl)}
+                                    className="flex-1 py-2 bg-slate-800 text-white rounded-lg text-sm font-bold hover:bg-purple-600 transition-colors"
+                                >
+                                    Editar
+                                </button>
+                                <button
+                                    onClick={() => handleDeleteTemplate(tpl.id)}
+                                    className="px-3 py-2 bg-slate-800 text-slate-400 hover:text-red-400 rounded-lg transition-colors border border-slate-700 hover:border-red-500/50 hover:bg-red-500/10"
+                                    title="Excluir Template"
+                                >
+                                    <Trash2 size={18} />
+                                </button>
+                            </div>
                         </div>
                     ))}
                     <button

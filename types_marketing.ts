@@ -40,6 +40,7 @@ export interface MarketingCampaign {
         converted: number;
     };
     createdAt: string;
+    folder?: string;
 }
 
 export interface MessageTemplate {
@@ -49,4 +50,5 @@ export interface MessageTemplate {
     subject?: string; // Só para email
     content: string; // Suporta variáveis {{name}}, {{company}}
     isAiPowered: boolean; // Se true, usa o content como base para o prompt
+    folder?: string;
 }

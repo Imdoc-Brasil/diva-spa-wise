@@ -51,7 +51,8 @@ class AutomationService {
             trigger: { type: row.trigger_type, config: row.trigger_config },
             steps: row.steps,
             stats: row.stats,
-            createdAt: row.created_at
+            createdAt: row.created_at,
+            folder: row.folder || 'Geral'
         }));
     }
 
@@ -69,6 +70,7 @@ class AutomationService {
             trigger_config: campaign.trigger.config,
             steps: campaign.steps,
             stats: campaign.stats,
+            folder: campaign.folder,
             updated_at: new Date().toISOString()
         };
 
@@ -93,7 +95,8 @@ class AutomationService {
             trigger: { type: row.trigger_type, config: row.trigger_config },
             steps: row.steps,
             stats: row.stats,
-            createdAt: row.created_at
+            createdAt: row.created_at,
+            folder: row.folder || 'Geral'
         };
     }
 
@@ -171,6 +174,31 @@ class AutomationService {
         } catch (err) {
             console.error('[Automation] Save Exception:', err);
             throw err;
+        }
+    }
+
+    async deleteTemplate(id: string): Promise<boolean> {
+        const url = import.meta.env.VITE_SUPABASE_URL;
+        const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+        if (!url || !key) return false;
+
+        try {
+            console.log('[Automation] Deleting Template:', id);
+            const res = await fetch(`${url}/rest/v1/marketing_templates?id=eq.${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'apikey': key,
+                    'Authorization': `Bearer ${key}`
+                }
+            });
+            if (res.ok) console.log('[Automation] Delete Success');
+            else console.error('[Automation] Delete Failed:', res.status, await res.text());
+
+            return res.ok;
+        } catch (e) {
+            console.error('[Automation] Delete Exception:', e);
+            return false;
         }
     }
 
