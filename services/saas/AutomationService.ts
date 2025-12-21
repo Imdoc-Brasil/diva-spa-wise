@@ -146,8 +146,8 @@ class AutomationService {
             }
 
             if (!data) {
-                console.warn('[Automation] No data returned (RLS blocked read?). Assuming save success.');
-                return template;
+                console.error('[Automation] No data returned from insert.');
+                throw new Error('Falha ao Salvar: O banco não retornou os dados. Verifique a conexão.');
             }
 
             console.log('[Automation] Save Success:', data);
