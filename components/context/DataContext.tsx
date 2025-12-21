@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { Client, SalesLead, ServiceAppointment, AppointmentStatus, LeadStage, Transaction, WaitlistItem, StaffMember, OrganizationMember, ServiceRoom, DataContextType, ServiceDefinition, BusinessConfig, NotificationConfig, Product, BusinessUnit, YieldRule, FormTemplate, FormResponse, AppointmentRecord, ClinicEvent, EventGuest, Partner, WebsiteConfig, SaaSAppConfig, User, UserRole, AppNotification, OpenVial, VialUsageLog, MarketingCampaign, AutomationRule, CustomerSegment, MembershipPlan, Subscription, ChatConversation, ChatMessage, TreatmentPlan, TreatmentPlanTemplate, Supplier, BankAccount, FiscalRecord, SaaSLead, SaaSSubscriber, SaaSLeadStage, SaaSPlan, SaaSTask, SaaSTaskType, ImplementationProject, SupportTicket, FeatureRequest, ImplementationStage, SupportTicketStatus, SupportTicketPriority, FeatureRequestStatus, FeatureRequestImpact, Course } from '../../types';
+import { Client, SalesLead, ServiceAppointment, AppointmentStatus, LeadStage, Transaction, WaitlistItem, StaffMember, OrganizationMember, ServiceRoom, DataContextType, ServiceDefinition, ServiceCategory, BusinessConfig, NotificationConfig, Product, BusinessUnit, YieldRule, FormTemplate, FormResponse, AppointmentRecord, ClinicEvent, EventGuest, Partner, WebsiteConfig, SaaSAppConfig, User, UserRole, AppNotification, OpenVial, VialUsageLog, MarketingCampaign, AutomationRule, CustomerSegment, MembershipPlan, Subscription, ChatConversation, ChatMessage, TreatmentPlan, TreatmentPlanTemplate, Supplier, BankAccount, FiscalRecord, SaaSLead, SaaSSubscriber, SaaSLeadStage, SaaSPlan, SaaSTask, SaaSTaskType, ImplementationProject, SupportTicket, FeatureRequest, ImplementationStage, SupportTicketStatus, SupportTicketPriority, FeatureRequestStatus, FeatureRequestImpact, Course, FiscalAccount } from '../../types';
 import { MOCK_TREATMENT_PLANS, MOCK_TREATMENT_TEMPLATES } from '../../utils/mockTreatmentPlans';
 import { useToast } from '../ui/ToastContext';
 import { useOrganization } from './OrganizationContext';
@@ -588,6 +588,13 @@ const initialGuests: EventGuest[] = [
 
 const initialTaskCategories = ['Admin', 'Manutenção', 'Limpeza', 'Compras', 'Contato'];
 
+const initialServiceCategories: ServiceCategory[] = [
+  { id: 'laser', name: 'Laser', color: 'bg-diva-accent' },
+  { id: 'esthetics', name: 'Estética', color: 'bg-pink-400' },
+  { id: 'injectables', name: 'Injetáveis', color: 'bg-purple-200' },
+  { id: 'spa', name: 'Spa / Relax', color: 'bg-green-400' }
+];
+
 const initialVials: OpenVial[] = [
   { id: 'v1', organizationId: 'org_demo', productId: 'prod_botox', productName: 'Toxina Botulínica A (Botox)', batchNumber: 'L-8892', openedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), expiresAfterOpen: 72, initialUnits: 100, remainingUnits: 60, openedBy: 'Dra. Julia' },
   { id: 'v2', organizationId: 'org_demo', productId: 'prod_dysport', productName: 'Dysport 300U', batchNumber: 'D-5521', openedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), expiresAfterOpen: 72, initialUnits: 300, remainingUnits: 120, openedBy: 'Dra. Julia' },
@@ -916,6 +923,11 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [selectedUnitId, setSelectedUnitId] = useState<string | 'all'>(() => loadState('selectedUnitId', 'all'));
   const [events, setEvents] = useState<ClinicEvent[]>(() => loadState('events', initialEvents));
   const [guests, setGuests] = useState<EventGuest[]>(() => loadState('guests', initialGuests));
+  // taskCategories is defined at line 899
+  const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>(() => loadState('serviceCategories', initialServiceCategories));
+
+  const addServiceCategory = (cat: ServiceCategory) => setServiceCategories(prev => [...prev, cat]);
+  const removeServiceCategory = (id: string) => setServiceCategories(prev => prev.filter(c => c.id !== id));
   const [notifications, setNotifications] = useState<AppNotification[]>(() => loadState('notifications', initialNotifications));
   const [currentUser, setCurrentUser] = useState<User | null>(() => loadState('currentUser', null));
 
@@ -927,6 +939,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   ];
   const [accounts, setAccounts] = useState<BankAccount[]>(() => loadState('accounts', initialAccounts));
   const [fiscalRecords, setFiscalRecords] = useState<FiscalRecord[]>(() => loadState('fiscalRecords', []));
+  const [fiscalAccounts, setFiscalAccounts] = useState<FiscalAccount[]>(() => loadState('fiscalAccounts', []));
 
   const [implementationProjects, setImplementationProjects] = useState<ImplementationProject[]>(() => loadState('implementationProjects', initialImpProjects));
   const [supportTickets, setSupportTickets] = useState<SupportTicket[]>(() => loadState('supportTickets', initialSupportTickets));
@@ -947,6 +960,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => localStorage.setItem('campaigns', JSON.stringify(campaigns)), [campaigns]);
   useEffect(() => localStorage.setItem('automations', JSON.stringify(automations)), [automations]);
   useEffect(() => localStorage.setItem('segments', JSON.stringify(segments)), [segments]);
+  useEffect(() => localStorage.setItem('segments', JSON.stringify(segments)), [segments]);
+  useEffect(() => localStorage.setItem('serviceCategories', JSON.stringify(serviceCategories)), [serviceCategories]);
   useEffect(() => localStorage.setItem('services', JSON.stringify(services)), [services]);
   useEffect(() => localStorage.setItem('businessConfig', JSON.stringify(businessConfig)), [businessConfig]);
   useEffect(() => localStorage.setItem('notificationConfig', JSON.stringify(notificationConfig)), [notificationConfig]);
@@ -2371,6 +2386,16 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setFiscalRecords(prev => prev.map(f => f.id === id ? { ...f, ...data } : f));
   };
 
+  const addFiscalAccount = (account: FiscalAccount) => {
+    setFiscalAccounts(prev => [...prev, account]);
+    addToast('Conta Fiscal adicionada!', 'success');
+  };
+
+  const updateFiscalAccount = (id: string, data: Partial<FiscalAccount>) => {
+    setFiscalAccounts(prev => prev.map(a => a.id === id ? { ...a, ...data } : a));
+    addToast('Conta Fiscal atualizada!', 'success');
+  };
+
   // Filter Data by Organization
   const filteredClients = clients.filter(c => c.organizationId === currentOrgId);
   const filteredLeads = leads.filter(l => l.organizationId === currentOrgId);
@@ -2398,6 +2423,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const filteredSuppliers = suppliers.filter(s => s.organizationId === currentOrgId);
   const filteredAccounts = accounts.filter(a => a.organizationId === currentOrgId);
   const filteredFiscalRecords = fiscalRecords.filter(f => f.organizationId === currentOrgId);
+  const filteredFiscalAccounts = fiscalAccounts.filter(f => f.organizationId === currentOrgId);
   const filteredConversations = conversations.filter(c => c.organizationId === currentOrgId);
   const filteredVialUsageLogs = vialUsageLogs.filter(log => filteredVials.some(v => v.id === log.vialId));
 
@@ -2411,6 +2437,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       staff: filteredStaff,
       rooms: filteredRooms,
       taskCategories,
+      serviceCategories,
+      addServiceCategory,
+      removeServiceCategory,
       services: filteredServices,
       businessConfig,
       notificationConfig,
@@ -2499,6 +2528,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       fiscalRecords: filteredFiscalRecords,
       addFiscalRecord,
       updateFiscalRecord,
+      fiscalAccounts: filteredFiscalAccounts,
+      addFiscalAccount,
+      updateFiscalAccount,
 
       vials: filteredVials,
       addVial,

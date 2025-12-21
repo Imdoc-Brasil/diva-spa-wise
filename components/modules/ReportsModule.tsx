@@ -1,12 +1,13 @@
 
 import React, { useState } from 'react';
-import { Download, Calendar, DollarSign, Users, Activity } from 'lucide-react';
-import { useData } from '../context/DataContext';
-import { AppointmentStatus } from '../../types';
+import { Download, Calendar, DollarSign, Users, Activity, Building2 } from 'lucide-react';
+import { useUnitData } from '../hooks/useUnitData';
+import { AppointmentStatus, FiscalAccount } from '../../types';
 
 const ReportsModule: React.FC = () => {
-    const { appointments, transactions, staff } = useData();
+    const { appointments, transactions, staff, fiscalAccounts } = useUnitData();
     const [activeTab, setActiveTab] = useState<'payroll' | 'heatmap' | 'financial'>('payroll');
+    const [selectedFiscalAccountId, setSelectedFiscalAccountId] = useState<string>('all');
 
     const formatCurrency = (val: number) =>
         new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -66,8 +67,23 @@ const ReportsModule: React.FC = () => {
         return 'bg-diva-alert text-white';
     };
 
-    // --- 3. DYNAMIC FINANCIAL DRE ---
-    const incomeTransactions = transactions.filter(t => t.type === 'income');
+    // --- 3. DYNAMIC FINANCIAL DRE (Filtered) ---
+    const filteredTransactions = React.useMemo(() => {
+        // 1. Identify valid accounts for Company DRE (Clinic/Marketplace) -> Exclude Professionals
+        const companyAccountIds = fiscalAccounts?.filter(f => f.type !== 'professional').map(f => f.id) || [];
+
+        return transactions.filter(t => {
+            // A. Specific Filter Active
+            if (selectedFiscalAccountId !== 'all') {
+                return t.fiscalAccountId === selectedFiscalAccountId;
+            }
+            // B. "All" View (Consolidated Company view)
+            if (!t.fiscalAccountId) return true;
+            return companyAccountIds.includes(t.fiscalAccountId);
+        });
+    }, [transactions, selectedFiscalAccountId, fiscalAccounts]);
+
+    const incomeTransactions = filteredTransactions.filter(t => t.type === 'income');
 
     const serviceRevenue = incomeTransactions
         .filter(t => t.revenueType === 'service' || !t.revenueType)
@@ -86,7 +102,7 @@ const ReportsModule: React.FC = () => {
     const totalTaxes = serviceTaxes + productTaxes;
 
     const totalRevenue = serviceRevenue + productRevenue;
-    const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+    const totalExpenses = filteredTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
 
     const netRevenue = totalRevenue - totalTaxes;
     const contributionMargin = netRevenue - (totalRevenue * 0.2); // Approx Variable Costs
@@ -261,7 +277,25 @@ const ReportsModule: React.FC = () => {
                     <div className="max-w-4xl mx-auto bg-white p-8 rounded-xl border border-diva-light/30 shadow-lg">
                         <div className="text-center border-b border-gray-200 pb-6 mb-6">
                             <h2 className="text-2xl font-serif font-bold text-diva-dark uppercase tracking-wide">DRE - Demonstrativo de Resultados</h2>
-                            <p className="text-gray-500">Diva Spa - Baseado em Transações Lançadas</p>
+                            <p className="text-gray-500 mb-4">Diva Spa - Baseado em Transações Lançadas</p>
+
+                            {/* Fiscal Filter */}
+                            <div className="flex justify-center">
+                                <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 shadow-sm">
+                                    <Building2 size={16} className="text-gray-400" />
+                                    <select
+                                        value={selectedFiscalAccountId}
+                                        onChange={(e) => setSelectedFiscalAccountId(e.target.value)}
+                                        className="text-sm font-bold text-gray-700 bg-transparent outline-none cursor-pointer"
+                                    >
+                                        <option value="all">Visão Consolidada (Clínica + Mkt)</option>
+                                        <option disabled>──────────</option>
+                                        {fiscalAccounts?.filter(f => f.type !== 'professional').map(acc => (
+                                            <option key={acc.id} value={acc.id}>{acc.alias || acc.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
                         </div>
 
                         <div className="space-y-1">

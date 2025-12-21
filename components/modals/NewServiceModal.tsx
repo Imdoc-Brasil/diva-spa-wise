@@ -1,6 +1,5 @@
-
-import React, { useState } from 'react';
-import { X, Save, Briefcase, Clock, DollarSign, Tag, Star, Package, Plus, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Save, Package, Tag, Clock, DollarSign, Star, Plus, Trash2, Users, Calculator, Briefcase } from 'lucide-react';
 import { ServiceDefinition, ProtocolItem } from '../../types';
 import { useData } from '../context/DataContext';
 
@@ -8,13 +7,14 @@ interface NewServiceModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (service: ServiceDefinition) => void;
+  serviceToEdit?: ServiceDefinition | null;
 }
 
-const NewServiceModal: React.FC<NewServiceModalProps> = ({ isOpen, onClose, onSave }) => {
-  const { products } = useData();
+const NewServiceModal: React.FC<NewServiceModalProps> = ({ isOpen, onClose, onSave, serviceToEdit }) => {
+  const { products, staff, rooms, serviceCategories } = useData();
   const [formData, setFormData] = useState({
     name: '',
-    category: 'laser' as const,
+    category: 'laser',
     duration: 30,
     price: '',
     description: '',
@@ -23,6 +23,33 @@ const NewServiceModal: React.FC<NewServiceModalProps> = ({ isOpen, onClose, onSa
 
   const [protocol, setProtocol] = useState<ProtocolItem[]>([]);
   const [selectedProductId, setSelectedProductId] = useState('');
+  const [allowedStaffIds, setAllowedStaffIds] = useState<string[]>([]);
+  const [allowedRoomIds, setAllowedRoomIds] = useState<string[]>([]);
+
+  // Load Data on Open
+  useEffect(() => {
+    if (isOpen) {
+      if (serviceToEdit) {
+        setFormData({
+          name: serviceToEdit.name,
+          category: serviceToEdit.category,
+          duration: serviceToEdit.duration,
+          price: serviceToEdit.price.toString(),
+          description: serviceToEdit.description || '',
+          loyaltyPoints: serviceToEdit.loyaltyPoints?.toString() || ''
+        });
+        setProtocol(serviceToEdit.protocol || []);
+        setAllowedStaffIds(serviceToEdit.allowedStaffIds || []);
+        setAllowedRoomIds(serviceToEdit.allowedRoomIds || []);
+      } else {
+        // Reset
+        setFormData({ name: '', category: 'laser', duration: 30, price: '', description: '', loyaltyPoints: '' });
+        setProtocol([]);
+        setAllowedStaffIds([]);
+        setAllowedRoomIds([]);
+      }
+    }
+  }, [isOpen, serviceToEdit]);
 
   if (!isOpen) return null;
 
@@ -37,12 +64,17 @@ const NewServiceModal: React.FC<NewServiceModalProps> = ({ isOpen, onClose, onSa
       return;
     }
 
+    // Calculate cost per unit (e.g. Cost per ml, per UI, or per Ampoule)
+    const contentQty = prod.contentQuantity && prod.contentQuantity > 0 ? prod.contentQuantity : 1;
+    const costPerUnit = (prod.costPrice || 0) / contentQty;
+
     const newItem: ProtocolItem = {
       productId: prod.id,
       productName: prod.name,
-      quantity: 1,
-      unit: 'un', // Default, could be derived from product
-      unitCost: prod.costPrice || 0
+      quantity: 1, // Default Usage
+      unit: prod.contentUnit || 'un',
+      unitCost: costPerUnit,
+      optional: false
     };
 
     setProtocol([...protocol, newItem]);
@@ -61,20 +93,28 @@ const NewServiceModal: React.FC<NewServiceModalProps> = ({ isOpen, onClose, onSa
     setProtocol(newProtocol);
   };
 
+  const toggleProtocolOptional = (index: number) => {
+    const newProtocol = [...protocol];
+    newProtocol[index].optional = !newProtocol[index].optional;
+    setProtocol(newProtocol);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     const newService: ServiceDefinition = {
-      id: `srv_${Date.now()}`,
-      organizationId: 'org_default', // Fixed for now
+      id: serviceToEdit ? serviceToEdit.id : `srv_${Date.now()}`,
+      organizationId: 'org_default',
       name: formData.name,
       category: formData.category,
       duration: Number(formData.duration),
       price: parseFloat(formData.price) || 0,
-      active: true,
+      active: serviceToEdit ? serviceToEdit.active : true,
       description: formData.description,
       loyaltyPoints: parseInt(formData.loyaltyPoints) || 0,
-      protocol: protocol // Attach the protocol (BOM)
+      protocol: protocol,
+      allowedStaffIds,
+      allowedRoomIds
     };
 
     onSave(newService);
@@ -86,7 +126,10 @@ const NewServiceModal: React.FC<NewServiceModalProps> = ({ isOpen, onClose, onSa
   };
 
   // Calculate estimated cost
-  const totalCost = protocol.reduce((acc, item) => acc + (item.unitCost * item.quantity), 0);
+  const totalCost = protocol.reduce((acc, item) => {
+    if (item.optional) return acc;
+    return acc + (item.unitCost * item.quantity);
+  }, 0);
   const profitMargin = (parseFloat(formData.price || '0') - totalCost);
 
   return (
@@ -94,7 +137,7 @@ const NewServiceModal: React.FC<NewServiceModalProps> = ({ isOpen, onClose, onSa
       <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
         <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-diva-primary text-white shrink-0">
           <h3 className="font-bold text-lg flex items-center">
-            <Briefcase size={20} className="mr-2" /> Novo Serviço / Tratamento
+            <Briefcase size={20} className="mr-2" /> {serviceToEdit ? 'Editar Serviço' : 'Novo Serviço / Tratamento'}
           </h3>
           <button onClick={onClose} className="text-white/70 hover:text-white transition-colors">
             <X size={20} />
@@ -126,12 +169,11 @@ const NewServiceModal: React.FC<NewServiceModalProps> = ({ isOpen, onClose, onSa
                   <select
                     className="w-full pl-9 pr-3 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary bg-white text-gray-900 text-sm"
                     value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value as any })}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   >
-                    <option value="laser">Laser</option>
-                    <option value="esthetics">Estética</option>
-                    <option value="injectables">Injetáveis</option>
-                    <option value="spa">Spa / Relax</option>
+                    {serviceCategories.map(cat => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -223,7 +265,7 @@ const NewServiceModal: React.FC<NewServiceModalProps> = ({ isOpen, onClose, onSa
                 className="flex-1 p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary"
               >
                 <option value="">Selecione um insumo...</option>
-                {products.filter(p => !p.category || p.category === 'professional_use' || p.category === 'homecare').map(p => (
+                {products.filter(p => !p.category || p.category === 'professional_use' || p.category === 'homecare' || p.category === 'medical_material').map(p => (
                   <option key={p.id} value={p.id}>
                     {p.name} (Custo: {p.costPrice ? `R$ ${p.costPrice}` : 'N/A'})
                   </option>
@@ -247,6 +289,7 @@ const NewServiceModal: React.FC<NewServiceModalProps> = ({ isOpen, onClose, onSa
                     <tr>
                       <th className="px-3 py-2">Insumo</th>
                       <th className="px-3 py-2 w-24">Qtd.</th>
+                      <th className="px-3 py-2 w-16 text-center" title="Incluir no cálculo?">Calc.</th>
                       <th className="px-3 py-2 text-right">Custo</th>
                       <th className="px-3 py-2 w-10"></th>
                     </tr>
@@ -265,7 +308,17 @@ const NewServiceModal: React.FC<NewServiceModalProps> = ({ isOpen, onClose, onSa
                             onChange={(e) => updateProtocolQty(idx, parseFloat(e.target.value))}
                           />
                         </td>
-                        <td className="px-3 py-2 text-right text-gray-500">
+                        <td className="px-3 py-2 text-center">
+                          <button
+                            type="button"
+                            onClick={() => toggleProtocolOptional(idx)}
+                            className={`p-1.5 rounded transition-colors ${!item.optional ? 'text-white bg-green-500 hover:bg-green-600' : 'text-gray-400 bg-gray-100 hover:bg-gray-200'}`}
+                            title={!item.optional ? "Incluído no Custo Total" : "Opcional (Excluído do Custo)"}
+                          >
+                            <Calculator size={14} />
+                          </button>
+                        </td>
+                        <td className={`px-3 py-2 text-right ${item.optional ? 'text-gray-300 line-through' : 'text-gray-500'}`}>
                           {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.unitCost * item.quantity)}
                         </td>
                         <td className="px-3 py-2 text-center">
@@ -288,6 +341,61 @@ const NewServiceModal: React.FC<NewServiceModalProps> = ({ isOpen, onClose, onSa
                 <p className="text-xs text-gray-400">Nenhum insumo vinculado.</p>
               </div>
             )}
+          </div>
+
+          {/* Resources Section - PRO & ROOMS */}
+          <div className="bg-white p-4 rounded-xl border border-gray-200">
+            <h4 className="flex items-center text-gray-900 font-bold mb-4">
+              <Users size={18} className="mr-2 text-diva-accent" /> Recursos Vinculados
+            </h4>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Staff Selection */}
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Profissionais Habilitados</label>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 max-h-40 overflow-y-auto space-y-2">
+                  {staff.map(s => (
+                    <label key={s.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-100 p-1 rounded transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={allowedStaffIds.includes(s.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) setAllowedStaffIds([...allowedStaffIds, s.id]);
+                          else setAllowedStaffIds(allowedStaffIds.filter(id => id !== s.id));
+                        }}
+                        className="rounded text-diva-primary focus:ring-diva-primary"
+                      />
+                      <span className="text-gray-700">{s.name}</span>
+                    </label>
+                  ))}
+                  {staff.length === 0 && <p className="text-xs text-gray-400 italic">Nenhum profissional cadastrado.</p>}
+                </div>
+                <p className="text-[10px] text-gray-400 mt-1">Se nenhum selecionado, todos terão acesso.</p>
+              </div>
+
+              {/* Room Selection */}
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Salas Permitidas</label>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 max-h-40 overflow-y-auto space-y-2">
+                  {rooms.map(r => (
+                    <label key={r.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-100 p-1 rounded transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={allowedRoomIds.includes(r.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) setAllowedRoomIds([...allowedRoomIds, r.id]);
+                          else setAllowedRoomIds(allowedRoomIds.filter(id => id !== r.id));
+                        }}
+                        className="rounded text-diva-primary focus:ring-diva-primary"
+                      />
+                      <span className="text-gray-700">{r.name}</span>
+                    </label>
+                  ))}
+                  {rooms.length === 0 && <p className="text-xs text-gray-400 italic">Nenhuma sala cadastrada.</p>}
+                </div>
+                <p className="text-[10px] text-gray-400 mt-1">Se nenhuma selecionada, todas disponíveis.</p>
+              </div>
+            </div>
           </div>
 
         </form>

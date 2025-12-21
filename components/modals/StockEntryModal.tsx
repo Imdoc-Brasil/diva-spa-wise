@@ -26,6 +26,8 @@ const StockEntryModal: React.FC<StockEntryModalProps> = ({ isOpen, onClose }) =>
         sellPrice: '',
         minStockLevel: '',
         paymentMethod: 'invoice_30d',
+        dueDate: '',
+        installments: '1',
     });
 
     // Step 3: Service Linking
@@ -46,7 +48,8 @@ const StockEntryModal: React.FC<StockEntryModalProps> = ({ isOpen, onClose }) =>
             setSearchQuery('');
             setFormData({
                 invoiceNumber: '', supplier: '', batchNumber: '', expirationDate: '',
-                quantity: '', costPrice: '', sellPrice: '', minStockLevel: '', paymentMethod: 'invoice_30d'
+                quantity: '', costPrice: '', sellPrice: '', minStockLevel: '', paymentMethod: 'invoice_30d',
+                dueDate: '', installments: '1'
             });
             setSelectedServices([]);
         }
@@ -148,7 +151,8 @@ const StockEntryModal: React.FC<StockEntryModalProps> = ({ isOpen, onClose }) =>
                 type: 'expense', // Expense
                 status: isPending ? 'pending' : 'paid',
                 date: today.toISOString().split('T')[0],
-                dueDate: isPending ? dueDate.toISOString().split('T')[0] : undefined,
+                dueDate: isPending ? (formData.dueDate || dueDate.toISOString().split('T')[0]) : undefined,
+                installments: parseInt(formData.installments) || 1,
                 paymentMethod: formData.paymentMethod as any,
                 supplierId: formData.supplier, // Storing legacy/text supplier name here
                 unitId: selectedUnitId !== 'all' ? selectedUnitId : undefined
@@ -326,20 +330,43 @@ const StockEntryModal: React.FC<StockEntryModalProps> = ({ isOpen, onClose }) =>
                             </div>
                         </div>
 
-                        <div>
-                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Forma de Pagamento</label>
-                            <div className="relative">
-                                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-                                <select
-                                    className="w-full pl-9 pr-3 py-3 border border-gray-200 rounded-lg outline-none focus:border-diva-primary bg-white"
-                                    value={formData.paymentMethod}
-                                    onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                                >
-                                    <option value="invoice_30d">Faturado 30 dias (Contas a Pagar)</option>
-                                    <option value="boleto">Boleto Bancário</option>
-                                    <option value="pix">PIX (À vista)</option>
-                                    <option value="credit_card">Cartão de Crédito</option>
-                                </select>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Forma de Pagamento</label>
+                                <div className="relative">
+                                    <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                                    <select
+                                        className="w-full pl-9 pr-3 py-3 border border-gray-200 rounded-lg outline-none focus:border-diva-primary bg-white"
+                                        value={formData.paymentMethod}
+                                        onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
+                                    >
+                                        <option value="invoice_30d">Faturado (Boleto/Transferência)</option>
+                                        <option value="credit_card">Cartão de Crédito</option>
+                                        <option value="pix">PIX / Dinheiro (À vista)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Parcelas</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:border-diva-primary px-3"
+                                        value={formData.installments}
+                                        onChange={(e) => setFormData({ ...formData, installments: e.target.value })}
+                                        placeholder="1x"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Vencimento</label>
+                                    <input
+                                        type="date"
+                                        className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:border-diva-primary px-2 text-sm"
+                                        value={formData.dueDate}
+                                        onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>

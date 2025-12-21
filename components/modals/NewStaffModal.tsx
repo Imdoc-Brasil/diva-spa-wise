@@ -12,7 +12,7 @@ interface NewStaffModalProps {
 }
 
 const NewStaffModal: React.FC<NewStaffModalProps> = ({ isOpen, onClose, editingStaff }) => {
-    const { addStaff, updateStaff, services, rooms } = useData();
+    const { addStaff, updateStaff, services, rooms, serviceCategories } = useData();
     const { addToast } = useToast();
 
     const initialFormState = {
@@ -167,7 +167,7 @@ const NewStaffModal: React.FC<NewStaffModalProps> = ({ isOpen, onClose, editingS
         { key: 'sunday', label: 'Domingo' }
     ];
 
-    const commonSpecialties = ['Laser', 'Botox', 'Preenchimento', 'Limpeza de Pele', 'Drenagem', 'Massagem', 'Peeling', 'Microagulhamento'];
+
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -315,7 +315,7 @@ const NewStaffModal: React.FC<NewStaffModalProps> = ({ isOpen, onClose, editingS
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">
                                     <Briefcase size={14} className="inline mr-1" />
-                                    Assinatura Profissional
+                                    Carimbo Profissional
                                 </label>
                                 <input
                                     type="text"
@@ -332,23 +332,26 @@ const NewStaffModal: React.FC<NewStaffModalProps> = ({ isOpen, onClose, editingS
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-2">
                                     <Briefcase size={14} className="inline mr-1" />
-                                    Especialidades
+                                    Categorias Habilitadas
                                 </label>
                                 <div className="flex flex-wrap gap-2">
-                                    {commonSpecialties.map(specialty => (
+                                    {serviceCategories.map(cat => (
                                         <button
-                                            key={specialty}
+                                            key={cat.id}
                                             type="button"
-                                            onClick={() => handleSpecialtyToggle(specialty)}
-                                            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${formData.specialties.includes(specialty)
-                                                ? 'bg-diva-primary text-white'
-                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                            onClick={() => handleSpecialtyToggle(cat.id)}
+                                            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${formData.specialties.includes(cat.id)
+                                                ? `${cat.color} text-white border-transparent shadow-sm`
+                                                : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
                                                 }`}
                                         >
-                                            {specialty}
+                                            {cat.name}
                                         </button>
                                     ))}
                                 </div>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Vincule o profissional às categorias que ele pode realizar.
+                                </p>
                             </div>
                         </div>
                     )}

@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Client, ClientDocument, ClientPhoto, ClientWallet, Invoice, AppointmentRecord, AppointmentStatus, TreatmentPlan } from '../../types';
-import { X, Calendar, DollarSign, Image, FileText, Clock, Phone, Mail, MapPin, Tag, ChevronRight, Download, Eye, Upload, CheckCircle, AlertTriangle, ScanFace, Share2, Sparkles, Star, ArrowRightLeft, MessageCircle, ClipboardList, Plus, BarChart3, Crown, Smartphone, Home, Bell, Megaphone, User } from 'lucide-react';
+import { X, Calendar, DollarSign, Image, FileText, Clock, Phone, Mail, MapPin, Tag, ChevronRight, Download, Eye, Upload, CheckCircle, AlertTriangle, ScanFace, Share2, Sparkles, Star, ArrowRightLeft, MessageCircle, ClipboardList, Plus, BarChart3, Crown, Smartphone, Home, Bell, Megaphone, User, Play } from 'lucide-react';
 import DocumentModal from './DocumentModal';
 import SkinAnalysisModal from './SkinAnalysisModal';
 import SocialMediaModal from './SocialMediaModal';
@@ -27,7 +27,7 @@ interface ClientProfileModalProps {
 const mockWallet: ClientWallet = {
     balance: 150.00,
     activePackages: [
-        { name: 'Depilação Laser - Axila (10 Sessões)', sessionsTotal: 10, sessionsUsed: 4, expiryDate: '2024-05-10' }
+        { id: 'pkg1', name: 'Depilação Laser - Axila (10 Sessões)', sessionsTotal: 10, sessionsUsed: 4, expiryDate: '2024-05-10' }
     ]
 };
 
@@ -43,7 +43,7 @@ const mockPhotos: ClientPhoto[] = [
 ];
 
 const ClientProfileModal: React.FC<ClientProfileModalProps> = ({ client, isOpen, onClose }) => {
-    const { appointments, transactions, units, updateClient, formTemplates, formResponses, addFormResponse, appointmentRecords, addAppointmentRecord, updateAppointmentRecord, getAppointmentRecord, products, updateProductStock, updateAppointmentStatus, treatmentPlans, addTreatmentPlan, updateTreatmentPlan } = useData();
+    const { appointments, transactions, units, updateClient, formTemplates, formResponses, addFormResponse, appointmentRecords, addAppointmentRecord, updateAppointmentRecord, getAppointmentRecord, products, updateProductStock, updateAppointmentStatus, treatmentPlans, addTreatmentPlan, updateTreatmentPlan, services } = useData();
     const [activeTab, setActiveTab] = useState<'timeline' | 'registration' | 'gallery' | 'docs' | 'financial' | 'forms' | 'medical_record' | 'plans' | 'app_view'>('timeline');
     const [docs, setDocs] = useState<ClientDocument[]>(initialDocs);
     const [photos, setPhotos] = useState<ClientPhoto[]>(mockPhotos);
@@ -139,6 +139,7 @@ const ClientProfileModal: React.FC<ClientProfileModalProps> = ({ client, isOpen,
                 status: appt.status,
                 staff: appt.staffName,
                 staffId: appt.staffId,
+                serviceId: appt.serviceId,
                 sortDate: new Date(appt.startTime).getTime()
             }));
 
@@ -197,6 +198,16 @@ const ClientProfileModal: React.FC<ClientProfileModalProps> = ({ client, isOpen,
                 status: timelineItem.status,
                 createdAt: new Date().toISOString()
             };
+
+            // Auto-fill Products from Protocol
+            const service = services.find(s => s.id === (timelineItem.serviceId || '') || s.name === timelineItem.title);
+            if (service && service.protocol && service.protocol.length > 0) {
+                record.productsUsed = service.protocol.map(p => ({
+                    productId: p.productId,
+                    productName: p.productName,
+                    quantity: p.quantity
+                }));
+            }
         }
         setSelectedAppointmentRecord(record);
         setIsAppointmentRecordModalOpen(true);
@@ -204,8 +215,11 @@ const ClientProfileModal: React.FC<ClientProfileModalProps> = ({ client, isOpen,
 
     const handleSaveAppointmentRecord = (updatedData: Partial<AppointmentRecord>) => {
         if (!selectedAppointmentRecord) return;
+        // Use stored record as baseline for stock calculation, not the local state which might be pre-filled
+        const storedRecord = getAppointmentRecord(selectedAppointmentRecord.appointmentId);
+
         if (updatedData.productsUsed) {
-            const oldProducts = selectedAppointmentRecord.productsUsed || [];
+            const oldProducts = storedRecord ? (storedRecord.productsUsed || []) : [];
             const newProducts = updatedData.productsUsed;
             newProducts.forEach(newP => {
                 const oldP = oldProducts.find(p => p.productId === newP.productId);
@@ -737,9 +751,17 @@ const ClientProfileModal: React.FC<ClientProfileModalProps> = ({ client, isOpen,
                                                         <h4 className="font-bold text-diva-dark flex items-center gap-2">
                                                             {item.title}
                                                             {item.type === 'appointment' && (
-                                                                <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded border border-gray-200 group-hover:bg-diva-primary group-hover:text-white transition-colors">
-                                                                    Ver Prontuário
-                                                                </span>
+                                                                <>
+                                                                    {((item as any).status === 'Scheduled' || (item as any).status === 'Confirmed') ? (
+                                                                        <button className="text-[10px] bg-diva-primary text-white px-2 py-1 rounded-lg border border-transparent hover:bg-diva-dark transition-colors flex items-center shadow-sm">
+                                                                            <Play size={10} className="mr-1 fill-current" /> Iniciar Atendimento
+                                                                        </button>
+                                                                    ) : (
+                                                                        <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded border border-gray-200 group-hover:bg-diva-primary group-hover:text-white transition-colors">
+                                                                            Ver Prontuário
+                                                                        </span>
+                                                                    )}
+                                                                </>
                                                             )}
                                                         </h4>
                                                         <span className="text-xs text-gray-400">{new Date(item.date).toLocaleDateString()}</span>

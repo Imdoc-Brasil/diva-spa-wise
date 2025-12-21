@@ -1,21 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Settings, Users, Building2, Bell, Shield, Wallet,
+    Settings as SettingsIcon, Users, Building2, Bell, Shield, Wallet,
     CheckCircle, AlertTriangle, ChevronRight, Plus, Search,
     Filter, X, Save, Clock, Trash2, Edit2, AlertCircle, Copy,
     FileText, Check, Activity, BarChart3, Database,
     Smartphone, Mail, Upload, Star, MoreVertical, LayoutGrid, Palette,
     Type, Image as ImageIcon, Globe, Phone, FileCode, Workflow,
-    MessageSquare, Send, Calendar, Box, ClipboardList, PenTool
+    MessageSquare, Send, Calendar, Box, ClipboardList, PenTool,
+    Briefcase, Package, TrendingUp, FilePlus, Zap, CheckSquare, AlignLeft,
+    PieChart, Stethoscope, ShoppingBag, User, Bot
 } from 'lucide-react';
-import { ProtocolItem, Product, FormTemplate, FormField, FieldType, YieldRule, ServiceDefinition, BusinessConfig, NotificationConfig } from '../../types';
+import { ProtocolItem, Product, FormTemplate, FormField, FieldType, YieldRule, ServiceDefinition, BusinessConfig, NotificationConfig, ProductCategory, FiscalAccount } from '../../types';
 import { ResponsiveContainer, PieChart as RePieChart, Pie, Cell, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { useUnitData } from '../hooks/useUnitData';
 import NewServiceModal from '../modals/NewServiceModal';
 import NewProductModal from '../modals/NewProductModal';
 import StockEntryModal from '../modals/StockEntryModal';
+import InvoiceImportModal from '../modals/InvoiceImportModal';
+import FiscalAccountModal from '../modals/FiscalAccountModal';
 import { useToast } from '../ui/ToastContext';
-import { maskPhone } from '../../utils/masks';
+import { maskPhone, maskCPF, maskCNPJ } from '../../utils/masks';
 
 // ... (imports)
 import { populateDemoData } from '../../utils/demoData';
@@ -58,18 +62,30 @@ const SettingsModule: React.FC = () => {
     const {
         services, addService, toggleService, deleteService, updateService,
         taskCategories, addTaskCategory, removeTaskCategory,
+        serviceCategories, addServiceCategory, removeServiceCategory,
         notificationConfig, updateNotificationConfig,
         yieldRules, addYieldRule, updateYieldRule, deleteYieldRule,
         formTemplates, addFormTemplate, updateFormTemplate, deleteFormTemplate,
-        selectedUnitId, units, updateUnit, products
+        selectedUnitId, units, updateUnit, products,
+        fiscalAccounts, addFiscalAccount, updateFiscalAccount
     } = useUnitData();
     const { addToast } = useToast();
 
-    const [activeTab, setActiveTab] = useState<'services' | 'supplies' | 'business' | 'notifications' | 'protocols' | 'forms' | 'revenue' | 'operational'>('services');
+    const [activeTab, setActiveTab] = useState<'services' | 'supplies' | 'medical_inventory' | 'business' | 'notifications' | 'protocols' | 'forms' | 'revenue' | 'operational' | 'fiscal'>('services');
     const [isNewServiceModalOpen, setIsNewServiceModalOpen] = useState(false);
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+    const [isFiscalAccountModalOpen, setIsFiscalAccountModalOpen] = useState(false);
+    const [fiscalAccountToEdit, setFiscalAccountToEdit] = useState<FiscalAccount | null>(null);
     const [productToEdit, setProductToEdit] = useState<Product | null>(null);
+    const [serviceToEdit, setServiceToEdit] = useState<ServiceDefinition | null>(null);
     const [isStockEntryModalOpen, setIsStockEntryModalOpen] = useState(false);
+    const [isInvoiceImportModalOpen, setIsInvoiceImportModalOpen] = useState(false);
+    const [defaultProductCategory, setDefaultProductCategory] = useState<ProductCategory | undefined>(undefined);
+
+    // Category Management
+    const [newServiceCatName, setNewServiceCatName] = useState('');
+    const [newServiceCatColor, setNewServiceCatColor] = useState('bg-diva-primary');
+    const AVAILABLE_CAT_COLORS = ['bg-diva-primary', 'bg-diva-accent', 'bg-pink-400', 'bg-purple-400', 'bg-indigo-400', 'bg-blue-400', 'bg-green-400', 'bg-yellow-400', 'bg-orange-400', 'bg-red-400', 'bg-gray-400'];
 
     // Filter Products (Professional Use & Home Care can be used in protocols)
     const professionalProducts = products.filter(p => p.category !== 'treatment_package' && p.category !== 'giftcard');
@@ -118,7 +134,13 @@ const SettingsModule: React.FC = () => {
         number: '',
         neighborhood: '',
         city: '',
-        state: ''
+        state: '',
+        cnpj: '',
+        cnaePrimary: '',
+        cnaeSecondary: '',
+        legalRepName: '',
+        legalRepCpf: '',
+        legalRepBirthDate: ''
     });
 
     useEffect(() => {
@@ -131,7 +153,13 @@ const SettingsModule: React.FC = () => {
                 number: currentUnit.address?.number || '',
                 neighborhood: currentUnit.address?.neighborhood || '',
                 city: currentUnit.address?.city || '',
-                state: currentUnit.address?.state || ''
+                state: currentUnit.address?.state || '',
+                cnpj: currentUnit.legal?.cnpj || '',
+                cnaePrimary: currentUnit.legal?.cnaePrimary || '',
+                cnaeSecondary: currentUnit.legal?.cnaeSecondary || '',
+                legalRepName: currentUnit.legal?.legalRepresentative?.name || '',
+                legalRepCpf: currentUnit.legal?.legalRepresentative?.cpf || '',
+                legalRepBirthDate: currentUnit.legal?.legalRepresentative?.birthDate || ''
             });
         }
     }, [currentUnit, selectedUnitId]);
@@ -140,7 +168,7 @@ const SettingsModule: React.FC = () => {
 
     // Protocol State
     const [selectedServiceId, setSelectedServiceId] = useState(services[0]?.id || '');
-    const [protocolItems, setProtocolItems] = useState<{ productId: string, productName: string, quantity: number, unitCost: number, unit: string }[]>([]);
+    const [protocolItems, setProtocolItems] = useState<ProtocolItem[]>([]);
 
     useEffect(() => {
         if (selectedServiceId) {
@@ -193,6 +221,17 @@ const SettingsModule: React.FC = () => {
                     state: localUnitConfig.state,
                     zipCode: currentUnit.address?.zipCode || '',
                     country: currentUnit.address?.country || 'Brasil'
+                },
+                legal: {
+                    ...(currentUnit.legal || { cnpj: '', stateRegistration: '', municipalRegistration: '' }),
+                    cnpj: localUnitConfig.cnpj,
+                    cnaePrimary: localUnitConfig.cnaePrimary,
+                    cnaeSecondary: localUnitConfig.cnaeSecondary,
+                    legalRepresentative: {
+                        name: localUnitConfig.legalRepName,
+                        cpf: localUnitConfig.legalRepCpf,
+                        birthDate: localUnitConfig.legalRepBirthDate
+                    }
                 }
             });
             addToast('Dados da unidade atualizados com sucesso!', 'success');
@@ -347,6 +386,16 @@ const SettingsModule: React.FC = () => {
             <div className="w-full lg:w-64 flex flex-col gap-2 shrink-0">
                 <h2 className="text-xl font-serif font-bold text-diva-dark mb-4 px-2">Configurações</h2>
 
+                <button onClick={() => setActiveTab('business')} className={`text-left px-4 py-3 rounded-lg flex items-center transition-colors ${activeTab === 'business' ? 'bg-diva-primary text-white shadow-md' : 'text-gray-600 hover:bg-diva-light/20'}`}>
+                    <Building2 size={18} className="mr-3" /> Dados da Unidade
+                </button>
+
+                <button onClick={() => setActiveTab('fiscal')} className={`text-left px-4 py-3 rounded-lg flex items-center transition-colors ${activeTab === 'fiscal' ? 'bg-diva-primary text-white shadow-md' : 'text-gray-600 hover:bg-diva-light/20'}`}>
+                    <FileText size={18} className="mr-3" /> Contas Fiscais
+                </button>
+
+                <div className="h-px bg-gray-200 my-2 mx-4"></div>
+
                 <button onClick={() => setActiveTab('services')} className={`text-left px-4 py-3 rounded-lg flex items-center transition-colors ${activeTab === 'services' ? 'bg-diva-primary text-white shadow-md' : 'text-gray-600 hover:bg-diva-light/20'}`}>
                     <Briefcase size={18} className="mr-3" /> Catálogo de Serviços
                 </button>
@@ -355,8 +404,13 @@ const SettingsModule: React.FC = () => {
                     <Database size={18} className="mr-3" /> Fichas Técnicas
                 </button>
 
+
                 <button onClick={() => setActiveTab('supplies')} className={`text-left px-4 py-3 rounded-lg flex items-center transition-colors ${activeTab === 'supplies' ? 'bg-diva-primary text-white shadow-md' : 'text-gray-600 hover:bg-diva-light/20'}`}>
                     <Package size={18} className="mr-3" /> Insumos & Estoque
+                </button>
+
+                <button onClick={() => setActiveTab('medical_inventory')} className={`text-left px-4 py-3 rounded-lg flex items-center transition-colors ${activeTab === 'medical_inventory' ? 'bg-diva-primary text-white shadow-md' : 'text-gray-600 hover:bg-diva-light/20'}`}>
+                    <Stethoscope size={18} className="mr-3" /> Materiais Médicos
                 </button>
 
                 <button onClick={() => setActiveTab('revenue')} className={`text-left px-4 py-3 rounded-lg flex items-center transition-colors ${activeTab === 'revenue' ? 'bg-diva-primary text-white shadow-md' : 'text-gray-600 hover:bg-diva-light/20'}`}>
@@ -371,10 +425,6 @@ const SettingsModule: React.FC = () => {
                     <ClipboardList size={18} className="mr-3" /> Categorias & Ops
                 </button>
 
-                <button onClick={() => setActiveTab('business')} className={`text-left px-4 py-3 rounded-lg flex items-center transition-colors ${activeTab === 'business' ? 'bg-diva-primary text-white shadow-md' : 'text-gray-600 hover:bg-diva-light/20'}`}>
-                    <SettingsIcon size={18} className="mr-3" /> Dados da Unidade
-                </button>
-
                 <button onClick={() => setActiveTab('notifications')} className={`text-left px-4 py-3 rounded-lg flex items-center transition-colors ${activeTab === 'notifications' ? 'bg-diva-primary text-white shadow-md' : 'text-gray-600 hover:bg-diva-light/20'}`}>
                     <MessageSquare size={18} className="mr-3" /> Notificações
                 </button>
@@ -382,6 +432,100 @@ const SettingsModule: React.FC = () => {
 
             {/* Content Area */}
             <div className="flex-1 bg-white rounded-xl shadow-sm border border-diva-light/30 p-8 overflow-hidden flex flex-col">
+
+
+                {/* TAB: FISCAL ACCOUNTS */}
+                {activeTab === 'fiscal' && (
+                    <div className="space-y-6 animate-in fade-in">
+                        <div className="flex justify-between items-center border-b border-diva-light/20 pb-6">
+                            <div>
+                                <h3 className="text-lg font-bold text-diva-dark">Contas Fiscais (CNPJ/CPF)</h3>
+                                <p className="text-sm text-gray-500">Gerencie as identidades fiscais para emissão de nota e split de pagamentos.</p>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setFiscalAccountToEdit(null);
+                                    setIsFiscalAccountModalOpen(true);
+                                }}
+                                className="bg-diva-primary text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center hover:bg-opacity-90 shadow-sm"
+                            >
+                                <Plus size={16} className="mr-2" /> Nova Conta Fiscal
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4">
+                            {fiscalAccounts.length === 0 ? (
+                                <div className="text-center py-12 border border-dashed border-gray-200 rounded-xl bg-gray-50">
+                                    <Building2 size={48} className="mx-auto text-gray-300 mb-4" />
+                                    <h4 className="text-lg font-bold text-gray-500">Nenhuma conta fiscal cadastrada</h4>
+                                    <p className="text-sm text-gray-400 mb-6">Cadastre seus CNPJs ou CPFs para organizar financeiramente.</p>
+                                    <button
+                                        onClick={() => {
+                                            setFiscalAccountToEdit(null);
+                                            setIsFiscalAccountModalOpen(true);
+                                        }}
+                                        className="bg-diva-primary text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-opacity-90"
+                                    >
+                                        Cadastrar Agora
+                                    </button>
+                                </div>
+                            ) : (
+                                fiscalAccounts.map((acc) => (
+                                    <div key={acc.id} className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-center hover:shadow-md transition-shadow">
+                                        <div className="flex items-center gap-4 mb-4 md:mb-0">
+                                            <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                                                {acc.type === 'marketplace' ? <ShoppingBag size={24} /> :
+                                                    acc.type === 'professional' ? <User size={24} /> :
+                                                        <Building2 size={24} />}
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-diva-dark text-lg">{acc.alias}</h4>
+                                                <p className="text-sm text-gray-500">{acc.name} • {acc.document}</p>
+                                                <div className="flex gap-2 mt-1">
+                                                    <span className={`text-xs px-2 py-0.5 rounded font-bold uppercase
+                                                        ${acc.type === 'clinic_service' ? 'bg-blue-100 text-blue-700' :
+                                                            acc.type === 'marketplace' ? 'bg-purple-100 text-purple-700' :
+                                                                'bg-green-100 text-green-700'}`}>
+                                                        {acc.type === 'clinic_service' ? 'Serviços' :
+                                                            acc.type === 'marketplace' ? 'Marketplace' : 'Profissional'}
+                                                    </span>
+                                                    {acc.digitalCertificateInfo?.validTo && (
+                                                        <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200 flex items-center">
+                                                            <Shield size={10} className="mr-1" />
+                                                            Certificado: {new Date(acc.digitalCertificateInfo.validTo).toLocaleDateString()}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                onClick={() => {
+                                                    setFiscalAccountToEdit(acc);
+                                                    setIsFiscalAccountModalOpen(true);
+                                                }}
+                                                className="p-2 text-gray-400 hover:text-diva-primary hover:bg-gray-50 rounded-lg transition-colors"
+                                            >
+                                                <Edit2 size={20} />
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    if (confirm('Tem certeza que deseja remover esta conta fiscal?')) {
+                                                        // Note: In a real app we would check for dependencies before deleting
+                                                        alert('Implementar deleção (checkar dependências antes)');
+                                                    }
+                                                }}
+                                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                            >
+                                                <Trash2 size={20} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* TAB: SERVICES (Global Connected) */}
                 {activeTab === 'services' && (
@@ -404,14 +548,16 @@ const SettingsModule: React.FC = () => {
                                 <div key={service.id} className={`p-4 rounded-lg border flex flex-col md:flex-row items-center justify-between gap-4 transition-colors ${service.active ? 'bg-white border-diva-light/30' : 'bg-gray-50 border-gray-200 opacity-75'}`}>
                                     <div className="flex-1 flex items-center gap-4">
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold
-                        ${service.category === 'laser' ? 'bg-diva-primary' : service.category === 'esthetics' ? 'bg-pink-400' : 'bg-diva-accent'}`}>
+                        ${serviceCategories.find(c => c.id === service.category)?.color || 'bg-gray-400'}`}>
                                             {service.name.charAt(0)}
                                         </div>
                                         <div>
                                             <h4 className="font-bold text-diva-dark">{service.name}</h4>
                                             <div className="flex items-center text-xs text-gray-500 gap-3 mt-1">
                                                 <span className="flex items-center"><Clock size={12} className="mr-1" /> {service.duration} min</span>
-                                                <span className="uppercase bg-gray-100 px-1.5 py-0.5 rounded">{service.category}</span>
+                                                <span className="uppercase bg-gray-100 px-1.5 py-0.5 rounded trim-text">
+                                                    {serviceCategories.find(c => c.id === service.category)?.name || service.category}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
@@ -434,6 +580,15 @@ const SettingsModule: React.FC = () => {
                                             <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-diva-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-diva-primary"></div>
                                         </label>
 
+                                        <button
+                                            onClick={() => {
+                                                setServiceToEdit(service);
+                                                setIsNewServiceModalOpen(true);
+                                            }}
+                                            className="text-gray-400 hover:text-diva-primary transition-colors"
+                                        >
+                                            <Edit2 size={18} />
+                                        </button>
                                         <button
                                             onClick={() => { if (confirm('Excluir serviço?')) deleteService(service.id) }}
                                             className="text-gray-400 hover:text-red-500 transition-colors"
@@ -458,14 +613,21 @@ const SettingsModule: React.FC = () => {
                             </div>
                             <div className="flex gap-3">
                                 <button
+                                    onClick={() => setIsInvoiceImportModalOpen(true)}
+                                    className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center hover:bg-purple-700 shadow-sm border border-purple-500"
+                                >
+                                    <Bot size={16} className="mr-2" /> Importar XML (IA)
+                                </button>
+                                <button
                                     onClick={() => setIsStockEntryModalOpen(true)}
                                     className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center hover:bg-green-700 shadow-sm"
                                 >
-                                    <ClipboardList size={16} className="mr-2" /> Entrada de Nota
+                                    <ClipboardList size={16} className="mr-2" /> Entrada Manual
                                 </button>
                                 <button
                                     onClick={() => {
                                         setProductToEdit(null); // Clear any previous product for editing
+                                        setDefaultProductCategory('professional_use');
                                         setIsProductModalOpen(true);
                                     }}
                                     className="bg-diva-primary text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center hover:bg-opacity-90 shadow-sm"
@@ -536,6 +698,112 @@ const SettingsModule: React.FC = () => {
                                                     <Package size={32} className="opacity-20" />
                                                     <p>Nenhum produto no catálogo.</p>
                                                     <button onClick={() => setIsProductModalOpen(true)} className="text-diva-primary font-bold underline text-xs">Cadastrar Primeiro Produto</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )
+                }
+
+                {/* TAB: MEDICAL INVENTORY (Medical Materials) */}
+                {activeTab === 'medical_inventory' && (
+                    <div className="space-y-6 animate-in fade-in">
+                        <div className="flex justify-between items-center border-b border-diva-light/20 pb-6">
+                            <div>
+                                <h3 className="text-lg font-bold text-diva-dark">Materiais Médicos & Estoque</h3>
+                                <p className="text-sm text-gray-500">Gerencie materiais médicos e dê entrada em notas fiscais.</p>
+                            </div>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setIsInvoiceImportModalOpen(true)}
+                                    className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center hover:bg-purple-700 shadow-sm border border-purple-500"
+                                >
+                                    <Bot size={16} className="mr-2" /> Importar XML (IA)
+                                </button>
+                                <button
+                                    onClick={() => setIsStockEntryModalOpen(true)}
+                                    className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center hover:bg-green-700 shadow-sm"
+                                >
+                                    <ClipboardList size={16} className="mr-2" /> Entrada Manual
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setProductToEdit(null);
+                                        setDefaultProductCategory('medical_material');
+                                        setIsProductModalOpen(true);
+                                    }}
+                                    className="bg-diva-primary text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center hover:bg-opacity-90 shadow-sm"
+                                >
+                                    <Plus size={16} className="mr-2" /> Novo Material
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 overflow-auto bg-gray-50 rounded-lg border border-gray-200">
+                            <table className="w-full text-left">
+                                <thead className="bg-white sticky top-0 z-10 shadow-sm">
+                                    <tr className="text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                        <th className="px-6 py-4">Item / Apresentação</th>
+                                        <th className="px-6 py-4">Especificação</th>
+                                        <th className="px-6 py-4">Estoque Atual</th>
+                                        <th className="px-6 py-4 text-right">Custo Médio</th>
+                                        <th className="px-6 py-4 w-10"></th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100 text-sm">
+                                    {products.filter(p => p.category === 'medical_material').map(prod => (
+                                        <tr key={prod.id} className="hover:bg-white transition-colors group">
+                                            <td className="px-6 py-4">
+                                                <p className="font-bold text-diva-dark">{prod.name}</p>
+                                                <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                                                    <span className="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">{prod.presentation || 'Unidade'}</span>
+                                                    {prod.contentQuantity && (
+                                                        <span>
+                                                            Contém {prod.contentQuantity} {prod.contentUnit}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-gray-600">
+                                                {prod.activeIngredients ? (
+                                                    <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded-md text-xs font-medium border border-blue-100">
+                                                        {prod.activeIngredients}
+                                                    </span>
+                                                ) : <span className="text-gray-400">-</span>}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`font-bold ${!prod.stock || prod.stock <= (prod.minStockLevel || 5) ? 'text-red-500' : 'text-green-600'}`}>
+                                                    {prod.stock || 0} <span className="text-xs font-normal text-gray-400">{prod.contentUnit || 'un'}</span>
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-mono text-gray-600">
+                                                {formatCurrency(prod.costPrice || 0)}
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <button
+                                                    onClick={() => {
+                                                        setProductToEdit(prod);
+                                                        setIsProductModalOpen(true);
+                                                    }}
+                                                    className="p-2 text-gray-400 hover:text-diva-primary hover:bg-diva-primary/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                                    title="Editar Material"
+                                                >
+                                                    <PenTool size={16} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {products.filter(p => p.category === 'medical_material').length === 0 && (
+                                        <tr>
+                                            <td colSpan={5} className="text-center py-12 text-gray-400 italic">
+                                                <div className="flex flex-col items-center gap-2">
+                                                    <Package size={32} className="opacity-20" />
+                                                    <p>Nenhum material médico cadastrado.</p>
+                                                    <button onClick={() => { setDefaultProductCategory('medical_material'); setIsProductModalOpen(true); }} className="text-diva-primary font-bold underline text-xs">Cadastrar Primeiro Material</button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -629,6 +897,72 @@ const SettingsModule: React.FC = () => {
                                                 onChange={(e) => setLocalUnitConfig({ ...localUnitConfig, state: e.target.value })}
                                                 className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary bg-white text-gray-900"
                                             />
+                                        </div>
+                                    </div>
+
+                                    <div className="border-t border-gray-100 pt-6">
+                                        <h4 className="text-md font-bold text-gray-700 mb-4">Fiscal & Legal</h4>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-bold text-diva-dark">CNPJ</label>
+                                                <input
+                                                    type="text"
+                                                    value={localUnitConfig.cnpj}
+                                                    onChange={(e) => setLocalUnitConfig({ ...localUnitConfig, cnpj: maskCNPJ(e.target.value) })}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary bg-white text-gray-900"
+                                                    placeholder="00.000.000/0000-00"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-bold text-diva-dark">CNAE Principal</label>
+                                                <input
+                                                    type="text"
+                                                    value={localUnitConfig.cnaePrimary}
+                                                    onChange={(e) => setLocalUnitConfig({ ...localUnitConfig, cnaePrimary: e.target.value })}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary bg-white text-gray-900"
+                                                    placeholder="Código CNAE"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-bold text-diva-dark">CNAEs Secundários</label>
+                                                <input
+                                                    type="text"
+                                                    value={localUnitConfig.cnaeSecondary}
+                                                    onChange={(e) => setLocalUnitConfig({ ...localUnitConfig, cnaeSecondary: e.target.value })}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary bg-white text-gray-900"
+                                                    placeholder="Separados por vírgula"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-bold text-diva-dark">Representante Legal (Nome)</label>
+                                                <input
+                                                    type="text"
+                                                    value={localUnitConfig.legalRepName}
+                                                    onChange={(e) => setLocalUnitConfig({ ...localUnitConfig, legalRepName: e.target.value })}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary bg-white text-gray-900"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-bold text-diva-dark">CPF do Representante</label>
+                                                <input
+                                                    type="text"
+                                                    value={localUnitConfig.legalRepCpf}
+                                                    onChange={(e) => setLocalUnitConfig({ ...localUnitConfig, legalRepCpf: maskCPF(e.target.value) })}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary bg-white text-gray-900"
+                                                    placeholder="000.000.000-00"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-bold text-diva-dark">Data de Nasc. (Representante)</label>
+                                                <input
+                                                    type="date"
+                                                    value={localUnitConfig.legalRepBirthDate}
+                                                    onChange={(e) => setLocalUnitConfig({ ...localUnitConfig, legalRepBirthDate: e.target.value })}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary bg-white text-gray-900"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
 
@@ -870,40 +1204,115 @@ const SettingsModule: React.FC = () => {
                 {
                     activeTab === 'operational' && (
                         <div className="space-y-6 animate-in fade-in">
-                            <div className="border-b border-diva-light/20 pb-6">
-                                <h3 className="text-lg font-bold text-diva-dark">Categorias de Tarefas</h3>
-                                <p className="text-sm text-gray-500">Gerencie as categorias usadas no módulo de Operações e Tarefas.</p>
-                            </div>
+                            <div className="space-y-8 animate-in fade-in">
+                                {/* Service Categories Section */}
+                                <div>
+                                    <div className="border-b border-diva-light/20 pb-4 mb-6">
+                                        <h3 className="text-lg font-bold text-diva-dark">Categorias de Serviços</h3>
+                                        <p className="text-sm text-gray-500">Defina as categorias para organização do Menu de Tratamentos.</p>
+                                    </div>
 
-                            <div className="max-w-md">
-                                <div className="flex gap-2 mb-6">
-                                    <input
-                                        type="text"
-                                        value={newCategoryName}
-                                        onChange={(e) => setNewCategoryName(e.target.value)}
-                                        placeholder="Nova Categoria (ex: Marketing)"
-                                        className="flex-1 p-3 border border-gray-300 rounded-lg outline-none focus:border-diva-primary bg-white text-gray-900"
-                                    />
-                                    <button
-                                        onClick={handleAddCategory}
-                                        className="bg-diva-primary text-white px-4 rounded-lg font-bold hover:bg-diva-dark"
-                                    >
-                                        Adicionar
-                                    </button>
-                                </div>
-
-                                <div className="space-y-2">
-                                    {taskCategories.map(cat => (
-                                        <div key={cat} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-200 group">
-                                            <span className="text-diva-dark font-medium">{cat}</span>
+                                    <div className="grid md:grid-cols-2 gap-8">
+                                        <div className="space-y-3">
+                                            <label className="text-sm font-bold text-gray-700">Adicionar Nova Categoria</label>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={newServiceCatName}
+                                                    onChange={(e) => setNewServiceCatName(e.target.value)}
+                                                    placeholder="Nome (ex: Protocolos Corporais)"
+                                                    className="flex-1 p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary"
+                                                />
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                {AVAILABLE_CAT_COLORS.map(color => (
+                                                    <button
+                                                        key={color}
+                                                        onClick={() => setNewServiceCatColor(color)}
+                                                        className={`w-8 h-8 rounded-full transition-transform hover:scale-110 ${color} ${newServiceCatColor === color ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : ''}`}
+                                                    />
+                                                ))}
+                                            </div>
                                             <button
-                                                onClick={() => removeTaskCategory(cat)}
-                                                className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                onClick={() => {
+                                                    if (!newServiceCatName) return;
+                                                    addServiceCategory({
+                                                        id: `cat_${Date.now()}`,
+                                                        name: newServiceCatName,
+                                                        color: newServiceCatColor
+                                                    });
+                                                    setNewServiceCatName('');
+                                                }}
+                                                disabled={!newServiceCatName}
+                                                className="bg-diva-dark text-white px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-50 hover:bg-opacity-90 w-full md:w-auto"
                                             >
-                                                <Trash2 size={16} />
+                                                Adicionar Categoria
                                             </button>
                                         </div>
-                                    ))}
+
+                                        <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                                            <h4 className="text-xs font-bold text-gray-500 uppercase mb-3">Categorias Ativas</h4>
+                                            <div className="space-y-2 max-h-60 overflow-y-auto">
+                                                {serviceCategories.map(cat => (
+                                                    <div key={cat.id} className="bg-white p-3 rounded-lg border border-gray-200 flex justify-between items-center shadow-sm">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`w-4 h-4 rounded-full ${cat.color}`}></div>
+                                                            <span className="font-medium text-gray-800">{cat.name}</span>
+                                                        </div>
+                                                        {/* Prevent deleting default IDs if desired, or allow all */}
+                                                        <button
+                                                            onClick={() => { if (confirm('Excluir categoria?')) removeServiceCategory(cat.id) }}
+                                                            className="text-gray-400 hover:text-red-500"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="border-t border-diva-light/20 my-6"></div>
+
+                                {/* Task Categories (Existing) */}
+                                <div>
+                                    <div className="border-b border-diva-light/20 pb-4 mb-6">
+                                        <h3 className="text-lg font-bold text-diva-dark">Categorias de Tarefas (Operacional)</h3>
+                                        <p className="text-sm text-gray-500">Gerencie as categorias usadas no módulo de Tarefas.</p>
+                                    </div>
+
+                                    <div className="max-w-md">
+                                        <div className="flex gap-2 mb-6">
+                                            <input
+                                                type="text"
+                                                value={newCategoryName}
+                                                onChange={(e) => setNewCategoryName(e.target.value)}
+                                                placeholder="Nova Categoria (ex: Marketing)"
+                                                className="flex-1 p-3 border border-gray-300 rounded-lg outline-none focus:border-diva-primary bg-white text-gray-900"
+                                            />
+                                            <button
+                                                onClick={handleAddCategory}
+                                                className="bg-diva-primary text-white px-4 rounded-lg font-bold hover:bg-diva-dark"
+                                            >
+                                                Adicionar
+                                            </button>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            {taskCategories.map(cat => (
+                                                <div key={cat} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-200 group">
+                                                    <span className="text-diva-dark font-medium">{cat}</span>
+                                                    <button
+                                                        onClick={() => removeTaskCategory(cat)}
+                                                        className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1186,12 +1595,24 @@ const SettingsModule: React.FC = () => {
                     )
                 }
 
-            </div >
+            </div>
 
             <NewServiceModal
                 isOpen={isNewServiceModalOpen}
-                onClose={() => setIsNewServiceModalOpen(false)}
-                onSave={addService}
+                onClose={() => {
+                    setIsNewServiceModalOpen(false);
+                    setServiceToEdit(null);
+                }}
+                onSave={(service) => {
+                    if (serviceToEdit) {
+                        updateService(service.id, service);
+                    } else {
+                        addService(service);
+                    }
+                    setIsNewServiceModalOpen(false);
+                    setServiceToEdit(null);
+                }}
+                serviceToEdit={serviceToEdit}
             />
             <NewProductModal
                 isOpen={isProductModalOpen}
@@ -1200,10 +1621,28 @@ const SettingsModule: React.FC = () => {
                     setProductToEdit(null);
                 }}
                 productToEdit={productToEdit}
+                defaultCategory={defaultProductCategory}
             />
             <StockEntryModal
                 isOpen={isStockEntryModalOpen}
                 onClose={() => setIsStockEntryModalOpen(false)}
+            />
+            <InvoiceImportModal
+                isOpen={isInvoiceImportModalOpen}
+                onClose={() => setIsInvoiceImportModalOpen(false)}
+            />
+
+            <FiscalAccountModal
+                isOpen={isFiscalAccountModalOpen}
+                onClose={() => setIsFiscalAccountModalOpen(false)}
+                accountToEdit={fiscalAccountToEdit}
+                onSave={(acc) => {
+                    if (fiscalAccountToEdit) {
+                        updateFiscalAccount(acc.id, acc);
+                    } else {
+                        addFiscalAccount(acc);
+                    }
+                }}
             />
         </div >
     );

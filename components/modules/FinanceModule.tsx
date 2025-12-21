@@ -1,13 +1,14 @@
 
 import React, { useState, useMemo } from 'react';
-import { Transaction, TransactionType, TransactionStatus, User as UserType, UserRole } from '../../types';
-import { DollarSign, TrendingUp, TrendingDown, AlertCircle, Download, Filter, FileText, Lock, Award, Settings, Calendar, RefreshCcw } from 'lucide-react';
+import { Transaction, TransactionType, TransactionStatus, User as UserType, UserRole, FiscalAccount } from '../../types';
+import { DollarSign, TrendingUp, TrendingDown, AlertCircle, Download, Filter, FileText, Lock, Award, Settings, Calendar, RefreshCcw, Building2 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, PieChart, Pie, Cell } from 'recharts';
 import CashClosingModal from '../modals/CashClosingModal';
 import DREReportModal from '../modals/DREReportModal';
 import NewTransactionModal from '../modals/NewTransactionModal';
 import PaymentSettingsModal from '../modals/PaymentSettingsModal';
 import ReceiptPreviewModal from '../modals/ReceiptPreviewModal';
+import FiscalEmissionModal from '../modals/FiscalEmissionModal';
 import { useUnitData } from '../hooks/useUnitData';
 import PermissionGate from '../ui/PermissionGate';
 
@@ -25,15 +26,39 @@ const MOCK_GATEWAYS_REF = [
 ];
 
 const FinanceModule: React.FC<FinanceModuleProps> = ({ user }) => {
-    const { transactions, staff, appointments, suppliers, fiscalRecords, updateTransaction, addFiscalRecord, addTransaction } = useUnitData();
+    const { transactions: allTransactions, fiscalAccounts, staff, appointments, suppliers, fiscalRecords, updateTransaction, addFiscalRecord, addTransaction } = useUnitData();
     const [activeTab, setActiveTab] = useState<'overview' | 'commissions' | 'payables' | 'fiscal'>('overview');
+    const [selectedFiscalAccountId, setSelectedFiscalAccountId] = useState<string>('all');
     const [isClosingModalOpen, setIsClosingModalOpen] = useState(false);
     const [isDREModalOpen, setIsDREModalOpen] = useState(false);
     const [isNewTransactionModalOpen, setIsNewTransactionModalOpen] = useState(false);
     const [isPaymentSettingsModalOpen, setIsPaymentSettingsModalOpen] = useState(false);
 
+    // --- Fiscal Filter Logic ---
+    const transactions = useMemo(() => {
+        // 1. Identify valid accounts for Company DRE (Clinic/Marketplace) -> Exclude Professionals
+        const companyAccountIds = fiscalAccounts?.filter(f => f.type !== 'professional').map(f => f.id) || [];
+
+        return allTransactions.filter(t => {
+            // A. Specific Filter Active
+            if (selectedFiscalAccountId !== 'all') {
+                return t.fiscalAccountId === selectedFiscalAccountId;
+            }
+
+            // B. "All" View (Consolidated Company view)
+            // Include if:
+            // - No fiscal account linked (Legacy/Default)
+            // - Linked to a Company Account
+            // - Exclude if linked to a Professional Account
+            if (!t.fiscalAccountId) return true;
+            return companyAccountIds.includes(t.fiscalAccountId);
+        });
+    }, [allTransactions, selectedFiscalAccountId, fiscalAccounts]);
+
+
     // Receipt Modal State
     const [selectedTransactionForReceipt, setSelectedTransactionForReceipt] = useState<Transaction | null>(null);
+    const [selectedTransactionForEmission, setSelectedTransactionForEmission] = useState<Transaction | null>(null);
 
     // Toggle between "Regime de Caixa" (Settlement Date) and "Regime de Competência" (Transaction Date)
     const [viewMode, setViewMode] = useState<'settlement' | 'competence'>('competence');
@@ -292,10 +317,39 @@ const FinanceModule: React.FC<FinanceModuleProps> = ({ user }) => {
 
     return (
         <div className="space-y-6 animate-in fade-in">
-            {/* Header com Tabs */}
+            {/* Header com Tabs e Filtros */}
             {(user.role === UserRole.ADMIN || user.role === UserRole.MANAGER || user.role === UserRole.FINANCE) && (
-                <div className="flex justify-between items-end border-b border-diva-light/20 pb-1 mb-6">
-                    <div className="flex space-x-6">
+                <div className="flex flex-col gap-4 border-b border-diva-light/20 pb-1 mb-6">
+                    {/* Top Bar: Filters & Settings */}
+                    <div className="flex justify-between items-center bg-gray-50/50 p-2 rounded-lg border border-gray-100">
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-2 py-1.5 shadow-sm">
+                                <Building2 size={16} className="text-gray-400" />
+                                <select
+                                    value={selectedFiscalAccountId}
+                                    onChange={(e) => setSelectedFiscalAccountId(e.target.value)}
+                                    className="text-xs font-bold text-gray-700 bg-transparent outline-none cursor-pointer min-w-[200px]"
+                                >
+                                    <option value="all">Visão Consolidada (Clínica + Mkt)</option>
+                                    <option disabled>──────────</option>
+                                    {fiscalAccounts?.filter(f => f.type !== 'professional').map(acc => (
+                                        <option key={acc.id} value={acc.id}>{acc.alias || acc.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <span className="text-[10px] text-gray-400 hidden sm:inline-block border-l border-gray-200 pl-3">
+                                {selectedFiscalAccountId === 'all'
+                                    ? "Visualizando agregados da empresa (excluindo repasses a terceiros)."
+                                    : "Visualizando DRE e Fluxo exclusivo desta Conta Fiscal."
+                                }
+                            </span>
+                        </div>
+                        <button onClick={() => setIsPaymentSettingsModalOpen(true)} className="text-gray-400 hover:text-diva-primary hover:bg-gray-100 p-2 rounded-lg transition-colors" title="Configurar Gateways e Taxas">
+                            <Settings size={20} />
+                        </button>
+                    </div>
+
+                    <div className="flex space-x-6 items-end mt-2 pl-2">
                         <button onClick={() => setActiveTab('overview')} className={`text-sm font-bold pb-3 border-b-2 transition-colors flex items-center ${activeTab === 'overview' ? 'border-diva-primary text-diva-primary' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
                             <TrendingUp size={16} className="mr-2" /> Visão Geral
                         </button>
@@ -309,9 +363,6 @@ const FinanceModule: React.FC<FinanceModuleProps> = ({ user }) => {
                             <FileText size={16} className="mr-2" /> Fiscal (NFS-e/Recibos)
                         </button>
                     </div>
-                    <button onClick={() => setIsPaymentSettingsModalOpen(true)} className="text-gray-400 hover:text-diva-primary hover:bg-gray-100 p-2 rounded-lg transition-colors mb-1" title="Configurar Gateways e Taxas">
-                        <Settings size={20} />
-                    </button>
                 </div>
             )}
 
@@ -722,7 +773,7 @@ const FinanceModule: React.FC<FinanceModuleProps> = ({ user }) => {
                                                     <td className="px-6 py-4 text-right flex justify-end gap-2">
                                                         {t.revenueType === 'product' ? (
                                                             <button
-                                                                onClick={() => handleEmitFiscal(t, 'NF-e')}
+                                                                onClick={() => setSelectedTransactionForEmission(t)}
                                                                 className="px-3 py-1.5 bg-diva-primary text-white text-xs font-bold rounded hover:bg-diva-dark transition-colors"
                                                             >
                                                                 Emitir NF-e
@@ -731,12 +782,12 @@ const FinanceModule: React.FC<FinanceModuleProps> = ({ user }) => {
                                                             <>
                                                                 <button
                                                                     onClick={() => setSelectedTransactionForReceipt(t)}
-                                                                    className="px-3 py-1.5 border border-gray-300 text-gray-600 text-xs font-bold rounded hover:bg-gray-50 transition-colors"
+                                                                    className="px-3 py-1.5 border border-diva-primary text-diva-primary text-xs font-bold rounded hover:bg-diva-light/10 transition-colors"
                                                                 >
-                                                                    Recibo Simples
+                                                                    Recibo
                                                                 </button>
                                                                 <button
-                                                                    onClick={() => handleEmitFiscal(t, 'NFS-e')}
+                                                                    onClick={() => setSelectedTransactionForEmission(t)}
                                                                     className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-700 transition-colors"
                                                                 >
                                                                     Emitir NFS-e
@@ -808,6 +859,11 @@ const FinanceModule: React.FC<FinanceModuleProps> = ({ user }) => {
             <CashClosingModal isOpen={isClosingModalOpen} onClose={() => setIsClosingModalOpen(false)} />
             <DREReportModal isOpen={isDREModalOpen} onClose={() => setIsDREModalOpen(false)} transactions={transactions} />
             <NewTransactionModal isOpen={isNewTransactionModalOpen} onClose={() => setIsNewTransactionModalOpen(false)} />
+            <FiscalEmissionModal
+                isOpen={!!selectedTransactionForEmission}
+                onClose={() => setSelectedTransactionForEmission(null)}
+                transaction={selectedTransactionForEmission}
+            />
             <PaymentSettingsModal isOpen={isPaymentSettingsModalOpen} onClose={() => setIsPaymentSettingsModalOpen(false)} />
 
             {/* Receipt Modal */}

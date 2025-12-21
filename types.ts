@@ -437,6 +437,8 @@ export interface Transaction {
     paymentMethod?: PaymentMethod | 'split';
     unitId?: string; // Novo: ID da unidade
     relatedAppointmentId?: string; // Novo: ID do agendamento relacionado
+    payerName?: string; // Novo: Nome do pagador (se não houver agendamento)
+    fiscalAccountId?: string; // Conta Fiscal (CNPJ/CPF) vinculada
 
     // Financial Gateway Info
     gatewayId?: string;
@@ -474,10 +476,32 @@ export interface BankAccount {
     icon?: string;
 }
 
+export interface FiscalAccount {
+    id: string;
+    organizationId: string;
+    name: string; // Razão Social ou Nome Completo
+    alias: string; // Nome de Identificação (ex: "CNPJ Serviços", "Dra. Julia")
+    document: string; // CNPJ ou CPF
+    type: 'clinic_service' | 'marketplace' | 'professional';
+    address?: string;
+    digitalCertificateInfo?: { // Simulação de certificado
+        validTo: string;
+        hasPassword?: boolean;
+    };
+    receivingConfig?: { // Dados de Recebimento
+        pixKey?: string;
+        pixKeyType?: 'cpf' | 'cnpj' | 'email' | 'phone' | 'random';
+        cardMachineLabel?: string; // Identificação da maquininha
+    };
+    paymentMethods?: string[]; // IDs dos métodos de pagamento vinculados (ex: 'gw_stone_rec')
+    isDefault?: boolean;
+}
+
 export interface FiscalRecord {
     id: string;
     organizationId: string;
     transactionId: string;
+    fiscalAccountId?: string; // Novo: Conta Fiscal emissora
     type: 'NFS-e' | 'NF-e' | 'Recibo';
     status: 'pending' | 'emitted' | 'cancelled' | 'error';
     number?: string; // Número da nota
@@ -488,6 +512,7 @@ export interface FiscalRecord {
     issuerDocument: string;
     recipientName: string;
     recipientDocument: string;
+    verificationCode?: string; // Novo: Código de verificação da nota
     pdfUrl?: string;
     xmlUrl?: string;
 }
@@ -595,7 +620,7 @@ export interface Product {
     packageSessionCount?: number; // Para pacotes: Número de sessões
 }
 
-export type ProductCategory = 'homecare' | 'treatment_package' | 'giftcard' | 'professional_use';
+export type ProductCategory = 'homecare' | 'treatment_package' | 'giftcard' | 'professional_use' | 'medical_material';
 
 // --- MARKETING & CAMPAIGNS ---
 
@@ -706,25 +731,36 @@ export interface SessionRecord {
     evolution: string;
 }
 
+
+
+export interface ServiceCategory {
+    id: string;
+    name: string;
+    color: string;
+}
+
 export interface ServiceDefinition {
     id: string;
-    organizationId: string; // ← NOVO: ID da organização
+    organizationId: string;
     name: string;
-    category: 'laser' | 'esthetics' | 'spa' | 'injectables';
+    category: string;
     duration: number; // minutes
     price: number;
     active: boolean;
     description?: string;
     loyaltyPoints?: number; // Pontos ganhos ao realizar o serviço
     protocol?: ProtocolItem[]; // Insumos consumidos neste serviço
+    allowedStaffIds?: string[]; // IDs dos profissionais habilitados
+    allowedRoomIds?: string[]; // IDs das salas onde pode ser realizado
 }
 
 export interface ProtocolItem {
     productId: string;
     productName: string;
     quantity: number;
-    unit: string;
+    unit?: string;
     unitCost: number;
+    optional?: boolean; // If true, excluded from estimated cost calculation
 }
 
 export interface FormTemplate {
@@ -1040,6 +1076,13 @@ export interface BusinessUnit {
         cnpj: string;
         stateRegistration?: string;
         municipalRegistration?: string;
+        cnaePrimary?: string;
+        cnaeSecondary?: string; // Comma separated or JSON string
+        legalRepresentative?: {
+            name: string;
+            cpf: string;
+            birthDate: string;
+        };
     };
     managerName: string;
     managerId?: string; // ID do usuário gerente (para futuro)
@@ -1456,6 +1499,9 @@ export interface DataContextType {
     members: OrganizationMember[]; // New: Team Members
     rooms: ServiceRoom[];
     taskCategories: string[];
+    serviceCategories: ServiceCategory[]; // New: Service Categories
+    addServiceCategory: (category: ServiceCategory) => void;
+    removeServiceCategory: (id: string) => void;
     services: ServiceDefinition[];
     businessConfig: BusinessConfig;
     notificationConfig: NotificationConfig;
@@ -1580,6 +1626,10 @@ export interface DataContextType {
     fiscalRecords: FiscalRecord[];
     addFiscalRecord: (record: FiscalRecord) => void;
     updateFiscalRecord: (id: string, data: Partial<FiscalRecord>) => void;
+
+    fiscalAccounts: FiscalAccount[];
+    addFiscalAccount: (account: FiscalAccount) => void;
+    updateFiscalAccount: (id: string, data: Partial<FiscalAccount>) => void;
 
     // Pharmacy
     vials: OpenVial[];

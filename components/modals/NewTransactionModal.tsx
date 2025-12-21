@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { X, Save, DollarSign, ArrowUpCircle, ArrowDownCircle, Calendar, FileText, Tag, User, Repeat, Clock, CreditCard } from 'lucide-react';
+
+import React, { useState, useEffect } from 'react';
+import { X, Save, DollarSign, ArrowUpCircle, ArrowDownCircle, Calendar, FileText, Tag, User, Repeat, Clock, CreditCard, Building2, Scissors, Plus, Trash2, CheckCircle2 } from 'lucide-react';
 import { Transaction, TransactionType, TransactionStatus, RevenueType, PaymentMethod } from '../../types';
 import { useUnitData } from '../hooks/useUnitData';
 import { useOrganization } from '../context/OrganizationContext';
@@ -10,10 +11,17 @@ interface NewTransactionModalProps {
 }
 
 const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClose }) => {
-  const { addTransaction, selectedUnitId, suppliers, accounts } = useUnitData();
+  const { addTransaction, selectedUnitId, suppliers, accounts, fiscalAccounts } = useUnitData();
   const { organization } = useOrganization();
   const [type, setType] = useState<TransactionType>('expense');
   const [uploading, setUploading] = useState(false);
+
+  // Split State
+  const [isSplit, setIsSplit] = useState(false);
+  const [splits, setSplits] = useState<{ uniqueId: string; amount: string; fiscalAccountId: string }[]>([
+    { uniqueId: 's1', amount: '', fiscalAccountId: '' },
+    { uniqueId: 's2', amount: '', fiscalAccountId: '' }
+  ]);
 
   const getLocalDate = () => {
     const today = new Date();
@@ -27,7 +35,8 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClo
     date: getLocalDate(), // Competence Date
     status: 'paid' as TransactionStatus,
     revenueType: 'service' as RevenueType,
-    paymentMethod: 'credit_card' as PaymentMethod, // NEW
+    paymentMethod: 'credit_card' as PaymentMethod,
+    fiscalAccountId: '',
     // Expense Extras
     supplierId: '',
     sourceAccountId: '', // Bank Account
@@ -37,6 +46,17 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClo
     recurrenceRule: 'monthly',
     recurrenceCount: 2
   });
+
+  // Reset Split on Close/Open or Type Change if needed
+  useEffect(() => {
+    if (isOpen) {
+      setIsSplit(false);
+      setSplits([
+        { uniqueId: 's1', amount: '', fiscalAccountId: '' },
+        { uniqueId: 's2', amount: '', fiscalAccountId: '' }
+      ]);
+    }
+  }, [isOpen]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -59,6 +79,22 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClo
     }, 1500);
   };
 
+  const addSplitRow = () => {
+    setSplits([...splits, { uniqueId: `s${Date.now()}`, amount: '', fiscalAccountId: '' }]);
+  };
+
+  const removeSplitRow = (id: string) => {
+    if (splits.length > 2) {
+      setSplits(splits.filter(s => s.uniqueId !== id));
+    }
+  };
+
+  const updateSplit = (id: string, field: 'amount' | 'fiscalAccountId', value: string) => {
+    setSplits(splits.map(s => s.uniqueId === id ? { ...s, [field]: value } : s));
+  };
+
+  const totalSplitAmount = splits.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -70,13 +106,32 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClo
       type: type,
       category: formData.category,
       revenueType: type === 'income' ? formData.revenueType : undefined,
-      amount: parseFloat(formData.amount) || 0,
       unitId: selectedUnitId === 'all' ? undefined : selectedUnitId,
       sourceAccountId: formData.sourceAccountId ? formData.sourceAccountId : undefined,
-      paymentMethod: formData.paymentMethod, // NEW
+      paymentMethod: formData.paymentMethod,
     };
 
-    if (formData.isRecurring && formData.recurrenceCount > 1) {
+    if (isSplit && type === 'income') {
+      // Handle Split Transaction (Multiple Records)
+      splits.forEach((split, index) => {
+        const amount = parseFloat(split.amount);
+        if (amount <= 0) return;
+
+        const t: Transaction = {
+          id: `t_${Date.now()}_split_${index}`,
+          ...baseTransaction,
+          amount: amount,
+          fiscalAccountId: split.fiscalAccountId || undefined,
+          description: `${formData.description} (Parcial ${index + 1})`,
+          status: formData.status,
+          date: formData.date,
+          supplierId: undefined, // Usually income splits don't have supplier
+          dueDate: undefined,
+        };
+        addTransaction(t);
+      });
+
+    } else if (formData.isRecurring && formData.recurrenceCount > 1) {
       // Generating Recurrent Transactions
       const groupId = `grp_${Date.now()}`;
       const amountPerInstallment = (parseFloat(formData.amount) || 0) / formData.recurrenceCount;
@@ -95,6 +150,7 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClo
           ...baseTransaction,
           id: `t_${Date.now()}_${i}`,
           amount: amountPerInstallment, // Split amount
+          fiscalAccountId: formData.fiscalAccountId || undefined,
           date: formData.date,
           status: i === 0 && formData.status === 'paid' ? 'paid' : 'pending',
           supplierId: formData.supplierId || undefined,
@@ -113,6 +169,8 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClo
       const newTransaction: Transaction = {
         id: `t_${Date.now()}`,
         ...baseTransaction,
+        amount: parseFloat(formData.amount) || 0,
+        fiscalAccountId: formData.fiscalAccountId || undefined,
         status: formData.status,
         date: formData.date,
         supplierId: formData.supplierId || undefined,
@@ -121,6 +179,7 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClo
       addTransaction(newTransaction);
     }
 
+    // Reset Form
     setFormData({
       description: '',
       amount: '',
@@ -129,6 +188,7 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClo
       status: 'paid',
       revenueType: 'service',
       paymentMethod: 'credit_card',
+      fiscalAccountId: '',
       supplierId: '',
       sourceAccountId: '', // Reset
       dueDate: getLocalDate(),
@@ -136,6 +196,7 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClo
       recurrenceRule: 'monthly',
       recurrenceCount: 2
     });
+    setIsSplit(false);
     onClose();
   };
 
@@ -173,7 +234,7 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClo
             </button>
             <button
               type="button"
-              onClick={() => setType('expense')}
+              onClick={() => { setType('expense'); setIsSplit(false); }}
               className={`flex-1 py-2 rounded-md text-sm font-bold flex items-center justify-center transition-all ${type === 'expense' ? 'bg-red-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
             >
               <ArrowDownCircle size={16} className="mr-2" /> Despesa
@@ -243,38 +304,194 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClo
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               />
             </div>
+
+            {/* Split Toggle */}
+            {type === 'income' && !formData.isRecurring && (
+              <div className="mt-2 flex items-center animate-in fade-in">
+                <button
+                  type="button"
+                  onClick={() => setIsSplit(!isSplit)}
+                  className={`text-xs font-bold flex items-center px-2 py-1 rounded transition-colors ${isSplit ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:bg-gray-100'}`}
+                >
+                  <Scissors size={14} className="mr-1" />
+                  {isSplit ? 'Dividir Lançamento (Ativo)' : 'Dividir Lançamento (Split)'}
+                </button>
+                {isSplit && (
+                  <span className="ml-2 text-xs text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full font-bold">
+                    Total: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalSplitAmount)}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Valor (R$) *</label>
-              <input
-                type="number"
-                step="0.01"
-                required
-                className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all font-mono bg-white text-gray-900"
-                placeholder="0.00"
-                value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-              />
-            </div>
-            <div>
-              {/* PAYMENT METHOD SELECTOR */}
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Método</label>
-              <div className="relative">
-                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-                <select
-                  className="w-full pl-9 pr-3 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all bg-white text-gray-900 text-sm"
-                  value={formData.paymentMethod}
-                  onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value as PaymentMethod })}
-                >
-                  <option value="credit_card">Cartão de Crédito</option>
-                  <option value="debit_card">Cartão de Débito</option>
-                  <option value="pix">PIX</option>
-                  <option value="cash">Dinheiro</option>
-                </select>
+          {/* Amount and Split Logic */}
+          <div className="grid grid-cols-1 gap-4">
+
+            {!isSplit ? (
+              // Standard Single Amount
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Valor (R$) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all font-mono bg-white text-gray-900"
+                    placeholder="0.00"
+                    value={formData.amount}
+                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Método</label>
+                  <div className="relative">
+                    <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                    <select
+                      className="w-full pl-9 pr-3 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all bg-white text-gray-900 text-sm"
+                      value={formData.paymentMethod}
+                      onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value as PaymentMethod })}
+                    >
+                      <option value="credit_card">Cartão de Crédito</option>
+                      <option value="debit_card">Cartão de Débito</option>
+                      <option value="pix">PIX</option>
+                      <option value="cash">Dinheiro</option>
+                    </select>
+                  </div>
+                </div>
               </div>
-            </div>
+            ) : (
+              // Split Editor (Multiple Rows)
+              <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 space-y-3 animate-in zoom-in-95 duration-200">
+                <label className="block text-xs font-bold text-indigo-700 uppercase">Divisão de Valores (Split)</label>
+                {splits.map((split, index) => {
+                  const acc = fiscalAccounts.find(a => a.id === split.fiscalAccountId);
+                  return (
+                    <div key={split.uniqueId} className="bg-white p-3 rounded-lg border border-indigo-100 shadow-sm relative group">
+                      <div className="flex gap-3 items-start">
+                        <div className="w-1/3">
+                          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Valor</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={split.amount}
+                            onChange={e => updateSplit(split.uniqueId, 'amount', e.target.value)}
+                            className="w-full p-2 border border-gray-200 rounded text-sm font-mono focus:border-indigo-500 outline-none"
+                            placeholder="0.00"
+                            autoFocus={index === 0}
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Conta Fiscal</label>
+                          <div className="relative">
+                            <Building2 className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-300" size={12} />
+                            <select
+                              value={split.fiscalAccountId}
+                              onChange={e => updateSplit(split.uniqueId, 'fiscalAccountId', e.target.value)}
+                              className="w-full pl-7 pr-2 py-2 border border-gray-200 rounded text-sm outline-none focus:border-indigo-500 bg-white"
+                            >
+                              <option value="">Selecione...</option>
+                              {fiscalAccounts.map(a => (
+                                <option key={a.id} value={a.id}>{a.alias}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        {splits.length > 2 && (
+                          <button
+                            type="button"
+                            onClick={() => removeSplitRow(split.uniqueId)}
+                            className="mt-6 p-2 text-gray-300 hover:text-red-500 transition-colors"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Helper Info for Split Row */}
+                      {split.fiscalAccountId && acc?.receivingConfig && (
+                        <div className="mt-2 text-[10px] flex flex-wrap gap-2 text-gray-600 bg-gray-50 p-1.5 rounded">
+                          {acc.receivingConfig.pixKey && (
+                            <span className="flex items-center gap-1">
+                              <span className="font-bold text-green-600">PIX:</span> {acc.receivingConfig.pixKey}
+                            </span>
+                          )}
+                          {acc.receivingConfig.cardMachineLabel && (
+                            <span className="flex items-center gap-1 border-l border-gray-300 pl-2">
+                              <span className="font-bold text-blue-600">Maq:</span> {acc.receivingConfig.cardMachineLabel}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={addSplitRow}
+                  className="w-full py-2 border border-dashed border-indigo-300 text-indigo-500 rounded-lg text-xs font-bold hover:bg-indigo-50 transition-colors flex items-center justify-center"
+                >
+                  <Plus size={14} className="mr-1" /> Adicionar Parcela
+                </button>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Método (Geral)</label>
+                  <select
+                    className="w-full p-2 border border-gray-200 rounded-lg outline-none bg-white text-sm"
+                    value={formData.paymentMethod}
+                    onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value as PaymentMethod })}
+                  >
+                    <option value="credit_card">Cartão de Crédito</option>
+                    <option value="debit_card">Cartão de Débito</option>
+                    <option value="pix">PIX</option>
+                    <option value="cash">Dinheiro</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {!isSplit && (
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                  {type === 'income' ? 'Emitente (NF)' : 'Titular (Pagador)'}
+                </label>
+                <div className="relative">
+                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                  <select
+                    className="w-full pl-9 pr-3 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all bg-white text-gray-900 text-sm"
+                    value={formData.fiscalAccountId}
+                    onChange={(e) => setFormData({ ...formData, fiscalAccountId: e.target.value })}
+                  >
+                    <option value="">Padrão (Sem vínculo específico)</option>
+                    {fiscalAccounts.map(acc => (
+                      <option key={acc.id} value={acc.id}>{acc.alias} ({acc.document})</option>
+                    ))}
+                  </select>
+                </div>
+                {formData.fiscalAccountId && (() => {
+                  const acc = fiscalAccounts.find(a => a.id === formData.fiscalAccountId);
+                  if (acc?.receivingConfig && (acc.receivingConfig.pixKey || acc.receivingConfig.cardMachineLabel)) {
+                    return (
+                      <div className="mt-2 text-xs bg-gray-50 p-2 rounded border border-gray-100 animate-in fade-in">
+                        {acc.receivingConfig.pixKey && (
+                          <div className="flex items-center gap-1 text-gray-700 mb-1 last:mb-0">
+                            <span className="font-bold text-green-600 bg-green-50 px-1 rounded">Chave PIX:</span>
+                            <span className="font-mono select-all">{acc.receivingConfig.pixKey}</span>
+                          </div>
+                        )}
+                        {acc.receivingConfig.cardMachineLabel && (
+                          <div className="flex items-center gap-1 text-gray-700">
+                            <span className="font-bold text-blue-600 bg-blue-50 px-1 rounded">Maquininha:</span>
+                            <span>{acc.receivingConfig.cardMachineLabel}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+            )}
+
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -400,7 +617,7 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClo
               type="submit"
               className={`px-6 py-2 text-white rounded-lg text-sm font-bold shadow-md transition-all flex items-center ${type === 'income' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
             >
-              <Save size={16} className="mr-2" /> {type === 'income' ? 'Receber' : 'Salvar Despesa'}
+              <Save size={16} className="mr-2" /> {type === 'income' ? (isSplit ? 'Receber Split' : 'Receber') : 'Salvar Despesa'}
             </button>
           </div>
         </form>

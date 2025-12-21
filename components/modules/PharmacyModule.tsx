@@ -1,14 +1,63 @@
 
 import React, { useState, useEffect } from 'react';
-import { OpenVial, VialUsageLog } from '../../types';
-import { Beaker, Clock, Activity, AlertTriangle, Search, Plus, History, CheckCircle, Droplets, Trash2 } from 'lucide-react';
+import { OpenVial, VialUsageLog, Product } from '../../types';
+import { Beaker, Clock, Activity, AlertTriangle, Search, Plus, History, CheckCircle, Droplets, Trash2, X, Archive, Package } from 'lucide-react';
 import { useData } from '../context/DataContext';
 
 
 
 const PharmacyModule: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'fridge' | 'calculator' | 'traceability'>('fridge');
-    const { vials, removeVial, vialUsageLogs } = useData();
+
+    const { vials, addVial, removeVial, vialUsageLogs, products, updateProduct, user } = useData();
+
+    // Open Vial Modal State
+    const [isOpenModalOpen, setIsOpenModalOpen] = useState(false);
+    const [productSearch, setProductSearch] = useState('');
+    const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+    const [openBatch, setOpenBatch] = useState('');
+    const [validityHours, setValidityHours] = useState(24);
+
+    const filteredProductsToOpen = products ? products.filter(p =>
+        (p.category === 'professional_use' || p.category === 'medical_material') &&
+        p.name.toLowerCase().includes(productSearch.toLowerCase())
+    ) : [];
+
+    const handleConfirmOpen = () => {
+        if (!selectedProduct) return;
+
+        // 1. Deduct Stock
+        // We allow negative stock for flexibility, but warn? For now, just deduct.
+        if ((selectedProduct.stock || 0) < 1) {
+            if (!confirm('Estoque zerado ou negativo. Deseja abrir o frasco mesmo assim (ajustando para negativo)?')) return;
+        }
+
+        updateProduct(selectedProduct.id, {
+            ...selectedProduct,
+            stock: (selectedProduct.stock || 0) - 1
+        });
+
+        // 2. Add to Fridge
+        const newVial: OpenVial = {
+            id: `vial_${Date.now()}`,
+            organizationId: 'org_demo',
+            productId: selectedProduct.id,
+            productName: selectedProduct.name,
+            batchNumber: openBatch || selectedProduct.batchNumber || 'N/A',
+            openedAt: new Date().toISOString(),
+            expiresAfterOpen: validityHours,
+            initialUnits: selectedProduct.contentQuantity || 100,
+            remainingUnits: selectedProduct.contentQuantity || 100,
+            openedBy: user?.displayName || 'Profissional'
+        };
+        addVial(newVial);
+
+        // Reset
+        setIsOpenModalOpen(false);
+        setSelectedProduct(null);
+        setProductSearch('');
+        setOpenBatch('');
+    };
 
     // Calculator State
     const [toxinType, setToxinType] = useState('botox'); // botox (100u) or dysport (300u/500u)
@@ -88,7 +137,9 @@ const PharmacyModule: React.FC = () => {
                             <h3 className="font-bold text-diva-dark flex items-center">
                                 <Activity size={18} className="mr-2 text-diva-primary" /> Frascos em Uso
                             </h3>
-                            <button className="bg-white border border-diva-primary text-diva-primary px-4 py-2 rounded-lg text-sm font-bold flex items-center hover:bg-diva-primary hover:text-white transition-colors">
+                            <button
+                                onClick={() => setIsOpenModalOpen(true)}
+                                className="bg-white border border-diva-primary text-diva-primary px-4 py-2 rounded-lg text-sm font-bold flex items-center hover:bg-diva-primary hover:text-white transition-colors">
                                 <Plus size={16} className="mr-2" /> Abrir Novo Frasco
                             </button>
                         </div>
@@ -263,7 +314,117 @@ const PharmacyModule: React.FC = () => {
                 )}
 
             </div>
-        </div>
+
+            {/* OPEN VIAL MODAL */}
+            {
+                isOpenModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in">
+                        <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+                            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-diva-dark text-white">
+                                <h3 className="font-bold flex items-center">
+                                    <Activity size={18} className="mr-2" /> Abrir Novo Frasco
+                                </h3>
+                                <button onClick={() => { setIsOpenModalOpen(false); setSelectedProduct(null); }} className="text-white/70 hover:text-white">
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="p-6 flex-1 overflow-y-auto space-y-6">
+                                {!selectedProduct ? (
+                                    <div className="space-y-4">
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                            <input
+                                                type="text"
+                                                placeholder="Buscar produto no estoque..."
+                                                className="w-full pl-9 pr-3 py-3 border border-gray-200 rounded-lg outline-none focus:border-diva-primary"
+                                                value={productSearch}
+                                                onChange={(e) => setProductSearch(e.target.value)}
+                                                autoFocus
+                                            />
+                                        </div>
+                                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                                            {filteredProductsToOpen.map(p => (
+                                                <button
+                                                    key={p.id}
+                                                    onClick={() => {
+                                                        setSelectedProduct(p);
+                                                        setOpenBatch(p.batchNumber || '');
+                                                    }}
+                                                    className="w-full text-left p-3 hover:bg-gray-50 rounded-lg border border-gray-100 flex justify-between items-center group"
+                                                >
+                                                    <div>
+                                                        <p className="font-bold text-gray-800">{p.name}</p>
+                                                        <p className="text-xs text-gray-500">{p.presentation} - {p.contentQuantity}{p.contentUnit}</p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <span className={`text-xs font-bold ${!p.stock || p.stock <= 0 ? 'text-red-500' : 'text-green-600'}`}>
+                                                            Estoque: {p.stock || 0}
+                                                        </span>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        <div className="bg-teal-50 p-4 rounded-lg flex items-start gap-3">
+                                            <Package className="text-teal-600 shrink-0" size={24} />
+                                            <div>
+                                                <h4 className="font-bold text-teal-900">{selectedProduct.name}</h4>
+                                                <p className="text-xs text-teal-700 mt-1">
+                                                    Isso removerá <strong>1 unidade</strong> do estoque principal e adicionará à geladeira virtual.
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Lote</label>
+                                            <input
+                                                type="text"
+                                                className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:border-diva-primary"
+                                                value={openBatch}
+                                                onChange={(e) => setOpenBatch(e.target.value)}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Validade após aberto (Horas)</label>
+                                            <div className="grid grid-cols-4 gap-2">
+                                                {[24, 48, 72, 12].map(h => (
+                                                    <button
+                                                        key={h}
+                                                        onClick={() => setValidityHours(h)}
+                                                        className={`py-2 rounded border text-sm font-bold transition-all ${validityHours === h ? 'bg-diva-primary text-white border-diva-primary' : 'bg-white text-gray-500 border-gray-200 hover:border-diva-primary'}`}
+                                                    >
+                                                        {h}h
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="flex gap-3 pt-2">
+                                            <button
+                                                onClick={() => setSelectedProduct(null)}
+                                                className="flex-1 py-3 text-gray-500 font-bold hover:bg-gray-50 rounded-lg"
+                                            >
+                                                Voltar
+                                            </button>
+                                            <button
+                                                onClick={handleConfirmOpen}
+                                                className="flex-1 py-3 bg-diva-primary text-white font-bold rounded-lg hover:bg-opacity-90 shadow-md"
+                                            >
+                                                Confirmar Abertura
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+        </div >
     );
 };
 
