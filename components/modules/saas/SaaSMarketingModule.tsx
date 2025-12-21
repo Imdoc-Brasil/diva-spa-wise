@@ -37,6 +37,10 @@ const SaaSMarketingModule: React.FC = () => {
     const [editingCampaign, setEditingCampaign] = useState<Partial<MarketingCampaign>>({ steps: [] });
     const [selectedStepId, setSelectedStepId] = useState<string | null>(null); // Track selected step for config
 
+    // Template Editor State
+    const [templateEditorOpen, setTemplateEditorOpen] = useState(false);
+    const [editingTemplate, setEditingTemplate] = useState<Partial<MessageTemplate>>({});
+
     // Load Campaigns on Mount
     useEffect(() => {
         loadCampaigns();
@@ -124,6 +128,44 @@ const SaaSMarketingModule: React.FC = () => {
             ...prev,
             steps: prev.steps?.map(s => s.id === stepId ? { ...s, config: { ...s.config, ...newConfig } } : s)
         }));
+    };
+
+    const handleCreateTemplate = () => {
+        setEditingTemplate({
+            id: crypto.randomUUID(),
+            name: 'Novo Template',
+            channel: 'email',
+            content: '',
+            isAiPowered: false
+        });
+        setTemplateEditorOpen(true);
+    };
+
+    const handleEditTemplate = (tpl: MessageTemplate) => {
+        setEditingTemplate(tpl);
+        setTemplateEditorOpen(true);
+        // If we are in builder mode, we might want to switch tab? 
+        // For now, let's assume we edit in a modal over the builder or switch to templates tab.
+        // If called from builder bottom panel, we should perhaps switch context or open a modal.
+        // Simplest: Switch to Templates tab then open editor.
+        if (activeTab !== 'templates') {
+            setActiveTab('templates');
+        }
+    };
+
+    const handleSaveTemplate = () => {
+        if (!editingTemplate.name || !editingTemplate.content) return addToast('Preencha nome e conteúdo', 'error');
+
+        setTemplates(prev => {
+            const exists = prev.find(t => t.id === editingTemplate.id);
+            if (exists) {
+                return prev.map(t => t.id === editingTemplate.id ? editingTemplate as MessageTemplate : t);
+            }
+            return [...prev, editingTemplate as MessageTemplate];
+        });
+
+        addToast('Template salvo!', 'success');
+        setTemplateEditorOpen(false);
     };
 
     const selectedStep = editingCampaign.steps?.find(s => s.id === selectedStepId);
@@ -456,7 +498,10 @@ const SaaSMarketingModule: React.FC = () => {
                                             {tpl.content}
                                             <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-slate-900 to-transparent"></div>
                                         </div>
-                                        <button className="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded transition-colors">
+                                        <button
+                                            onClick={() => handleEditTemplate(tpl)}
+                                            className="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded transition-colors"
+                                        >
                                             Editar Template
                                         </button>
                                     </div>
@@ -474,31 +519,121 @@ const SaaSMarketingModule: React.FC = () => {
             )}
 
             {/* TEMPLATES TAB */}
-            {
-                activeTab === 'templates' && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {templates.map(tpl => (
-                            <div key={tpl.id} className="bg-slate-900 border border-slate-800 p-6 rounded-2xl group hover:border-purple-500/50 transition-colors">
-                                <div className="flex items-center gap-2 mb-4">
-                                    {tpl.channel === 'email' ? <Mail size={18} className="text-blue-400" /> : <MessageCircle size={18} className="text-green-400" />}
-                                    <span className="text-sm font-bold text-slate-400 uppercase">{tpl.channel}</span>
-                                    {tpl.isAiPowered && <span className="ml-auto flex items-center gap-1 text-[10px] font-black text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full"><Sparkles size={10} /> AI POWERED</span>}
-                                </div>
-                                <h3 className="font-bold text-white mb-2">{tpl.name}</h3>
-                                <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 text-xs text-slate-400 font-mono mb-4 whitespace-pre-wrap h-24 overflow-hidden relative">
-                                    {tpl.content}
-                                    <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-slate-950 to-transparent"></div>
-                                </div>
-                                <button className="w-full py-2 bg-slate-800 text-white rounded-lg text-sm font-bold hover:bg-purple-600 transition-colors">Editar Template</button>
+            {activeTab === 'templates' && !templateEditorOpen && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {templates.map(tpl => (
+                        <div key={tpl.id} className="bg-slate-900 border border-slate-800 p-6 rounded-2xl group hover:border-purple-500/50 transition-colors">
+                            <div className="flex items-center gap-2 mb-4">
+                                {tpl.channel === 'email' ? <Mail size={18} className="text-blue-400" /> : <MessageCircle size={18} className="text-green-400" />}
+                                <span className="text-sm font-bold text-slate-400 uppercase">{tpl.channel}</span>
+                                {tpl.isAiPowered && <span className="ml-auto flex items-center gap-1 text-[10px] font-black text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full"><Sparkles size={10} /> AI POWERED</span>}
                             </div>
-                        ))}
-                        <button className="border-2 border-dashed border-slate-800 rounded-2xl flex flex-col items-center justify-center p-8 hover:border-purple-500/50 hover:bg-purple-500/5 transition-all">
-                            <Plus size={24} className="text-slate-500 mb-2" />
-                            <span className="text-sm font-bold text-slate-400">Novo Template</span>
+                            <h3 className="font-bold text-white mb-2">{tpl.name}</h3>
+                            <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 text-xs text-slate-400 font-mono mb-4 whitespace-pre-wrap h-24 overflow-hidden relative">
+                                {tpl.content}
+                                <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-slate-950 to-transparent"></div>
+                            </div>
+                            <button
+                                onClick={() => handleEditTemplate(tpl)}
+                                className="w-full py-2 bg-slate-800 text-white rounded-lg text-sm font-bold hover:bg-purple-600 transition-colors"
+                            >
+                                Editar Template
+                            </button>
+                        </div>
+                    ))}
+                    <button
+                        onClick={handleCreateTemplate}
+                        className="border-2 border-dashed border-slate-800 rounded-2xl flex flex-col items-center justify-center p-8 hover:border-purple-500/50 hover:bg-purple-500/5 transition-all"
+                    >
+                        <Plus size={24} className="text-slate-500 mb-2" />
+                        <span className="text-sm font-bold text-slate-400">Novo Template</span>
+                    </button>
+                </div>
+            )}
+
+            {activeTab === 'templates' && templateEditorOpen && (
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-4xl mx-auto w-full animate-in slide-in-from-bottom-10">
+                    <div className="flex justify-between items-center mb-8">
+                        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                            <LayoutTemplate className="text-purple-500" />
+                            {editingTemplate.id ? 'Editar Template' : 'Novo Template'}
+                        </h2>
+                        <button onClick={() => setTemplateEditorOpen(false)} className="text-slate-400 hover:text-white">
+                            <ArrowRight className="rotate-180" /> Voltar
                         </button>
                     </div>
-                )
-            }
+
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-400 mb-2">Nome do Template</label>
+                                <input
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-purple-500 transition-colors"
+                                    placeholder="Ex: Email de Boas Vindas"
+                                    value={editingTemplate.name || ''}
+                                    onChange={e => setEditingTemplate(prev => ({ ...prev, name: e.target.value }))}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-400 mb-2">Canal</label>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setEditingTemplate(prev => ({ ...prev, channel: 'email' }))}
+                                        className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border transition-all ${editingTemplate.channel === 'email' ? 'bg-blue-500/20 border-blue-500 text-blue-400' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500'}`}
+                                    >
+                                        <Mail size={18} /> Email
+                                    </button>
+                                    <button
+                                        onClick={() => setEditingTemplate(prev => ({ ...prev, channel: 'whatsapp' }))}
+                                        className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border transition-all ${editingTemplate.channel === 'whatsapp' ? 'bg-green-500/20 border-green-500 text-green-400' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500'}`}
+                                    >
+                                        <MessageCircle size={18} /> WhatsApp
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {editingTemplate.channel === 'email' && (
+                            <div>
+                                <label className="block text-sm font-bold text-slate-400 mb-2">Assunto do Email</label>
+                                <input
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-purple-500 transition-colors"
+                                    placeholder="Ex: Bem vindo à nossa plataforma!"
+                                    value={editingTemplate.subject || ''}
+                                    onChange={e => setEditingTemplate(prev => ({ ...prev, subject: e.target.value }))}
+                                />
+                            </div>
+                        )}
+
+                        <div>
+                            <div className="flex justify-between items-end mb-2">
+                                <label className="block text-sm font-bold text-slate-400">Conteúdo da Mensagem</label>
+                                <button className="text-xs font-bold text-purple-400 flex items-center gap-1 hover:text-purple-300 transition-colors">
+                                    <Sparkles size={12} /> Melhorar com IA
+                                </button>
+                            </div>
+                            <textarea
+                                className="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-white font-mono text-sm outline-none focus:border-purple-500 transition-colors min-h-[200px] resize-y"
+                                placeholder="Digite o conteúdo aqui... Use {{name}} para variáveis."
+                                value={editingTemplate.content || ''}
+                                onChange={e => setEditingTemplate(prev => ({ ...prev, content: e.target.value }))}
+                            />
+                            <p className="text-xs text-slate-500 mt-2">
+                                Variáveis disponíveis: <span className="bg-slate-800 px-1 rounded text-slate-300">{`{{name}}`}</span>, <span className="bg-slate-800 px-1 rounded text-slate-300">{`{{company}}`}</span>, <span className="bg-slate-800 px-1 rounded text-slate-300">{`{{email}}`}</span>
+                            </p>
+                        </div>
+
+                        <div className="flex justify-end pt-4 border-t border-slate-800">
+                            <button
+                                onClick={handleSaveTemplate}
+                                className="px-8 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl shadow-lg shadow-purple-900/20 transition-all hover:scale-105"
+                            >
+                                Salvar Template
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };
