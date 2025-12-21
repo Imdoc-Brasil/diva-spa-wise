@@ -209,7 +209,18 @@ const SaaSMarketingModule: React.FC = () => {
                         <Bot className="text-purple-500" size={32} />
                         Automação & IA
                     </h2>
-                    <p className="text-slate-400">Configure seus funis de venda automáticos e deixe a IA trabalhar.</p>
+                    <div className="flex items-center gap-2 mt-1">
+                        <p className="text-slate-400">Configure seus funis de venda automáticos e deixe a IA trabalhar.</p>
+                        {import.meta.env.VITE_SUPABASE_URL ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-green-500/10 text-green-400 border border-green-500/20">
+                                Supabase Conectado
+                            </span>
+                        ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                                Modo Mock (Sem Banco)
+                            </span>
+                        )}
+                    </div>
                 </div>
                 <button
                     onClick={handleCreateCampaign}
