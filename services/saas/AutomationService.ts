@@ -133,12 +133,22 @@ class AutomationService {
         };
 
         try {
-            console.log('[Automation] Sending Payload:', payload);
-            const { data, error } = await supabase
+            console.log('[Automation] Sending Payload (Timeout 10s):', payload);
+
+            // Timeout Promise
+            const timeout = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Timeout: O banco de dados demorou muito para responder (10s). Verifique sua conexão.')), 10000)
+            );
+
+            // Database Operation
+            const dbOperation = supabase
                 .from('marketing_templates')
                 .upsert(payload as any)
                 .select()
                 .maybeSingle();
+
+            // Race: Operation vs Timeout
+            const { data, error } = await Promise.race([dbOperation, timeout]) as any;
 
             if (error) {
                 console.error('[Automation] Supabase Error:', error);
@@ -147,11 +157,11 @@ class AutomationService {
 
             if (!data) {
                 console.error('[Automation] No data returned from insert.');
-                throw new Error('Falha ao Salvar: O banco não retornou os dados. Verifique a conexão.');
+                throw new Error('Falha ao Salvar: O banco não retornou os dados. (Verifique RLS/Permissões)');
             }
 
             console.log('[Automation] Save Success:', data);
-            const row = data as any;
+            const row = data;
             return {
                 id: row.id,
                 name: row.name,
