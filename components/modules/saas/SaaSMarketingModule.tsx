@@ -165,11 +165,19 @@ const SaaSMarketingModule: React.FC = () => {
     };
 
     const handleSaveTemplate = async () => {
-        if (!editingTemplate.name || !editingTemplate.content) return addToast('Preencha nome e conteúdo', 'error');
+        console.log('handleSaveTemplate triggered', editingTemplate);
+        addToast('Processando...', 'info');
+
+        if (!editingTemplate.name || !editingTemplate.content) {
+            console.warn('Validation failed');
+            return addToast('Preencha nome e conteúdo', 'error');
+        }
 
         try {
+            console.log('Sending to service...');
             // Optimistic update or wait for server? Wait for server is safer.
             const saved = await automationService.saveTemplate(editingTemplate as MessageTemplate);
+            console.log('Service returned:', saved);
 
             setTemplates(prev => {
                 const exists = prev.find(t => t.id === saved.id);
