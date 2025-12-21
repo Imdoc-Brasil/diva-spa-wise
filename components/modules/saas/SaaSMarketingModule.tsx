@@ -31,7 +31,7 @@ const SaaSMarketingModule: React.FC = () => {
     const { addToast } = useToast();
     const [activeTab, setActiveTab] = useState<'campaigns' | 'templates'>('campaigns');
     const [campaigns, setCampaigns] = useState<MarketingCampaign[]>([]);
-    const [templates, setTemplates] = useState<MessageTemplate[]>(MOCK_TEMPLATES); // State for templates
+    const [templates, setTemplates] = useState<MessageTemplate[]>([]); // State for templates
     const [isLoading, setIsLoading] = useState(true);
     const [editorOpen, setEditorOpen] = useState(false);
     const [editingCampaign, setEditingCampaign] = useState<Partial<MarketingCampaign>>({ steps: [] });
@@ -44,6 +44,7 @@ const SaaSMarketingModule: React.FC = () => {
     // Load Campaigns on Mount
     useEffect(() => {
         loadCampaigns();
+        loadTemplates(); // Load templates on mount
     }, []);
 
     const loadCampaigns = async () => {
@@ -60,6 +61,16 @@ const SaaSMarketingModule: React.FC = () => {
     };
 
     // --- HELPER FUNCTIONS ---
+
+    const loadTemplates = async () => {
+        try {
+            const data = await automationService.listTemplates();
+            setTemplates(data);
+        } catch (error) {
+            console.error(error);
+            addToast('Erro ao carregar templates', 'error');
+        }
+    };
 
     const getActionIcon = (type: AutomationActionType) => {
         switch (type) {
@@ -153,20 +164,30 @@ const SaaSMarketingModule: React.FC = () => {
         }
     };
 
-    const handleSaveTemplate = () => {
+    const handleSaveTemplate = async () => {
         if (!editingTemplate.name || !editingTemplate.content) return addToast('Preencha nome e conteúdo', 'error');
 
-        setTemplates(prev => {
-            const exists = prev.find(t => t.id === editingTemplate.id);
-            if (exists) {
-                return prev.map(t => t.id === editingTemplate.id ? editingTemplate as MessageTemplate : t);
-            }
-            return [...prev, editingTemplate as MessageTemplate];
-        });
+        try {
+            // Optimistic update or wait for server? Wait for server is safer.
+            const saved = await automationService.saveTemplate(editingTemplate as MessageTemplate);
 
-        addToast('Template salvo!', 'success');
-        setTemplateEditorOpen(false);
+            setTemplates(prev => {
+                const exists = prev.find(t => t.id === saved.id);
+                if (exists) {
+                    return prev.map(t => t.id === saved.id ? saved : t);
+                }
+                return [...prev, saved];
+            });
+
+            addToast('Template salvo no Banco!', 'success');
+            setTemplateEditorOpen(false);
+        } catch (error) {
+            console.error(error);
+            addToast('Erro ao salvar template no banco', 'error');
+        }
     };
+
+
 
     const selectedStep = editingCampaign.steps?.find(s => s.id === selectedStepId);
 

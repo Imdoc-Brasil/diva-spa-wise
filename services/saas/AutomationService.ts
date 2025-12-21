@@ -1,6 +1,6 @@
 
 import { SaaSLead } from '../../types_saas';
-import { MarketingCampaign, AutomationAction, AutomationActionType } from '../../types_marketing';
+import { MarketingCampaign, AutomationAction, AutomationActionType, MessageTemplate } from '../../types_marketing';
 import { supabase } from '../supabase';
 
 // Workflows pré-definidos (HARDCODED FOR DEMO)
@@ -97,10 +97,61 @@ class AutomationService {
         };
     }
 
-    async listTemplates(): Promise<any[]> {
+    async listTemplates(): Promise<MessageTemplate[]> {
         if (!supabase) return [];
-        const { data } = await supabase.from('marketing_templates').select('*');
-        return data || [];
+        const { data, error } = await supabase.from('marketing_templates').select('*');
+
+        if (error) {
+            console.error('[Automation] Error fetching templates:', error);
+            return [];
+        }
+
+        return data.map((row: any) => ({
+            id: row.id,
+            name: row.name,
+            channel: row.channel,
+            content: row.content,
+            subject: row.subject,
+            isAiPowered: row.is_ai_powered || false
+        }));
+    }
+
+    async saveTemplate(template: MessageTemplate): Promise<MessageTemplate> {
+        if (!supabase) {
+            console.warn('[Automation] Mock Save Template (No DB connection)');
+            return template;
+        }
+
+        const payload = {
+            id: template.id.length < 30 ? undefined : template.id, // Generate new UUID if temp ID
+            name: template.name,
+            channel: template.channel,
+            content: template.content,
+            subject: template.subject,
+            is_ai_powered: template.isAiPowered,
+            updated_at: new Date().toISOString()
+        };
+
+        const { data, error } = await supabase
+            .from('marketing_templates')
+            .upsert(payload as any)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('[Automation] Error saving template:', error);
+            throw error;
+        }
+
+        const row = data as any;
+        return {
+            id: row.id,
+            name: row.name,
+            channel: row.channel,
+            content: row.content,
+            subject: row.subject,
+            isAiPowered: row.is_ai_powered
+        };
     }
 
     // --- Execution Core ---
