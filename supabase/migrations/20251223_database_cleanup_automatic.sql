@@ -341,18 +341,15 @@ ON CONFLICT (id) DO UPDATE SET
     limits = EXCLUDED.limits;
 
 -- Restore organizations (only basic columns that definitely exist)
-INSERT INTO organizations (id, name, slug, created_at, updated_at)
+INSERT INTO organizations (id, name, slug)
 SELECT 
     COALESCE(id::text, 'org_' || slug) as id,
     name,
-    slug,
-    COALESCE(created_at, NOW()) as created_at,
-    COALESCE(updated_at, NOW()) as updated_at
+    slug
 FROM backup_organizations
 ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
-    slug = EXCLUDED.slug,
-    updated_at = NOW();
+    slug = EXCLUDED.slug;
 
 -- Restore marketing_templates
 INSERT INTO marketing_templates SELECT * FROM backup_marketing_templates
