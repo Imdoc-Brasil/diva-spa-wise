@@ -1,11 +1,13 @@
 -- ============================================
--- CONSOLIDATED SAAS SCHEMA
+-- CONSOLIDATED SAAS SCHEMA - SAFE VERSION
 -- Created: 2025-12-22
+-- Updated: 2025-12-22 19:29
 -- Purpose: Unified schema for all SaaS tables
 -- ============================================
 
 -- This migration consolidates all SaaS-related tables
 -- Execute this AFTER core schema is in place
+-- SAFE: Uses IF NOT EXISTS and ALTER TABLE ADD COLUMN IF NOT EXISTS
 
 -- ============================================
 -- 1. SAAS LEADS (Sales Pipeline)
@@ -58,6 +60,7 @@ CREATE INDEX IF NOT EXISTS idx_saas_leads_created_at ON saas_leads(created_at DE
 
 -- RLS
 ALTER TABLE saas_leads ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Enable all access for saas_leads" ON saas_leads;
 CREATE POLICY "Enable all access for saas_leads" ON saas_leads FOR ALL USING (true);
 
 -- ============================================
@@ -66,7 +69,7 @@ CREATE POLICY "Enable all access for saas_leads" ON saas_leads FOR ALL USING (tr
 
 CREATE TABLE IF NOT EXISTS saas_tasks (
     id TEXT PRIMARY KEY,
-    lead_id TEXT REFERENCES saas_leads(id) ON DELETE CASCADE,
+    lead_id TEXT,
     title TEXT NOT NULL,
     type TEXT NOT NULL,
     due_date TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -75,10 +78,24 @@ CREATE TABLE IF NOT EXISTS saas_tasks (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Add foreign key if table already exists
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'saas_tasks_lead_id_fkey'
+    ) THEN
+        ALTER TABLE saas_tasks 
+        ADD CONSTRAINT saas_tasks_lead_id_fkey 
+        FOREIGN KEY (lead_id) REFERENCES saas_leads(id) ON DELETE CASCADE;
+    END IF;
+END $$;
+
 CREATE INDEX IF NOT EXISTS idx_saas_tasks_lead_id ON saas_tasks(lead_id);
 CREATE INDEX IF NOT EXISTS idx_saas_tasks_due_date ON saas_tasks(due_date);
 
 ALTER TABLE saas_tasks ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Enable all access for saas_tasks" ON saas_tasks;
 CREATE POLICY "Enable all access for saas_tasks" ON saas_tasks FOR ALL USING (true);
 
 -- ============================================
@@ -98,6 +115,7 @@ CREATE TABLE IF NOT EXISTS saas_plans (
 );
 
 ALTER TABLE saas_plans ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Enable all access for saas_plans" ON saas_plans;
 CREATE POLICY "Enable all access for saas_plans" ON saas_plans FOR ALL USING (true);
 
 -- ============================================
@@ -109,7 +127,6 @@ CREATE TABLE IF NOT EXISTS saas_implementation_projects (
     subscriber_id TEXT NOT NULL,
     clinic_name TEXT NOT NULL,
     stage TEXT NOT NULL,
-    status TEXT DEFAULT 'on_track',
     start_date TIMESTAMP WITH TIME ZONE NOT NULL,
     deadline_date TIMESTAMP WITH TIME ZONE NOT NULL,
     modules_checked JSONB DEFAULT '[]'::jsonb,
@@ -118,10 +135,24 @@ CREATE TABLE IF NOT EXISTS saas_implementation_projects (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Add status column if it doesn't exist
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'saas_implementation_projects' 
+        AND column_name = 'status'
+    ) THEN
+        ALTER TABLE saas_implementation_projects 
+        ADD COLUMN status TEXT DEFAULT 'on_track';
+    END IF;
+END $$;
+
 CREATE INDEX IF NOT EXISTS idx_impl_projects_subscriber ON saas_implementation_projects(subscriber_id);
 CREATE INDEX IF NOT EXISTS idx_impl_projects_stage ON saas_implementation_projects(stage);
 
 ALTER TABLE saas_implementation_projects ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Enable all access for impl_projects" ON saas_implementation_projects;
 CREATE POLICY "Enable all access for impl_projects" ON saas_implementation_projects FOR ALL USING (true);
 
 -- ============================================
@@ -150,6 +181,7 @@ CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON saas_support_tickets(st
 CREATE INDEX IF NOT EXISTS idx_support_tickets_created ON saas_support_tickets(created_at DESC);
 
 ALTER TABLE saas_support_tickets ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Enable all access for support_tickets" ON saas_support_tickets;
 CREATE POLICY "Enable all access for support_tickets" ON saas_support_tickets FOR ALL USING (true);
 
 -- ============================================
@@ -175,6 +207,7 @@ CREATE INDEX IF NOT EXISTS idx_feature_requests_status ON saas_feature_requests(
 CREATE INDEX IF NOT EXISTS idx_feature_requests_votes ON saas_feature_requests(votes DESC);
 
 ALTER TABLE saas_feature_requests ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Enable all access for feature_requests" ON saas_feature_requests;
 CREATE POLICY "Enable all access for feature_requests" ON saas_feature_requests FOR ALL USING (true);
 
 -- ============================================
@@ -205,6 +238,8 @@ CREATE INDEX IF NOT EXISTS idx_saas_posts_status ON saas_posts(status);
 CREATE INDEX IF NOT EXISTS idx_saas_posts_published ON saas_posts(published_at DESC);
 
 ALTER TABLE saas_posts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Enable read for saas_posts" ON saas_posts;
+DROP POLICY IF EXISTS "Enable all for saas_posts" ON saas_posts;
 CREATE POLICY "Enable read for saas_posts" ON saas_posts FOR SELECT USING (status = 'published' OR true);
 CREATE POLICY "Enable all for saas_posts" ON saas_posts FOR ALL USING (true);
 
@@ -229,7 +264,13 @@ VALUES
     ('empire', 'Empire', 'enterprise', 0, 0,
      '["Multi-unidades ilimitadas", "Customização total", "Gerente de conta dedicado", "SLA garantido"]'::jsonb,
      '{"maxUsers": -1, "maxClients": -1, "maxStorage": -1}'::jsonb)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    tier = EXCLUDED.tier,
+    monthly_price = EXCLUDED.monthly_price,
+    yearly_price = EXCLUDED.yearly_price,
+    features = EXCLUDED.features,
+    limits = EXCLUDED.limits;
 
 -- ============================================
 -- COMMENTS
