@@ -357,16 +357,12 @@ const SaaSCrmModule: React.FC = () => {
             const { data: orgData, error: orgError } = await supabase
                 .from('organizations')
                 .insert({
+                    id: `org_${slug}`,
                     name: lead.clinicName,
                     slug: slug,
-                    saas_plan: lead.planInterest || 'start',
-                    saas_status: 'trial',
-                    billing_cycle: 'monthly',
+                    type: 'clinic',
                     subscription_status: 'trial',
-                    financial_status: 'pending',
-                    owner_email: lead.email,
-                    owner_name: lead.name,
-                    phone: lead.phone
+                    subscription_plan_id: lead.planInterest || 'start'
                 } as any)
                 .select()
                 .single();
