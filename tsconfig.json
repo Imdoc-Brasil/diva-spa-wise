@@ -16,6 +16,12 @@
     "allowJs": true,
     "jsx": "react-jsx",
     "paths": {
+      "@/types": [
+        "./types/index.ts"
+      ],
+      "@/types/*": [
+        "./types/*"
+      ],
       "@/*": [
         "./*"
       ]

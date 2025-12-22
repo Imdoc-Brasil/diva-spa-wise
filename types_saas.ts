@@ -28,7 +28,7 @@ export interface SaaSLead {
     phone: string;
     stage: SaaSLeadStage;
     planInterest: SaaSPlan; // Qual plano demonstrou interesse
-    source: 'landing_page' | 'referral' | 'outbound' | 'other';
+    source: 'landing_page' | 'referral' | 'outbound' | 'calculator' | 'ebook' | 'other';
     status: 'active' | 'archived'; // Se já foi processado ou não
     notes?: string;
     estimatedValue?: number; // Preço do plano estimado

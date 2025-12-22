@@ -61,7 +61,6 @@ import DemoBanner from './components/ui/DemoBanner';
 import { UserRole } from './types';
 import MasterLayout from './components/MasterLayout';
 import SaaSCrmModule from './components/modules/saas/SaaSCrmModule';
-import SubscribersModule from './components/modules/saas/SubscribersModule';
 import SaaSDashboard from './components/modules/saas/SaaSDashboard';
 import SaaSFinanceModule from './components/modules/saas/SaaSFinanceModule';
 import SalesPageEditorModule from './components/modules/saas/SalesPageEditorModule';
@@ -130,7 +129,6 @@ const AppContent: React.FC = () => {
                         }>
                             <Route index element={<SaaSDashboard />} />
                             <Route path="crm" element={<SaaSCrmModule />} />
-                            <Route path="subscribers" element={<SubscribersModule />} />
                             <Route path="finance" element={<SaaSFinanceModule />} />
                             <Route path="cms" element={<SalesPageEditorModule />} />
                             <Route path="marketing" element={<SaaSMarketingModule />} />

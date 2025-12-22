@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useData } from '../../context/DataContext';
-import { SaaSLead, SaaSLeadStage, SaaSPlan } from '../../../types';
+import { SaaSLead, SaaSLeadStage, SaaSPlan } from '@/types';
 import { TrendingUp, Users, DollarSign, Target, ArrowRight, Zap, Filter, Award, BarChart3, Activity } from 'lucide-react';
 
 const SaaSDashboard: React.FC = () => {

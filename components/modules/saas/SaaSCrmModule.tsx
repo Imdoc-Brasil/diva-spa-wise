@@ -1,6 +1,18 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '../../context/DataContext';
-import { SaaSLead, SaaSLeadStage, SaaSPlan, ImplementationStage, ImplementationProject, SupportTicket, FeatureRequestStatus, FeatureRequestImpact, SupportTicketStatus, SupportTicketPriority } from '../../../types';
+import {
+    SaaSLead,
+    SaaSLeadStage,
+    SaaSPlan,
+    ImplementationStage,
+    ImplementationProject,
+    SupportTicket,
+    FeatureRequestStatus,
+    FeatureRequestImpact,
+    SupportTicketStatus,
+    SupportTicketPriority,
+    BRAZIL_STATES
+} from '@/types';
 import {
     Users, Plus, Search, Filter, MoreHorizontal,
     TrendingUp, DollarSign, Calendar, CheckCircle,
@@ -13,12 +25,6 @@ import { automationService } from '../../../services/saas/AutomationService';
 import { useToast } from '../../ui/ToastContext';
 import { maskPhone, maskCEP, maskCNPJ, maskCpfCnpj } from '../../../utils/masks';
 import { SAAS_PLANS_CONFIG } from './saasPlans';
-
-const BRAZIL_STATES = [
-    'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA',
-    'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
-];
-
 import { SaaSLeadsService } from '../../../services/saas/SaaSLeadsService';
 import { supabase } from '../../../services/supabase';
 
@@ -735,11 +741,44 @@ const SaaSCrmModule: React.FC = () => {
                                                 <div className="flex justify-between items-start mb-3">
                                                     {getPlanBadge(lead.planInterest)}
                                                     <button
-                                                        onClick={(e) => { e.stopPropagation(); }}
-                                                        className="text-slate-600 hover:text-white transition-colors"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setOpenActionMenuId(openActionMenuId === lead.id ? null : lead.id);
+                                                        }}
+                                                        className={`transition-colors ${openActionMenuId === lead.id ? 'text-white' : 'text-slate-600 hover:text-white'}`}
                                                     >
                                                         <MoreHorizontal size={16} />
                                                     </button>
+
+                                                    {/* Kanban Card Action Menu */}
+                                                    {openActionMenuId === lead.id && (
+                                                        <div className="absolute right-2 top-8 w-48 bg-slate-800 border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95">
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); setViewLead(lead); setOpenActionMenuId(null); }}
+                                                                className="w-full text-left px-4 py-3 hover:bg-slate-700 text-xs text-slate-200 block"
+                                                            >
+                                                                Ver Detalhes
+                                                            </button>
+
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleConvertToSubscriber(lead);
+                                                                    setOpenActionMenuId(null);
+                                                                }}
+                                                                className="w-full text-left px-4 py-3 hover:bg-emerald-900/50 text-xs text-emerald-400 font-bold border-t border-white/5 block flex items-center gap-2"
+                                                            >
+                                                                ✨ Converter em Assinante
+                                                            </button>
+
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); /* Archive Logic */ setOpenActionMenuId(null); }}
+                                                                className="w-full text-left px-4 py-3 hover:bg-red-900/50 text-xs text-red-400 border-t border-white/5 block"
+                                                            >
+                                                                Arquivar Lead
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                                 <h4 className="font-bold text-white text-lg leading-tight mb-1">{lead.clinicName}</h4>
@@ -2173,6 +2212,7 @@ const SaaSCrmModule: React.FC = () => {
                                                                 <Calendar size={14} className="text-purple-400" /> Criar Assinatura
                                                             </button>
                                                         )}
+
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); handleBlockAccess(sub); }}
                                                             className="w-full text-left px-4 py-3 hover:bg-red-900/20 text-sm text-red-400 flex items-center gap-2 border-t border-white/5"
