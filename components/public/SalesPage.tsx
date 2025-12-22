@@ -11,6 +11,7 @@ import { useData } from '../context/DataContext';
 import { SaaSLead, SaaSLeadStage, SaaSPlan } from '../../types';
 import { useToast } from '../../components/ui/ToastContext';
 import { supabase } from '../../services/supabase';
+import { PlansService } from '../../services/saas/PlansService';
 
 
 const SalesPage: React.FC = () => {
@@ -55,11 +56,9 @@ const SalesPage: React.FC = () => {
 
     useEffect(() => {
         const fetchPlans = async () => {
-            const { data } = await supabase.from('saas_plans').select('*');
-            if (data) {
-                const PLAN_ORDER = ['start', 'growth', 'experts', 'empire'];
-                const sortedPlans = (data as any[]).sort((a, b) => PLAN_ORDER.indexOf(a.key) - PLAN_ORDER.indexOf(b.key));
-                setPlans(sortedPlans);
+            const data = await PlansService.listPlans();
+            if (data && data.length > 0) {
+                setPlans(data);
             }
         };
         fetchPlans();

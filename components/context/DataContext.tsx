@@ -4,6 +4,7 @@ import { MOCK_TREATMENT_PLANS, MOCK_TREATMENT_TEMPLATES } from '../../utils/mock
 import { useToast } from '../ui/ToastContext';
 import { useOrganization } from './OrganizationContext';
 import { supabase } from '../../services/supabase';
+import { SaaSLeadsService } from '../../services/saas/SaaSLeadsService';
 
 
 
@@ -2256,66 +2257,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [currentOrgId]);
 
   const fetchSaaSLeads = async () => {
-    if (!supabase) return;
     try {
-      // 1. Fetch LEADS
-      const { data: leadsData, error: leadsError } = await (supabase.from('saas_leads') as any)
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (leadsError) throw leadsError;
-
-      // 2. Fetch TASKS
-      const { data: tasksData, error: tasksError } = await (supabase.from('saas_tasks') as any)
-        .select('*');
-
-      if (tasksError) {
-        console.error("Error fetching tasks:", tasksError);
-      }
-
-      const tasksByLeadId = (tasksData || []).reduce((acc: any, task: any) => {
-        if (!acc[task.lead_id]) acc[task.lead_id] = [];
-        acc[task.lead_id].push(task);
-        return acc;
-      }, {});
-
-      if (leadsData) {
-        const mapped: SaaSLead[] = leadsData.map((d: any) => ({
-          id: d.id,
-          name: d.name,
-          clinicName: d.clinic_name,
-          legalName: d.legal_name,
-          email: d.email,
-          phone: d.phone,
-          stage: (d.status ? (d.status.charAt(0).toUpperCase() + d.status.slice(1)) : 'New') as SaaSLeadStage,
-          planInterest: d.plan_interest as SaaSPlan,
-          source: d.source,
-          status: 'active',
-          notes: d.notes,
-          estimatedValue: d.estimated_value || 0,
-          cnpj: d.cnpj,
-          address: d.address,
-          number: d.number,
-          complement: d.complement,
-          neighborhood: d.neighborhood,
-          city: d.city,
-          state: d.state,
-          zipCode: d.zip_code,
-          paymentMethod: d.paymentMethod,
-          recurrence: d.recurrence,
-          trialStartDate: d.trial_start_date,
-          tasks: (tasksByLeadId[d.id] || []).map((t: any) => ({
-            id: t.id,
-            leadId: t.lead_id,
-            title: t.title,
-            type: t.type,
-            dueDate: t.due_date,
-            isCompleted: t.is_completed
-          })),
-          createdAt: d.created_at,
-          updatedAt: d.updated_at
-        }));
-        setSaaSLeads(mapped);
+      const data = await SaaSLeadsService.getAllLeads();
+      if (data) {
+        setSaaSLeads(data);
       }
     } catch (error) {
       console.error('Error fetching SaaS Leads:', error);

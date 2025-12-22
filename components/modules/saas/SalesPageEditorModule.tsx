@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
 import { useToast } from '../../ui/ToastContext';
 import { supabase } from '../../../services/supabase';
+import { PlansService } from '../../../services/saas/PlansService';
 import {
     Save, Globe, Activity, Layout, Type,
     Search, Image as ImageIcon, Settings, CheckCircle, DollarSign, FileText
@@ -27,22 +28,19 @@ const SalesPageEditorModule: React.FC = () => {
 
     const fetchPlans = async () => {
         setLoadingPlans(true);
-        const { data, error } = await supabase.from('saas_plans').select('*');
-        if (error) {
-            console.error('Error fetching plans:', error);
-            addToast('Erro ao carregar planos. Tabela não encontrada?', 'error');
-        }
-        if (data) {
-            const PLAN_ORDER = ['start', 'growth', 'experts', 'empire'];
-            const sortedPlans = (data as any[]).sort((a, b) => PLAN_ORDER.indexOf(a.key) - PLAN_ORDER.indexOf(b.key));
-            setPlans(sortedPlans);
+        const data = await PlansService.listPlans();
+        if (data && data.length > 0) {
+            setPlans(data);
+        } else {
+            // If local dev or empty, keep empty or show error
+            addToast('Nenhum plano carregado ou erro de conexão.', 'error');
         }
         setLoadingPlans(false);
     };
 
     const handleUpdatePlan = async (planId: string, updates: any) => {
-        const { error } = await (supabase.from('saas_plans') as any).update(updates).eq('id', planId);
-        if (!error) {
+        const success = await PlansService.updatePlan(planId, updates);
+        if (success) {
             addToast('Plano atualizado!', 'success');
             setPlans(plans.map(p => p.id === planId ? { ...p, ...updates } : p));
         } else {

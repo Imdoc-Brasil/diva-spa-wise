@@ -19,6 +19,8 @@ const BRAZIL_STATES = [
     'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
 ];
 
+import { SaaSLeadsService } from '../../../services/saas/SaaSLeadsService';
+
 const SaaSCrmModule: React.FC = () => {
     const {
         saasLeads, updateSaaSLead, addSaaSLead, addSaaSTask, toggleSaaSTask, deleteSaaSTask,
