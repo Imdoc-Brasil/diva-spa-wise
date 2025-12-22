@@ -148,8 +148,21 @@ BEGIN
     END IF;
 END $$;
 
+-- Create indexes (status index only if column exists)
 CREATE INDEX IF NOT EXISTS idx_impl_projects_subscriber ON saas_implementation_projects(subscriber_id);
 CREATE INDEX IF NOT EXISTS idx_impl_projects_stage ON saas_implementation_projects(stage);
+
+-- Create status index only if column exists
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'saas_implementation_projects' 
+        AND column_name = 'status'
+    ) THEN
+        CREATE INDEX IF NOT EXISTS idx_impl_projects_status ON saas_implementation_projects(status);
+    END IF;
+END $$;
 
 ALTER TABLE saas_implementation_projects ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Enable all access for impl_projects" ON saas_implementation_projects;
