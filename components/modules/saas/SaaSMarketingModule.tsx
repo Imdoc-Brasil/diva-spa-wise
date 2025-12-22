@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
     Zap, Mail, MessageCircle, Clock, Plus, Play, Pause,
     MoreHorizontal, ArrowRight, Settings, Trash2, Bot,
-    Sparkles, LayoutTemplate, MousePointerClick, Folder, Search
+    Sparkles, LayoutTemplate, MousePointerClick, Folder, Search, Copy, FolderInput
 } from 'lucide-react';
 import { useToast } from '../../ui/ToastContext';
 import { MarketingCampaign, MessageTemplate, AutomationActionType } from '../../../types_marketing';
@@ -44,13 +44,60 @@ const SaaSMarketingModule: React.FC = () => {
     // UI State for Campaigns
     const [searchTerm, setSearchTerm] = useState('');
     const [activeFolder, setActiveFolder] = useState<string>('all');
+    const [customFolders, setCustomFolders] = useState<string[]>([]);
 
-    // Extract unique folders from campaigns + defaults
+    // Extract unique folders from campaigns + defaults + custom
     const availableFolders = React.useMemo(() => {
-        const unique = new Set(['Geral', 'Onboarding', 'Vendas']);
+        const unique = new Set(['Geral', 'Onboarding', 'Vendas', ...customFolders]);
         campaigns.forEach(c => c.folder && unique.add(c.folder));
         return Array.from(unique);
-    }, [campaigns]);
+    }, [campaigns, customFolders]);
+
+    const handleCreateFolder = () => {
+        const name = window.prompt('Nome da nova pasta:');
+        if (name) {
+            setCustomFolders(prev => [...prev, name]);
+            setActiveFolder(name);
+        }
+    };
+
+    const handleMoveCampaign = async (campaign: MarketingCampaign) => {
+        const currentFolder = campaign.folder || 'Geral';
+        const folder = window.prompt('Mover para pasta:', currentFolder);
+        if (folder && folder !== currentFolder) {
+            try {
+                const updated = { ...campaign, folder };
+                // Optimistic update
+                setCampaigns(prev => prev.map(c => c.id === campaign.id ? updated : c));
+                await automationService.saveCampaign(updated);
+                addToast(`Movido para ${folder}`, 'success');
+
+                // Add to custom folders if new
+                if (!availableFolders.includes(folder)) {
+                    setCustomFolders(prev => [...prev, folder]);
+                }
+            } catch (e) {
+                addToast('Erro ao mover', 'error');
+            }
+        }
+    };
+
+    const handleDuplicateCampaign = async (campaign: MarketingCampaign) => {
+        const newCamp = {
+            ...campaign,
+            id: crypto.randomUUID(),
+            name: `${campaign.name} (Cópia)`,
+            status: 'draft' as const,
+            createdAt: new Date().toISOString(),
+            stats: { enrolled: 0, completed: 0, converted: 0 }
+        };
+
+        const saved = await automationService.saveCampaign(newCamp);
+        if (saved) {
+            setCampaigns(prev => [saved, ...prev]);
+            addToast('Duplicado com sucesso!', 'success');
+        }
+    };
 
     const filteredCampaigns = React.useMemo(() => {
         return campaigns.filter(c => {
@@ -307,6 +354,13 @@ const SaaSMarketingModule: React.FC = () => {
                                     <Folder size={14} className="inline mr-2" /> {f}
                                 </button>
                             ))}
+                            <button
+                                onClick={handleCreateFolder}
+                                className="px-3 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors bg-slate-800/50 text-slate-500 hover:text-purple-400 border border-dashed border-slate-700 hover:border-purple-500/50 flex items-center gap-1"
+                                title="Criar Nova Pasta"
+                            >
+                                <Plus size={14} />
+                            </button>
                         </div>
                         <div className="relative w-full md:w-72">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
@@ -360,12 +414,16 @@ const SaaSMarketingModule: React.FC = () => {
                                             <span className="font-mono text-sm font-bold text-purple-400">{((camp.stats.converted / (camp.stats.enrolled || 1)) * 100).toFixed(0)}%</span>
                                         </td>
                                         <td className="p-4 text-right">
-                                            <button
-                                                onClick={() => { setEditingCampaign(camp); setEditorOpen(true); }}
-                                                className="text-slate-500 hover:text-white p-2 hover:bg-slate-800 rounded-lg transition-colors"
-                                            >
-                                                <Settings size={18} />
-                                            </button>
+                                            <div className="dropdown dropdown-end">
+                                                <button tabIndex={0} className="text-slate-500 hover:text-white p-2 hover:bg-slate-800 rounded-lg transition-colors">
+                                                    <MoreHorizontal size={18} />
+                                                </button>
+                                                <ul tabIndex={0} className="dropdown-content z-[20] menu p-2 shadow-2xl bg-slate-900 border border-slate-700 rounded-xl w-52 mt-1">
+                                                    <li><button onClick={() => { setEditingCampaign(camp); setEditorOpen(true); }} className="text-slate-300 hover:text-white hover:bg-slate-800"><Settings size={14} /> Editar</button></li>
+                                                    <li><button onClick={() => handleMoveCampaign(camp)} className="text-slate-300 hover:text-white hover:bg-slate-800"><FolderInput size={14} /> Mover para...</button></li>
+                                                    <li><button onClick={() => handleDuplicateCampaign(camp)} className="text-slate-300 hover:text-white hover:bg-slate-800"><Copy size={14} /> Duplicar</button></li>
+                                                </ul>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
