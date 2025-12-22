@@ -22,7 +22,7 @@ export const PlansService = {
         }
 
         try {
-            const response = await fetch(`${PROJECT_URL}/rest/v1/saas_plans?select=*&active=eq.true&order=monthly_price.asc`, {
+            const response = await fetch(`${PROJECT_URL}/rest/v1/saas_plans?select=*&order=monthly_price.asc`, {
                 method: 'GET',
                 headers: {
                     'apikey': ANON_KEY,

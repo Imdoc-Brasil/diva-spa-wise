@@ -28,14 +28,21 @@ const SalesPageEditorModule: React.FC = () => {
 
     const fetchPlans = async () => {
         setLoadingPlans(true);
-        const data = await PlansService.listPlans();
-        if (data && data.length > 0) {
-            setPlans(data);
-        } else {
-            // If local dev or empty, keep empty or show error
-            addToast('Nenhum plano carregado ou erro de conexão.', 'error');
+        try {
+            const data = await PlansService.listPlans();
+            if (data && data.length > 0) {
+                setPlans(data);
+            } else {
+                setPlans([]);
+                // Trigger only if we expected data but got none
+                // addToast('Nenhum plano encontrado.', 'info');
+            }
+        } catch (e) {
+            console.error(e);
+            addToast('Erro ao carregar planos.', 'error');
+        } finally {
+            setLoadingPlans(false);
         }
-        setLoadingPlans(false);
     };
 
     const handleUpdatePlan = async (planId: string, updates: any) => {
@@ -480,7 +487,14 @@ const SalesPageEditorModule: React.FC = () => {
                         </div>
 
                         {loadingPlans ? (
-                            <div className="text-center py-8 text-slate-400">Carregando planos...</div>
+                            <div className="text-center py-8 text-slate-400">
+                                <div className="animate-spin w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+                                Carregando planos...
+                            </div>
+                        ) : plans.length === 0 ? (
+                            <div className="text-center py-8 text-slate-500 bg-slate-800/50 rounded-xl border border-dashed border-slate-700">
+                                Nenhum plano encontrado na base de dados.
+                            </div>
                         ) : (
                             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                                 {plans.map(plan => (
