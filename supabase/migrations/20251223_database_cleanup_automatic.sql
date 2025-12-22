@@ -343,7 +343,7 @@ ON CONFLICT (id) DO UPDATE SET
 -- Restore organizations (only basic columns that definitely exist)
 INSERT INTO organizations (id, name, slug, created_at, updated_at)
 SELECT 
-    COALESCE(id, 'org_' || slug) as id,
+    COALESCE(id::text, 'org_' || slug) as id,
     name,
     slug,
     COALESCE(created_at, NOW()) as created_at,
