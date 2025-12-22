@@ -20,6 +20,12 @@ const createUser = (role: UserRole): User => {
   let staffId: string | undefined = undefined;
   let clientId: string | undefined = undefined;
 
+  if (role === UserRole.MASTER) {
+    name = 'Super Admin (SaaS)';
+  }
+  if (role === UserRole.SAAS_STAFF) {
+    name = 'Suporte I\'mDoc';
+  }
   if (role === UserRole.CLIENT) {
     name = 'Julia Cliente';
     clientId = 'c1';
@@ -627,84 +633,9 @@ const initialCampaigns: MarketingCampaign[] = [
   },
 ];
 
-const initialSaaSLeads: SaaSLead[] = [
-  {
-    id: 'sl1',
-    name: 'Dra. Mariana Costa',
-    clinicName: 'Clínica Dermato Costa',
-    email: 'mariana.costa@clinic.com',
-    phone: '(11) 98765-4321',
-    stage: SaaSLeadStage.NEW,
-    planInterest: SaaSPlan.GROWTH,
-    source: 'landing_page',
-    status: 'active',
-    notes: 'Interessada em automação de WhatsApp.',
-    estimatedValue: 597,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: 'sl2',
-    name: 'Dr. Fernando Silva',
-    clinicName: 'Silva Estética',
-    email: 'dr.fernando@silva.com',
-    phone: '(21) 91234-5678',
-    stage: SaaSLeadStage.DEMO_SCHEDULED,
-    planInterest: SaaSPlan.EMPIRE,
-    source: 'referral',
-    status: 'active',
-    notes: 'Agendado demo para próxima terça. Possui 3 unidades.',
-    estimatedValue: 997,
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: 'sl3',
-    name: 'Carla Perez',
-    clinicName: 'Spa da Carla',
-    email: 'carla@spa.com',
-    phone: '(71) 99999-0000',
-    stage: SaaSLeadStage.TRIAL_STARTED,
-    planInterest: SaaSPlan.START,
-    source: 'landing_page',
-    status: 'active',
-    notes: 'Trial iniciado ontem.',
-    estimatedValue: 297,
-    createdAt: new Date(Date.now() - 172800000).toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-];
+const initialSaaSLeads: SaaSLead[] = [];
 
-const initialSaaSSubscribers: SaaSSubscriber[] = [
-  {
-    id: 'org_demo',
-    clinicName: 'Diva Spa Demonstração',
-    adminName: 'Admin Demo',
-    adminEmail: 'admin@divaspa.com',
-    adminPhone: '(11) 99999-9999',
-    plan: SaaSPlan.EMPIRE,
-    status: 'active',
-    mrr: 997,
-    joinedAt: '2023-01-01T00:00:00Z',
-    nextBillingDate: '2023-12-01T00:00:00Z',
-    usersCount: 5,
-    smsBalance: 500
-  },
-  {
-    id: 'sub_2',
-    clinicName: 'Royal Face Jardins',
-    adminName: 'Dra. Ana Vilela',
-    adminEmail: 'ana@royalface.com',
-    adminPhone: '(11) 98888-7777',
-    plan: SaaSPlan.GROWTH,
-    status: 'active',
-    mrr: 597,
-    joinedAt: '2023-06-15T00:00:00Z',
-    nextBillingDate: '2023-11-15T00:00:00Z',
-    usersCount: 3,
-    smsBalance: 120
-  }
-];
+const initialSaaSSubscribers: SaaSSubscriber[] = [];
 
 
 const initialAutomations: AutomationRule[] = [
@@ -1051,7 +982,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     if (currentOrgId !== 'org_demo') {
       fetchClients();
-      fetchAppointments(); // Add this call
+      fetchAppointments();
+      fetchTransactions();
     }
   }, [currentOrgId]);
 
@@ -1161,6 +1093,43 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     }
   }
+
+
+  // --- REAL TRANSACTIONS (Supabase) ---
+  const fetchTransactions = async () => {
+    if (currentOrgId === 'org_demo') return;
+
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('organization_id', currentOrgId)
+        .order('date', { ascending: false });
+
+      if (error) throw error;
+
+      if (data) {
+        const realTransactions: Transaction[] = data.map((d: any) => ({
+          id: d.id,
+          organizationId: d.organization_id,
+          description: d.description,
+          category: d.category,
+          amount: parseFloat(d.amount),
+          type: d.type as any,
+          status: d.status as any,
+          date: d.date,
+          paymentMethod: d.payment_method,
+          unitId: d.unit_id,
+          revenueType: d.revenue_type
+        }));
+        setTransactions(realTransactions);
+        console.log('💰 Transações carregadas:', realTransactions.length);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar transações:', error);
+      addToast('Erro ao sincronizar financeiro.', 'error');
+    }
+  };
 
 
   // --- REAL AGENDAS (Supabase) ---
@@ -1381,10 +1350,41 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const addTransaction = (transaction: Omit<Transaction, 'organizationId'>) => {
-    const newTransaction: Transaction = { ...transaction, organizationId: currentOrgId };
-    setTransactions(prev => [...prev, newTransaction]);
-    addToast('Transação adicionada!', 'success');
+  const addTransaction = async (transaction: Omit<Transaction, 'organizationId'>) => {
+    // 1. Optimistic
+    const tempId = transaction.id || `t_${Date.now()}`;
+    const newTransaction: Transaction = { ...transaction, id: tempId, organizationId: currentOrgId };
+    setTransactions(prev => [newTransaction, ...prev]);
+
+    // 2. Supabase
+    if (currentOrgId !== 'org_demo') {
+      try {
+        const { error } = await (supabase
+          .from('transactions') as any)
+          .insert([{
+            id: tempId,
+            organization_id: currentOrgId,
+            description: transaction.description,
+            category: transaction.category,
+            amount: transaction.amount,
+            type: transaction.type,
+            status: transaction.status,
+            date: transaction.date,
+            payment_method: transaction.paymentMethod,
+            unit_id: transaction.unitId,
+            revenue_type: transaction.revenueType,
+            related_appointment_id: transaction.relatedAppointmentId
+          }]);
+
+        if (error) throw error;
+        addToast('Transação salva na nuvem!', 'success');
+      } catch (error: any) {
+        console.error('Erro ao salvar transação:', error);
+        addToast('Erro ao salvar financeiro: ' + error.message, 'error');
+      }
+    } else {
+      addToast('Transação adicionada (Demo)!', 'success');
+    }
   };
 
   const updateTransaction = (id: string, updates: Partial<Transaction>) => {
@@ -1556,8 +1556,25 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const login = (role: UserRole, realUser?: User) => {
+  const login = async (role: UserRole, realUser?: User) => {
     if (realUser) {
+      // SECURITY CHECK: Verify if organization is locked/suspended
+      if (realUser.organizationId && realUser.organizationId !== 'org_demo' && supabase) {
+        const { data: orgData, error } = await supabase
+          .from('organizations')
+          .select('subscription_status')
+          .eq('id', realUser.organizationId)
+          .single();
+
+        if (orgData) {
+          const status = (orgData as any).subscription_status;
+          if (status === 'suspended' || status === 'cancelled' || status === 'delinquent') {
+            addToast(`Acesso Bloqueado. Status da conta: ${status.toUpperCase()}`, 'error');
+            return; // STOP LOGIN
+          }
+        }
+      }
+
       setCurrentUser(realUser);
       addToast(`Bem-vindo de volta!`, 'success');
     } else {
@@ -1892,17 +1909,20 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [saasSubscribers]);
 
   const addSaaSLead = async (lead: SaaSLead) => {
+    // Optimistic Update
     setSaaSLeads(prev => [...prev, lead]);
 
     if (supabase) {
-      const { error } = await (supabase.from('saas_leads') as any).insert({
+      const { data, error } = await (supabase.from('saas_leads') as any).insert({
+        id: lead.id,
         name: lead.name,
         email: lead.email,
         phone: lead.phone,
         clinic_name: lead.clinicName,
         legal_name: lead.legalName,
         plan_interest: lead.planInterest,
-        status: 'new',
+        stage: lead.stage || 'new', // Ensure stage is saved
+        status: lead.status || 'active',
         estimated_value: lead.estimatedValue,
         cnpj: lead.cnpj,
         address: lead.address,
@@ -1915,15 +1935,22 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         payment_method: lead.paymentMethod,
         recurrence: lead.recurrence,
         trial_start_date: lead.trialStartDate
-      });
+      }).select().single();
+
       if (error) {
         console.error('Supabase Error:', error);
-        addToast('Erro ao salvar lead no banco.', 'error');
+        addToast(`Erro ao salvar lead no banco: ${error.message}`, 'error');
+        // Rollback optimistic update could be done here
+        return false;
       } else {
-        addToast('Solicitação enviada! (Salvo no Banco)', 'success');
+        // Update the temporary ID with the real ID from DB (though we sent an ID, it's good practice)
+        setSaaSLeads(prev => prev.map(l => l.id === lead.id ? { ...l, id: data.id } : l));
+        addToast('Lead salvo com sucesso!', 'success');
+        return true;
       }
     } else {
-      addToast('Lead SaaS registrado com sucesso!', 'success');
+      addToast('Lead SaaS registrado (modo offline)!', 'success');
+      return true;
     }
   };
 
@@ -2189,9 +2216,11 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             joinedAt: o.created_at,
             nextBillingDate: new Date().toISOString(),
             usersCount: 1,
-            smsBalance: 0
+            smsBalance: 0,
+            recurrence: o.billing_cycle || 'monthly',
+            financialStatus: o.financial_status || 'paid'
           }));
-          setSaaSSubscribers(mapped);
+          setSaaSSubscribers(mapped); // Ensure set is called with mapped data (fix array closure)
         }
       } else if (data) {
         const mapped: SaaSSubscriber[] = (data as any[]).map((d: any) => ({
@@ -2206,7 +2235,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           joinedAt: d.joined_at,
           nextBillingDate: new Date().toISOString(),
           usersCount: d.users_count || 0,
-          smsBalance: 0
+          smsBalance: 0,
+          recurrence: d.billing_cycle || 'monthly',
+          financialStatus: 'paid' // Default for RPC if missing
         }));
 
         // --- FEATURE: Merge Closed Leads as Pending Subscribers ---

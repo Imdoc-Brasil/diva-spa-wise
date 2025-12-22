@@ -53,7 +53,7 @@ export const SaaSLeadsService = {
                     legalName: d.legal_name,
                     email: d.email,
                     phone: d.phone,
-                    stage: mapStatusToStage(d.status),
+                    stage: mapStatusToStage(d.stage || d.status),
                     planInterest: d.plan_interest as SaaSPlan,
                     source: d.source || 'website',
                     status: 'active',

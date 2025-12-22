@@ -276,47 +276,63 @@ const SaaSCrmModule: React.FC = () => {
         state: ''
     });
 
+    // Initialize estimated value when modal opens or plan changes
+    React.useEffect(() => {
+        if (showNewLeadModal) {
+            const config = SAAS_PLANS_CONFIG[newLeadData.planInterest || SaaSPlan.GROWTH];
+            // Only auto-set if it's 0 (fresh) to avoid overwriting user input
+            if (newLeadData.estimatedValue === 0 && config) {
+                setNewLeadData(prev => ({ ...prev, estimatedValue: config.monthlyPrice }));
+            }
+        }
+    }, [showNewLeadModal, newLeadData.planInterest]);
+
     const handleCreateLead = async () => {
         if (!newLeadData.name || !newLeadData.clinicName || !newLeadData.email || !newLeadData.phone) {
             addToast('Preencha Nome, Clínica, Email e Telefone.', 'error');
             return;
         }
 
-        const newLead = {
-            id: `temp_${Date.now()}`,
-            name: newLeadData.name,
-            clinicName: newLeadData.clinicName,
-            legalName: newLeadData.legalName,
-            email: newLeadData.email,
-            phone: newLeadData.phone,
-            planInterest: newLeadData.planInterest as SaaSPlan,
-            stage: SaaSLeadStage.NEW,
-            source: 'outbound' as const,
-            status: 'active' as const,
-            notes: '',
-            cnpj: newLeadData.cnpj,
-            address: newLeadData.address,
-            number: newLeadData.number,
-            complement: newLeadData.complement,
-            neighborhood: newLeadData.neighborhood,
-            city: newLeadData.city,
-            state: newLeadData.state,
-            estimatedValue: newLeadData.estimatedValue || 0,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        };
+        try {
+            const newLead: SaaSLead = {
+                id: crypto.randomUUID(),
+                name: newLeadData.name!,
+                clinicName: newLeadData.clinicName!,
+                legalName: newLeadData.legalName,
+                email: newLeadData.email!,
+                phone: newLeadData.phone!,
+                planInterest: newLeadData.planInterest as SaaSPlan,
+                stage: SaaSLeadStage.NEW,
+                source: 'outbound',
+                status: 'active',
+                notes: '',
+                cnpj: newLeadData.cnpj,
+                address: newLeadData.address,
+                number: newLeadData.number,
+                complement: newLeadData.complement,
+                neighborhood: newLeadData.neighborhood,
+                city: newLeadData.city,
+                state: newLeadData.state,
+                estimatedValue: newLeadData.estimatedValue || 0,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
 
-        addSaaSLead(newLead);
+            await addSaaSLead(newLead);
 
-        // Trigger Automation for Manual Lead
-        await automationService.processConversion('MANUAL_LEAD_CREATED', newLead);
+            // Trigger Automation for Manual Lead
+            await automationService.processConversion('MANUAL_LEAD_CREATED', newLead);
 
-        setShowNewLeadModal(false);
-        setNewLeadData({
-            name: '', clinicName: '', legalName: '', email: '', phone: '',
-            planInterest: SaaSPlan.GROWTH, estimatedValue: 0, cnpj: '',
-            address: '', number: '', complement: '', neighborhood: '', city: '', state: ''
-        });
+            setShowNewLeadModal(false);
+            setNewLeadData({
+                name: '', clinicName: '', legalName: '', email: '', phone: '',
+                planInterest: SaaSPlan.GROWTH, estimatedValue: 0, cnpj: '',
+                address: '', number: '', complement: '', neighborhood: '', city: '', state: ''
+            });
+        } catch (error) {
+            console.error(error);
+            addToast('Erro ao criar lead. Tente novamente.', 'error');
+        }
     };
 
     // --- NEW SUPPORT TICKET STATE ---
@@ -1987,7 +2003,9 @@ const SaaSCrmModule: React.FC = () => {
                                         <th className="p-4">Clínica</th>
                                         <th className="p-4">Admin</th>
                                         <th className="p-4">Plano</th>
-                                        <th className="p-4">Status</th>
+                                        <th className="p-4">Ciclo</th>
+                                        <th className="p-4">Status Conta</th>
+                                        <th className="p-4">Status Pag.</th>
                                         <th className="p-4">Receita (MRR)</th>
                                         <th className="p-4">Próxima Cobrança</th>
                                         <th className="p-4 text-right">Ações</th>
@@ -2009,6 +2027,9 @@ const SaaSCrmModule: React.FC = () => {
                                             <td className="p-4">
                                                 {getPlanBadge(sub.plan)}
                                             </td>
+                                            <td className="p-4 text-slate-300 capitalize">
+                                                {sub.recurrence === 'monthly' ? 'Mensal' : 'Anual'}
+                                            </td>
                                             <td className="p-4">
                                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${sub.status === 'active' ? 'bg-green-500/20 text-green-400' :
                                                     sub.status === 'trial' ? 'bg-pink-500/20 text-pink-400' :
@@ -2016,6 +2037,14 @@ const SaaSCrmModule: React.FC = () => {
                                                             'bg-slate-700 text-slate-400'
                                                     }`}>
                                                     {sub.status === 'delinquent' ? 'Inadimplente' : sub.status}
+                                                </span>
+                                            </td>
+                                            <td className="p-4">
+                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${sub.financialStatus === 'paid' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                                                    sub.financialStatus === 'overdue' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                                                        'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                                                    }`}>
+                                                    {sub.financialStatus === 'paid' ? 'Pago' : sub.financialStatus === 'overdue' ? 'Atrasado' : 'Pendente'}
                                                 </span>
                                             </td>
                                             <td className="p-4 font-mono text-slate-300">

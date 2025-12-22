@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { UserRole } from '../types';
-import { Lock, Mail, ArrowRight, User, Shield, Stethoscope, Sparkles, CheckCircle, ChevronRight } from 'lucide-react';
+import { Lock, Mail, ArrowRight, User, Shield, Stethoscope, Sparkles, CheckCircle, ChevronRight, Headphones } from 'lucide-react';
 
 import { supabase } from '../services/supabase';
 
@@ -16,15 +17,44 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [showContent, setShowContent] = useState(false);
 
-    // Animation trigger on mount
+    const { orgSlug } = useParams<{ orgSlug: string }>();
+    const [clinicBranding, setClinicBranding] = useState<{ name: string, logo?: string } | null>(null);
+
+    // Animation trigger on mount & Org Slug Check
     useEffect(() => {
         setShowContent(true);
-    }, []);
+
+        // Simulate fetching branding based on slug
+        if (orgSlug) {
+            // In real app: await supabase.from('organizations').select('name, logo').eq('slug', orgSlug).single();
+            const knownSlugs: Record<string, string> = {
+                'demo': 'Diva Spa Demo',
+                'royal-face': 'Royal Face Jardins',
+                'dr-silva': 'Dr. Silva Dermatologia'
+            };
+
+            if (knownSlugs[orgSlug]) {
+                setClinicBranding({ name: knownSlugs[orgSlug] });
+            } else {
+                // Fallback: format slug to title case
+                const name = orgSlug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                setClinicBranding({ name });
+            }
+        }
+    }, [orgSlug]);
 
     const handleRoleSelect = (role: UserRole) => {
         setSelectedRole(role);
         // Auto-fill for demo purposes based on role
         switch (role) {
+            case UserRole.MASTER:
+                setEmail('master@imdoc.com');
+                setPassword('master123');
+                break;
+            case UserRole.SAAS_STAFF:
+                setEmail('support@imdoc.com');
+                setPassword('support123');
+                break;
             case UserRole.ADMIN:
                 setEmail('admin@imdoc.com');
                 setPassword('admin123'); // Auto-filled for demo
@@ -51,7 +81,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         e.preventDefault();
 
         // Demo Emails Bypass
-        const demoEmails = ['admin@imdoc.com', 'dra.julia@imdoc.com', 'dra.julia@divaspa.com', 'client@imdoc.com', 'financeiro@imdoc.com', 'ana.silva@gmail.com'];
+        const demoEmails = ['master@imdoc.com', 'support@imdoc.com', 'admin@imdoc.com', 'dra.julia@imdoc.com', 'dra.julia@divaspa.com', 'client@imdoc.com', 'financeiro@imdoc.com', 'ana.silva@gmail.com'];
 
         if (selectedRole && demoEmails.includes(email)) {
             setIsLoading(true);
@@ -95,6 +125,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
                 // Determine Role
                 let roleEnum = UserRole.ADMIN;
+                if (p?.role === 'master') roleEnum = UserRole.MASTER;
+                if (p?.role === 'saas_staff') roleEnum = UserRole.SAAS_STAFF;
                 if (p?.role === 'staff') roleEnum = UserRole.STAFF;
                 if (p?.role === 'client') roleEnum = UserRole.CLIENT;
                 // Explicitly handle 'owner' as ADMIN
@@ -179,8 +211,17 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                             <span className="text-xl font-serif font-bold tracking-widest text-white/90">I'mDoc SaaS</span>
                         </div>
                         <h1 className="text-6xl font-serif font-medium leading-[1.1] mb-6">
-                            Be Your <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-diva-light to-white font-italic">Best Self.</span>
+                            {clinicBranding ? (
+                                <>
+                                    Welcome to <br />
+                                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-diva-light to-white font-italic">{clinicBranding.name}</span>
+                                </>
+                            ) : (
+                                <>
+                                    Be Your <br />
+                                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-diva-light to-white font-italic">Best Self.</span>
+                                </>
+                            )}
                         </h1>
                     </div>
 
@@ -217,8 +258,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
                     {/* Header Text */}
                     <div className="text-center mb-10 animate-slide-up" style={{ animationDelay: '0ms' }}>
-                        <h2 className="text-3xl font-bold text-diva-dark mb-2">Bem-vindo de volta</h2>
-                        <p className="text-gray-500 text-sm">Acesse sua conta para gerenciar o spa.</p>
+                        <h2 className="text-3xl font-bold text-diva-dark mb-2">
+                            {clinicBranding ? clinicBranding.name : 'Bem-vindo de volta'}
+                        </h2>
+                        <p className="text-gray-500 text-sm">
+                            {clinicBranding ? 'Área exclusiva para colaboradores.' : 'Acesse sua conta para gerenciar o spa.'}
+                        </p>
                     </div>
 
                     {/* CONTENT SWAPPER */}
@@ -235,6 +280,24 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                                 desc="Acesso total ao sistema e configurações."
                                 colorClass="bg-diva-dark"
                                 delay="200"
+                            />
+
+                            <ProfileCard
+                                role={UserRole.MASTER}
+                                icon={Shield}
+                                title="Super Admin (SaaS)"
+                                desc="Gestão de toda a plataforma (God Mode)."
+                                colorClass="bg-purple-900 text-yellow-400"
+                                delay="250"
+                            />
+
+                            <ProfileCard
+                                role={UserRole.SAAS_STAFF}
+                                icon={Headphones}
+                                title="SaaS Support / Staff"
+                                desc="Atendimento e Suporte aos assinantes."
+                                colorClass="bg-blue-600"
+                                delay="270"
                             />
 
                             <ProfileCard

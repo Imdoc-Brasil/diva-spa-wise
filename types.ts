@@ -225,6 +225,8 @@ export interface PaymentMethodInfo {
 // ============================================
 
 export enum UserRole {
+    MASTER = 'master',
+    SAAS_STAFF = 'saas_staff',
     ADMIN = 'admin',
     MANAGER = 'manager',
     STAFF = 'staff',
@@ -1589,7 +1591,7 @@ export interface DataContextType {
 
     // Accounts & Fiscal
     saasLeads: SaaSLead[];
-    addSaaSLead: (lead: SaaSLead) => Promise<void>;
+    addSaaSLead: (lead: SaaSLead) => Promise<boolean>;
     updateSaaSLead: (id: string, data: Partial<SaaSLead>) => Promise<void>;
 
     addSaaSTask: (task: Omit<SaaSTask, 'id'>) => Promise<void>;

@@ -34,7 +34,14 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
     const [isLoading, setIsLoading] = useState(true);
 
     // 1. Sync with Supabase on Auth Change
+    // 1. Sync with Supabase on Auth Change
     useEffect(() => {
+        if (!supabase) {
+            console.warn('Supabase not initialized (OrganizationContext)');
+            setIsLoading(false);
+            return;
+        }
+
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (session?.user) {
                 const user = session.user;
@@ -61,10 +68,23 @@ export const OrganizationProvider: React.FC<OrganizationProviderProps> = ({ chil
                             trialEndsAt: o.trial_ends_at,
                             billingCycle: o.subscription_cycle || 'monthly',
                             limits: { maxUnits: 3, maxUsers: 20, maxClients: 2000, maxStorage: 50, features: ['all'] },
-                            usage: { units: 1, users: 1, clients: 0, storage: 0 },
+                            usage: { units: 1, users: 1, clients: 0, storage: 0, appointmentsThisMonth: 0 },
                             owner: { userId: user.id, name: user.email || 'Admin', email: user.email || '', phone: '' },
                             billing: { email: user.email || '' },
-                            settings: { timezone: 'America/Sao_Paulo', language: 'pt-BR', currency: 'BRL', dateFormat: 'DD/MM/YYYY', allowMultiUnit: false, shareClientsAcrossUnits: true, requireTwoFactor: false },
+                            settings: {
+                                timezone: 'America/Sao_Paulo',
+                                language: 'pt-BR',
+                                currency: 'BRL',
+                                dateFormat: 'DD/MM/YYYY',
+                                timeFormat: '24h',
+                                allowMultiUnit: false,
+                                shareClientsAcrossUnits: true,
+                                requireTwoFactor: false,
+                                allowStaffDataAccess: true,
+                                enableWhatsAppIntegration: false,
+                                enableEmailMarketing: false,
+                                enableMarketplace: false
+                            },
                             createdAt: o.created_at
                         }));
 

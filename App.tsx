@@ -124,7 +124,7 @@ const AppContent: React.FC = () => {
 
                         {/* MASTER / SAAS ADMIN ROUTES */}
                         <Route path="/master/*" element={
-                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN]}>
+                            <ProtectedRoute user={user} allowedRoles={[UserRole.MASTER, UserRole.SAAS_STAFF]}>
                                 <MasterLayout />
                             </ProtectedRoute>
                         }>
@@ -143,11 +143,12 @@ const AppContent: React.FC = () => {
                                     <Route
                                         path="/"
                                         element={
-                                            user.role === UserRole.CLIENT ? <Navigate to="/portal" /> :
-                                                user.role === UserRole.STAFF ? <StaffDashboard /> :
-                                                    <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.FINANCE]}>
-                                                        <Dashboard />
-                                                    </ProtectedRoute>
+                                            (user.role === UserRole.MASTER || user.role === UserRole.SAAS_STAFF) ? <Navigate to="/master" /> :
+                                                user.role === UserRole.CLIENT ? <Navigate to="/portal" /> :
+                                                    user.role === UserRole.STAFF ? <StaffDashboard /> :
+                                                        <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.FINANCE]}>
+                                                            <Dashboard />
+                                                        </ProtectedRoute>
                                         }
                                     />
 
@@ -561,6 +562,7 @@ const AppContent: React.FC = () => {
                     <>
                         <Route path="/" element={<SalesPage />} />
                         <Route path="/login" element={<LoginPage onLogin={login} />} />
+                        <Route path="/:orgSlug" element={<LoginPage onLogin={login} />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
                     </>
                 )}

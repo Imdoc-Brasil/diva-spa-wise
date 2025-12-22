@@ -100,12 +100,15 @@ const SignupPage: React.FC = () => {
 
             if (authData.user) {
                 // 2. Create Organization
+                const newOrgId = crypto.randomUUID();
                 const { data: org, error: orgError } = await (supabase.from('organizations') as any).insert([
                     {
+                        id: newOrgId,
                         name: orgName,
                         slug: orgSlug,
                         primary_color: '#9333ea',
                         subscription_status: 'trial',
+                        saas_status: 'active',
                         subscription_plan_id: selectedPlanId,
                         billing_cycle: billingCycle,
                         trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
@@ -129,6 +132,7 @@ const SignupPage: React.FC = () => {
                     // 3.5 Create CRM Lead (SaaS)
                     try {
                         await (supabase.from('saas_leads') as any).insert([{
+                            id: crypto.randomUUID(),
                             name: userName,
                             email: userEmail,
                             clinic_name: orgName,
@@ -147,10 +151,10 @@ const SignupPage: React.FC = () => {
                 // 4. Redirect
                 if (!authData.session) {
                     alert('Conta criada! Verifique seu email para confirmar antes de entrar.');
-                    alert('Conta criada! Verifique seu email para confirmar antes de entrar.');
-                    navigate('/login');
+                    navigate(`/${orgSlug}`);
                 } else {
-                    navigate('/?welcome=true');
+                    // Go to the branded login page (which might auto-redirect if session is active)
+                    navigate(`/${orgSlug}`);
                 }
             }
         } catch (error: any) {

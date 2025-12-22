@@ -78,6 +78,8 @@ export interface SaaSSubscriber {
     smsBalance: number; // Saldo de mensagens
     asaasCustomerId?: string; // ID do cliente no Asaas (cus_...)
     asaasSubscriptionId?: string; // ID da assinatura no Asaas (sub_...)
+    recurrence?: 'monthly' | 'yearly'; // Ciclo de cobrança
+    financialStatus?: 'paid' | 'overdue' | 'pending'; // Status real do último pagamento
 }
 
 // ============================================
