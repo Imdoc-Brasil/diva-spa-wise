@@ -62,55 +62,6 @@ const SaaSMarketingModule: React.FC = () => {
 
     // Load Campaigns on Mount
     useEffect(() => {
-        // Diagnostic: Check Connection
-        const checkConnection = async () => {
-            const url = import.meta.env.VITE_SUPABASE_URL;
-            const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-            console.log('[Diagnostic] 1. Configured URL:', url);
-
-            if (!url || !key) {
-                console.error('[Diagnostic] Missing Headers (URL or Key)');
-                return;
-            }
-
-            // Test Raw REST API (Bypassing Client)
-            try {
-                const target = `${url}/rest/v1/marketing_templates?select=*&head=true`;
-                console.log('[Diagnostic] 2. Fetching Raw URL:', target);
-
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-                const res = await fetch(target, {
-                    method: 'GET',
-                    headers: {
-                        'apikey': key,
-                        'Authorization': `Bearer ${key}`
-                    },
-                    signal: controller.signal
-                });
-                clearTimeout(timeoutId);
-
-                console.log('[Diagnostic] 3. Response Status:', res.status, res.statusText);
-
-                if (res.ok) {
-                    console.log('[Diagnostic] ✅ Connection SUCCESS (Raw Fetch Works)');
-                    addToast('Conexão com Banco: OK', 'success');
-                } else {
-                    console.error('[Diagnostic] ❌ Connection Refused:', res.status);
-                    const text = await res.text();
-                    console.error('Response Body:', text);
-                    addToast(`Erro Banco: ${res.status}`, 'error');
-                }
-
-            } catch (e: any) {
-                console.error('[Diagnostic] ❌ Network Error (Fetch Failed):', e);
-                // addToast(`Erro de Rede/CORS: ${e.name}: ${e.message}`, 'error');
-            }
-        };
-
-        checkConnection();
         loadCampaigns();
         loadTemplates(); // Load templates on mount
     }, []);

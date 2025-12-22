@@ -30,93 +30,122 @@ class AutomationService {
     // --- Persistence Methods (Supabase) ---
 
     async listCampaigns(): Promise<MarketingCampaign[]> {
-        if (!supabase) return Object.values(SYSTEM_CAMPAIGNS);
+        const url = import.meta.env.VITE_SUPABASE_URL;
+        const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-        const { data, error } = await supabase
-            .from('marketing_campaigns')
-            .select('*')
-            .order('created_at', { ascending: false });
+        if (!url || !key) return Object.values(SYSTEM_CAMPAIGNS);
 
-        if (error) {
-            console.error('[Automation] Error fetching campaigns:', error);
+        try {
+            const res = await fetch(`${url}/rest/v1/marketing_campaigns?select=*&order=created_at.desc`, {
+                headers: { 'apikey': key, 'Authorization': `Bearer ${key}` }
+            });
+
+            if (!res.ok) {
+                console.warn('[Automation] Fetch Campaigns Failed:', res.status);
+                return Object.values(SYSTEM_CAMPAIGNS);
+            }
+
+            const data = await res.json();
+            return data.map((row: any) => ({
+                id: row.id,
+                name: row.name,
+                status: row.status,
+                trigger: { type: row.trigger_type, config: row.trigger_config },
+                steps: row.steps,
+                stats: row.stats,
+                createdAt: row.created_at,
+                folder: row.folder || 'Geral'
+            }));
+        } catch (e) {
+            console.error('[Automation] Error listing campaigns:', e);
             return Object.values(SYSTEM_CAMPAIGNS);
         }
-
-        // Mapeia do formato do banco (snake_case) para nosso tipo se necessário.
-        // Aqui assumimos que o banco retorna JSONB compatível com o tipo
-        return data.map((row: any) => ({
-            id: row.id,
-            name: row.name,
-            status: row.status,
-            trigger: { type: row.trigger_type, config: row.trigger_config },
-            steps: row.steps,
-            stats: row.stats,
-            createdAt: row.created_at,
-            folder: row.folder || 'Geral'
-        }));
     }
 
     async saveCampaign(campaign: MarketingCampaign): Promise<MarketingCampaign | null> {
-        if (!supabase) {
-            console.warn('[Automation] Mock Save (No DB connection)');
+        const url = import.meta.env.VITE_SUPABASE_URL;
+        const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+        if (!url || !key) {
+            console.warn('[Automation] Mock Save (No Keys)');
             return campaign;
         }
 
         const payload = {
-            id: campaign.id.length < 30 ? undefined : campaign.id, // Avoid sending temp IDs
+            id: campaign.id.length < 30 ? undefined : campaign.id,
             name: campaign.name,
             status: campaign.status,
             trigger_type: campaign.trigger.type,
             trigger_config: campaign.trigger.config,
             steps: campaign.steps,
             stats: campaign.stats,
-            folder: campaign.folder,
+            folder: campaign.folder || 'Geral',
             updated_at: new Date().toISOString()
         };
 
-        const { data, error } = await supabase
-            .from('marketing_campaigns')
-            .upsert(payload as any)
-            .select()
-            .single();
+        try {
+            // Upsert via POST + Prefer: resolution=merge-duplicates
+            const res = await fetch(`${url}/rest/v1/marketing_campaigns`, {
+                method: 'POST',
+                headers: {
+                    'apikey': key,
+                    'Authorization': `Bearer ${key}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation,resolution=merge-duplicates'
+                },
+                body: JSON.stringify(payload)
+            });
 
-        if (error) {
-            console.error('[Automation] Error saving campaign:', error);
-            throw error;
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(`API Error: ${res.status} - ${text}`);
+            }
+
+            const data = await res.json();
+            const row = data[0];
+
+            return {
+                id: row.id,
+                name: row.name,
+                status: row.status,
+                trigger: { type: row.trigger_type, config: row.trigger_config },
+                steps: row.steps,
+                stats: row.stats,
+                createdAt: row.created_at,
+                folder: row.folder || 'Geral'
+            };
+        } catch (e) {
+            console.error('[Automation] Error saving campaign:', e);
+            throw e;
         }
-
-        if (!data) throw new Error('Failed to save campaign (No data returned)');
-
-        const row = data as any;
-        return {
-            id: row.id,
-            name: row.name,
-            status: row.status,
-            trigger: { type: row.trigger_type, config: row.trigger_config },
-            steps: row.steps,
-            stats: row.stats,
-            createdAt: row.created_at,
-            folder: row.folder || 'Geral'
-        };
     }
 
     async listTemplates(): Promise<MessageTemplate[]> {
-        if (!supabase) return [];
-        const { data, error } = await supabase.from('marketing_templates').select('*');
+        const url = import.meta.env.VITE_SUPABASE_URL;
+        const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        if (!url || !key) return [];
 
-        if (error) {
-            console.error('[Automation] Error fetching templates:', error);
+        try {
+            const res = await fetch(`${url}/rest/v1/marketing_templates?select=*`, {
+                headers: { 'apikey': key, 'Authorization': `Bearer ${key}` }
+            });
+
+            if (!res.ok) throw new Error(res.statusText);
+            const data = await res.json();
+
+            return data.map((row: any) => ({
+                id: row.id,
+                name: row.name,
+                channel: row.channel,
+                content: row.content,
+                subject: row.subject,
+                isAiPowered: row.is_ai_powered || false,
+                folder: row.folder || 'Geral'
+            }));
+        } catch (e) {
+            console.error('[Automation] Error fetching templates:', e);
             return [];
         }
-
-        return data.map((row: any) => ({
-            id: row.id,
-            name: row.name,
-            channel: row.channel,
-            content: row.content,
-            subject: row.subject,
-            isAiPowered: row.is_ai_powered || false
-        }));
     }
 
     async saveTemplate(template: MessageTemplate): Promise<MessageTemplate> {
