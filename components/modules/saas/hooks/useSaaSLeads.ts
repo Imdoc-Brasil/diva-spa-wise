@@ -80,9 +80,9 @@ export function useSaaSLeads() {
                     id: `org_${slug}`,
                     name: lead.clinicName,
                     slug: slug,
+                    type: 'clinic',
                     subscription_status: 'trial',
-                    saas_status: 'trial',
-                    plan: lead.planInterest,
+                    subscription_plan_id: lead.planInterest,
                     created_at: new Date().toISOString()
                 })
                 .select()
