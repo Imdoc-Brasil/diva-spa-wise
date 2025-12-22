@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
     Zap, Mail, MessageCircle, Clock, Plus, Play, Pause,
     MoreHorizontal, ArrowRight, Settings, Trash2, Bot,
-    Sparkles, LayoutTemplate, MousePointerClick, Folder, Search, Copy, FolderInput
+    Sparkles, LayoutTemplate, MousePointerClick, Folder, Search, Copy, FolderInput, Pencil, MoreVertical
 } from 'lucide-react';
 import { useToast } from '../../ui/ToastContext';
 import { MarketingCampaign, MessageTemplate, AutomationActionType } from '../../../types_marketing';
@@ -97,6 +97,46 @@ const SaaSMarketingModule: React.FC = () => {
             setCampaigns(prev => [saved, ...prev]);
             addToast('Duplicado com sucesso!', 'success');
         }
+    };
+
+    const handleRenameFolder = async (oldName: string) => {
+        const newName = window.prompt('Novo nome da pasta:', oldName);
+        if (!newName || newName === oldName) return;
+
+        // Optimistic UI updates
+        setCustomFolders(prev => prev.map(f => f === oldName ? newName : f));
+        if (activeFolder === oldName) setActiveFolder(newName);
+
+        // Update visible campaigns state
+        setCampaigns(prev => prev.map(c => c.folder === oldName ? { ...c, folder: newName } : c));
+
+        addToast('Renomeando pasta e atualizando fluxos...', 'info');
+
+        // Persist changes to all affected campaigns
+        const affected = campaigns.filter(c => c.folder === oldName);
+        for (const camp of affected) {
+            await automationService.saveCampaign({ ...camp, folder: newName });
+        }
+        addToast('Pasta renomeada com sucesso!', 'success');
+    };
+
+    const handleDeleteFolder = async (folderName: string) => {
+        if (!window.confirm(`Tem certeza que deseja excluir a pasta "${folderName}"? As automações serão movidas para "Geral".`)) return;
+
+        // UI Optimistic
+        setCustomFolders(prev => prev.filter(f => f !== folderName));
+        if (activeFolder === folderName) setActiveFolder('all');
+
+        setCampaigns(prev => prev.map(c => c.folder === folderName ? { ...c, folder: 'Geral' } : c));
+
+        addToast('Excluindo pasta...', 'info');
+
+        // Persist move to Geral
+        const affected = campaigns.filter(c => c.folder === folderName);
+        for (const camp of affected) {
+            await automationService.saveCampaign({ ...camp, folder: 'Geral' });
+        }
+        addToast('Pasta excluída com sucesso!', 'success');
     };
 
     const filteredCampaigns = React.useMemo(() => {
@@ -345,15 +385,32 @@ const SaaSMarketingModule: React.FC = () => {
                             >
                                 <Folder size={14} className="inline mr-2" /> Todos
                             </button>
-                            {availableFolders.map(f => (
-                                <button
-                                    key={f}
-                                    onClick={() => setActiveFolder(f)}
-                                    className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${activeFolder === f ? 'bg-white text-slate-900 shadow' : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'}`}
-                                >
-                                    <Folder size={14} className="inline mr-2" /> {f}
-                                </button>
-                            ))}
+                            {availableFolders.map(f => {
+                                const isSystem = ['Geral', 'Onboarding', 'Vendas'].includes(f);
+                                const allowActions = !isSystem;
+
+                                return (
+                                    <div key={f} className={`group flex items-center pr-1 rounded-lg text-sm font-bold whitespace-nowrap transition-colors border ${activeFolder === f ? 'bg-white text-slate-900 shadow border-transparent' : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-600'}`}>
+                                        <button
+                                            onClick={() => setActiveFolder(f)}
+                                            className={`px-4 py-2 flex items-center gap-2 hover:text-white transition-colors ${activeFolder === f ? 'text-slate-900' : 'text-slate-400'}`}
+                                        >
+                                            <Folder size={14} className="inline" /> {f}
+                                        </button>
+                                        {allowActions && (
+                                            <div className="dropdown dropdown-bottom dropdown-end">
+                                                <div tabIndex={0} role="button" className="p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-slate-700/50 transition-all cursor-pointer">
+                                                    <MoreVertical size={14} />
+                                                </div>
+                                                <ul tabIndex={0} className="dropdown-content z-[30] menu p-2 shadow-xl bg-slate-900 border border-slate-700 rounded-xl w-40 text-slate-300 mt-1">
+                                                    <li><button onClick={(e) => { e.currentTarget.blur(); handleRenameFolder(f); }} className="hover:bg-slate-800"><Pencil size={14} /> Renomear</button></li>
+                                                    <li><button onClick={(e) => { e.currentTarget.blur(); handleDeleteFolder(f); }} className="text-red-400 hover:bg-slate-800 hover:text-red-300"><Trash2 size={14} /> Apagar</button></li>
+                                                </ul>
+                                            </div>
+                                        )}
+                                    </div>
+                                )
+                            })}
                             <button
                                 onClick={handleCreateFolder}
                                 className="px-3 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors bg-slate-800/50 text-slate-500 hover:text-purple-400 border border-dashed border-slate-700 hover:border-purple-500/50 flex items-center gap-1"
