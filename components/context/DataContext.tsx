@@ -1922,6 +1922,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         legal_name: lead.legalName,
         plan_interest: lead.planInterest,
         stage: lead.stage || 'new', // Ensure stage is saved
+        source: lead.source || 'outbound', // ADD SOURCE FIELD!
         status: lead.status || 'active',
         estimated_value: lead.estimatedValue,
         cnpj: lead.cnpj,
