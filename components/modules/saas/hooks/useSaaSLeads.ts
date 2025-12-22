@@ -77,11 +77,12 @@ export function useSaaSLeads() {
             const { data: orgData, error: orgError } = await supabase
                 .from('organizations')
                 .insert({
+                    id: `org_${slug}`,
                     name: lead.clinicName,
                     slug: slug,
-                    type: 'clinic',
                     subscription_status: 'trial',
-                    subscription_plan_id: lead.planInterest,
+                    saas_status: 'trial',
+                    plan: lead.planInterest,
                     created_at: new Date().toISOString()
                 })
                 .select()
