@@ -20,6 +20,7 @@ const BRAZIL_STATES = [
 ];
 
 import { SaaSLeadsService } from '../../../services/saas/SaaSLeadsService';
+import { supabase } from '../../../services/supabase';
 
 const SaaSCrmModule: React.FC = () => {
     const {
@@ -318,7 +319,11 @@ const SaaSCrmModule: React.FC = () => {
                 updatedAt: new Date().toISOString()
             };
 
-            await addSaaSLead(newLead);
+            const success = await addSaaSLead(newLead);
+
+            if (!success) {
+                return;
+            }
 
             // Trigger Automation for Manual Lead
             await automationService.processConversion('MANUAL_LEAD_CREATED', newLead);
@@ -329,11 +334,58 @@ const SaaSCrmModule: React.FC = () => {
                 planInterest: SaaSPlan.GROWTH, estimatedValue: 0, cnpj: '',
                 address: '', number: '', complement: '', neighborhood: '', city: '', state: ''
             });
+
         } catch (error) {
-            console.error(error);
-            addToast('Erro ao criar lead. Tente novamente.', 'error');
+            console.error('Error creating lead:', error);
+            addToast('Erro ao criar lead.', 'error');
         }
     };
+
+    // --- CONVERSION ACTION ---
+    const handleConvertToSubscriber = async (lead: SaaSLead) => {
+        try {
+            const slug = lead.clinicName.toLowerCase().trim().replace(/[\s\W-]+/g, '-');
+
+            // Create Organization record
+            // Use 'any' cast if Typescript complains about table schema not matching locally defined types yet
+            const { data: orgData, error: orgError } = await supabase
+                .from('organizations')
+                .insert({
+                    name: lead.clinicName,
+                    slug: slug,
+                    saas_plan: lead.planInterest || 'start',
+                    saas_status: 'trial',
+                    billing_cycle: 'monthly',
+                    subscription_status: 'trial',
+                    financial_status: 'pending',
+                    owner_email: lead.email,
+                    owner_name: lead.name,
+                    phone: lead.phone
+                } as any)
+                .select()
+                .single();
+
+            if (orgError) throw orgError;
+            if (!orgData) throw new Error('Failed to create organization data');
+
+            // Update Lead Status
+            await updateSaaSLead(lead.id, {
+                stage: SaaSLeadStage.TRIAL_STARTED,
+                status: 'active',
+                notes: lead.notes + `\n[System] Converted to Organization: ${(orgData as any).name} (${(orgData as any).id})`
+            });
+
+            addToast(`Lead convertido em Assinante (Trial): ${lead.clinicName}`, 'success');
+
+            // Force reload to refresh subscribers list (simplest/safest for now)
+            setTimeout(() => window.location.reload(), 1500);
+
+        } catch (error: any) {
+            console.error('Conversion Failed:', error);
+            addToast(`Erro ao converter: ${error.message}`, 'error');
+        }
+    };
+
 
     // --- NEW SUPPORT TICKET STATE ---
     const [showNewTicketModal, setShowNewTicketModal] = useState(false);
@@ -2001,6 +2053,7 @@ const SaaSCrmModule: React.FC = () => {
                                 <thead>
                                     <tr className="border-b border-white/10 bg-slate-800/50 text-xs font-bold text-slate-400 uppercase tracking-wider">
                                         <th className="p-4">Clínica</th>
+                                        <th className="p-4">Link de Acesso</th>
                                         <th className="p-4">Admin</th>
                                         <th className="p-4">Plano</th>
                                         <th className="p-4">Ciclo</th>
@@ -2017,6 +2070,37 @@ const SaaSCrmModule: React.FC = () => {
                                             <td className="p-4 font-medium text-white">
                                                 {sub.clinicName}
                                                 <span className="block text-xs text-slate-500 mt-1">ID: {sub.id.substring(0, 8)}...</span>
+                                            </td>
+                                            <td className="p-4">
+                                                {(() => {
+                                                    // Prioritize DB slug, fallback to sanitized name, never ID for URL
+                                                    const accessSlug = sub.slug || sub.clinicName.toLowerCase().trim().replace(/[\s\W-]+/g, '-');
+                                                    const fullUrl = `https://${accessSlug}.imdoc.com.br`;
+
+                                                    return (
+                                                        <div className="flex items-center gap-2 group/link">
+                                                            <a
+                                                                href={fullUrl}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-xs text-blue-400 hover:text-blue-300 underline decoration-dotted truncate max-w-[150px] block"
+                                                            >
+                                                                {accessSlug}.imdoc.com.br
+                                                            </a>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    navigator.clipboard.writeText(fullUrl);
+                                                                    addToast('Link copiado!', 'success');
+                                                                }}
+                                                                className="opacity-0 group-hover/link:opacity-100 p-1 hover:bg-white/10 rounded transition-opacity"
+                                                                title="Copiar Link"
+                                                            >
+                                                                <Copy size={12} className="text-slate-400" />
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                })()}
                                             </td>
                                             <td className="p-4">
                                                 <div className="flex flex-col">

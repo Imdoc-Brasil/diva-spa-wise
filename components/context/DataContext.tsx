@@ -2203,28 +2203,32 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const { data: orgs, error: orgError } = await supabase.from('organizations').select('*');
         if (orgError) throw orgError;
 
+        console.log('Orgs fetched (fallback):', orgs);
+
         if (orgs) {
           const mapped: SaaSSubscriber[] = orgs.map((o: any) => ({
             id: o.id,
+            slug: o.slug,
             clinicName: o.name,
-            adminName: 'Admin', // Placeholder
-            adminEmail: 'admin@' + o.slug + '.com',
+            adminName: 'Admin',
+            adminEmail: 'admin@' + (o.slug || 'imdoc') + '.com',
             adminPhone: '',
-            plan: o.saas_plan || SaaSPlan.START,
-            status: o.saas_status || 'active',
-            mrr: o.mrr || 0,
+            plan: o.plan || o.saas_plan || SaaSPlan.START,
+            status: o.saas_status || o.subscription_status || 'active',
+            mrr: 0, // Calculate based on plan if needed, 0 for now
             joinedAt: o.created_at,
             nextBillingDate: new Date().toISOString(),
             usersCount: 1,
             smsBalance: 0,
-            recurrence: o.billing_cycle || 'monthly',
-            financialStatus: o.financial_status || 'paid'
+            recurrence: 'monthly',
+            financialStatus: 'paid'
           }));
-          setSaaSSubscribers(mapped); // Ensure set is called with mapped data (fix array closure)
+          setSaaSSubscribers(mapped);
         }
       } else if (data) {
         const mapped: SaaSSubscriber[] = (data as any[]).map((d: any) => ({
           id: d.org_id,
+          slug: d.slug || d.org_id, // Fallback to ID if no slug
           clinicName: d.clinic_name,
           adminName: d.owner_name || 'Admin',
           adminEmail: 'admin@diva.com',

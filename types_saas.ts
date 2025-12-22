@@ -65,6 +65,7 @@ export interface SaaSTask {
 
 export interface SaaSSubscriber {
     id: string; // org_id
+    slug?: string; // URL identifer
     clinicName: string;
     adminName: string;
     adminEmail: string;
