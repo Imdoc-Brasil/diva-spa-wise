@@ -340,25 +340,19 @@ ON CONFLICT (id) DO UPDATE SET
     features = EXCLUDED.features,
     limits = EXCLUDED.limits;
 
--- Restore organizations (mapping only compatible columns)
-INSERT INTO organizations (id, name, slug, subscription_status, subscription_plan_id, owner_id, asaas_customer_id, asaas_subscription_id, created_at, updated_at)
+-- Restore organizations (only basic columns that definitely exist)
+INSERT INTO organizations (id, name, slug, created_at, updated_at)
 SELECT 
     COALESCE(id, 'org_' || slug) as id,
     name,
     slug,
-    COALESCE(subscription_status, 'trial') as subscription_status,
-    subscription_plan_id,
-    owner_id,
-    asaas_customer_id,
-    asaas_subscription_id,
-    created_at,
-    updated_at
+    COALESCE(created_at, NOW()) as created_at,
+    COALESCE(updated_at, NOW()) as updated_at
 FROM backup_organizations
 ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     slug = EXCLUDED.slug,
-    subscription_status = EXCLUDED.subscription_status,
-    subscription_plan_id = EXCLUDED.subscription_plan_id;
+    updated_at = NOW();
 
 -- Restore marketing_templates
 INSERT INTO marketing_templates SELECT * FROM backup_marketing_templates
