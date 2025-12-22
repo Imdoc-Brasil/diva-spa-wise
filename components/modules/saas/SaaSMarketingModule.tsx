@@ -397,9 +397,27 @@ const SaaSMarketingModule: React.FC = () => {
                             <input
                                 value={editingCampaign.name}
                                 onChange={e => setEditingCampaign(prev => ({ ...prev, name: e.target.value }))}
-                                className="bg-transparent text-xl font-bold text-white outline-none placeholder-slate-600 w-96"
+                                className="bg-transparent text-xl font-bold text-white outline-none placeholder-slate-600 w-auto min-w-[200px]"
                                 placeholder="Nome da Automação..."
                             />
+
+                            {/* Folder Selector */}
+                            <div className="hidden md:flex items-center gap-2 bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-700 hover:border-slate-500 transition-colors group">
+                                <Folder size={14} className="text-slate-500 group-hover:text-purple-400 transition-colors" />
+                                <input
+                                    list="folders-list"
+                                    value={editingCampaign.folder || ''}
+                                    onChange={e => setEditingCampaign(prev => ({ ...prev, folder: e.target.value }))}
+                                    className="bg-transparent text-xs text-slate-300 font-bold outline-none w-24 placeholder-slate-500 focus:w-32 transition-all"
+                                    placeholder="Pasta..."
+                                    title="Digite para criar nova ou selecione"
+                                />
+                                <datalist id="folders-list">
+                                    {availableFolders.map(f => (
+                                        <option key={f} value={f} />
+                                    ))}
+                                </datalist>
+                            </div>
                         </div>
                         <div className="flex items-center gap-3">
                             <div className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-lg border border-white/10">
