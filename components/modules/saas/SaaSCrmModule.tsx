@@ -27,6 +27,8 @@ import { maskPhone, maskCEP, maskCNPJ, maskCpfCnpj } from '../../../utils/masks'
 import { SAAS_PLANS_CONFIG } from './saasPlans';
 import { SaaSLeadsService } from '../../../services/saas/SaaSLeadsService';
 import { supabase } from '../../../services/supabase';
+import { LeadCard } from './components';
+
 
 const SaaSCrmModule: React.FC = () => {
     const {
@@ -727,95 +729,35 @@ const SaaSCrmModule: React.FC = () => {
                                         }}
                                     >
                                         {filteredLeads.filter(l => l.stage === col.id).map(lead => (
-                                            <div
+                                            <LeadCard
                                                 key={lead.id}
-                                                draggable
-                                                onDragStart={(e) => setDraggedLeadId(lead.id)}
+                                                lead={lead}
+                                                isActionMenuOpen={openActionMenuId === lead.id}
+                                                onDragStart={() => setDraggedLeadId(lead.id)}
                                                 onClick={() => setViewLead(lead)}
-                                                className="bg-slate-800 border border-white/5 p-4 rounded-xl hover:border-yellow-500/50 transition-colors group cursor-pointer relative shadow-lg active:cursor-grabbing hover:scale-[1.02] transform duration-200"
-                                            >
-                                                <div className="flex justify-between items-start mb-3">
-                                                    {getPlanBadge(lead.planInterest)}
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setOpenActionMenuId(openActionMenuId === lead.id ? null : lead.id);
-                                                        }}
-                                                        className={`transition-colors ${openActionMenuId === lead.id ? 'text-white' : 'text-slate-600 hover:text-white'}`}
-                                                    >
-                                                        <MoreHorizontal size={16} />
-                                                    </button>
-
-                                                    {/* Kanban Card Action Menu */}
-                                                    {openActionMenuId === lead.id && (
-                                                        <div className="absolute right-2 top-8 w-48 bg-slate-800 border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95">
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); setViewLead(lead); setOpenActionMenuId(null); }}
-                                                                className="w-full text-left px-4 py-3 hover:bg-slate-700 text-xs text-slate-200 block"
-                                                            >
-                                                                Ver Detalhes
-                                                            </button>
-
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    handleConvertToSubscriber(lead);
-                                                                    setOpenActionMenuId(null);
-                                                                }}
-                                                                className="w-full text-left px-4 py-3 hover:bg-emerald-900/50 text-xs text-emerald-400 font-bold border-t border-white/5 block flex items-center gap-2"
-                                                            >
-                                                                ✨ Converter em Assinante
-                                                            </button>
-
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); /* Archive Logic */ setOpenActionMenuId(null); }}
-                                                                className="w-full text-left px-4 py-3 hover:bg-red-900/50 text-xs text-red-400 border-t border-white/5 block"
-                                                            >
-                                                                Arquivar Lead
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                <h4 className="font-bold text-white text-lg leading-tight mb-1">{lead.clinicName}</h4>
-                                                <p className="text-sm text-slate-400 mb-4">{lead.name}</p>
-
-                                                <div className="flex items-center gap-3 mb-4">
-                                                    <a
-                                                        href={`tel:${lead.phone}`}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        className="p-2 rounded-lg bg-slate-700/50 text-slate-400 hover:bg-green-500/20 hover:text-green-400 transition-colors"
-                                                    >
-                                                        <Phone size={14} />
-                                                    </a>
-                                                    <a
-                                                        href={`mailto:${lead.email}`}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        className="p-2 rounded-lg bg-slate-700/50 text-slate-400 hover:bg-blue-500/20 hover:text-blue-400 transition-colors"
-                                                    >
-                                                        <Mail size={14} />
-                                                    </a>
-                                                </div>
-
-                                                <div className="pt-3 border-t border-white/5 flex justify-between items-center text-xs text-slate-500">
-                                                    <span>{new Date(lead.createdAt).toLocaleDateString()}</span>
-                                                    <span className="flex items-center gap-1 font-bold text-emerald-400">
-                                                        R$ {lead.estimatedValue}
-                                                    </span>
-                                                </div>
-
-                                                {/* Quick Actions overlay on hover */}
-                                                <div className="absolute inset-x-0 bottom-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-t from-slate-900 via-slate-900 to-transparent flex justify-center gap-2">
-                                                    {lead.stage !== SaaSLeadStage.CLOSED_WON && (
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); handleMove(lead.id, SaaSLeadStage.CLOSED_WON); }}
-                                                            className="px-3 py-1 bg-green-600 text-white text-xs font-bold rounded shadow-lg hover:bg-green-500"
-                                                        >
-                                                            Fechar
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </div>
+                                                onToggleActionMenu={(e) => {
+                                                    e.stopPropagation();
+                                                    setOpenActionMenuId(openActionMenuId === lead.id ? null : lead.id);
+                                                }}
+                                                onViewDetails={(e) => {
+                                                    e.stopPropagation();
+                                                    setViewLead(lead);
+                                                    setOpenActionMenuId(null);
+                                                }}
+                                                onConvert={(e) => {
+                                                    e.stopPropagation();
+                                                    handleConvertToSubscriber(lead);
+                                                    setOpenActionMenuId(null);
+                                                }}
+                                                onArchive={(e) => {
+                                                    e.stopPropagation();
+                                                    setOpenActionMenuId(null);
+                                                }}
+                                                onClose={(e) => {
+                                                    e.stopPropagation();
+                                                    handleMove(lead.id, SaaSLeadStage.CLOSED_WON);
+                                                }}
+                                            />
                                         ))}
                                         {filteredLeads.filter(l => l.stage === col.id).length === 0 && (
                                             <div className="h-32 border-2 border-dashed border-slate-800 rounded-xl flex items-center justify-center text-slate-700 text-sm italic">
