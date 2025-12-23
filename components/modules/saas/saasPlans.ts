@@ -1,5 +1,5 @@
 
-import { SaaSPlan } from '@/types_saas';
+import { SaaSPlan } from '@/types';
 
 /**
  * Configuração Oficial dos Planos SaaS

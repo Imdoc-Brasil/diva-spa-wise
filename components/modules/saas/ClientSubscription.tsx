@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useOrganization } from '../../context/OrganizationContext';
 import { CheckCircle, AlertCircle, Clock, FileText, CreditCard, ChevronRight, Star } from 'lucide-react';
 import { SAAS_PLANS_CONFIG } from './saasPlans';
-import { SaaSPlan } from '../../../types_saas';
+import { SaaSPlan } from '@/types';
 
 import { asaasService } from '../../../services/asaasService';
 

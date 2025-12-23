@@ -161,10 +161,11 @@ export enum SupportTicketPriority {
     LOW = 'Low',
     MEDIUM = 'Medium',
     HIGH = 'High',
-    URGENT = 'Urgent'
+    URGENT = 'Urgent',
+    CRITICAL = 'Critical'  // Alias for URGENT
 }
 
-export type TicketCategory = 'bug' | 'question' | 'feature' | 'billing' | 'technical' | 'other';
+export type TicketCategory = 'bug' | 'question' | 'feature' | 'billing' | 'technical' | 'access' | 'other';
 
 export interface SupportTicket {
     id: string;
@@ -193,6 +194,7 @@ export enum FeatureRequestStatus {
     PLANNED = 'Planned',
     IN_DEVELOPMENT = 'In Development',
     SHIPPED = 'Shipped',
+    RELEASED = 'Shipped',  // Alias for SHIPPED
     REJECTED = 'Rejected'
 }
 
