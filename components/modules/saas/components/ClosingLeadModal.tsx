@@ -41,6 +41,8 @@ export function ClosingLeadModal({ lead, isOpen, onClose, onConfirm, onGenerateC
             paymentMethod: 'credit_card',
             recurrence: 'monthly'
         });
+        // Close modal after successful confirmation
+        onClose();
     };
 
     const copyToClipboard = () => {
