@@ -44,7 +44,99 @@ ADD COLUMN IF NOT EXISTS recurrence TEXT DEFAULT 'monthly';
 SELECT 'Organizations table updated with missing fields!' as status;
 
 -- ============================================
--- STEP 2: CREATE UNITS TABLE
+-- STEP 2: CREATE PROFILES TABLE
+-- ============================================
+-- Profiles support 3 types of users:
+-- 1. I'mDoc SaaS Staff (organization_id = NULL, role = master/saas_staff)
+-- 2. Clinic Staff (organization_id = org_xxx, role = admin/manager/staff)
+-- 3. Patients (organization_id = org_xxx, role = client)
+
+-- Drop if exists (for clean migration)
+DROP TABLE IF EXISTS profiles CASCADE;
+
+-- Create profiles table
+CREATE TABLE profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    organization_id TEXT REFERENCES organizations(id) ON DELETE CASCADE,
+    
+    -- Personal Info
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT,
+    avatar_url TEXT,
+    
+    -- Role & Permissions
+    role TEXT NOT NULL DEFAULT 'client', -- master, saas_staff, admin, manager, staff, finance, client
+    
+    -- Status
+    status TEXT DEFAULT 'active', -- active, inactive, suspended
+    
+    -- Metadata
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    last_login_at TIMESTAMP WITH TIME ZONE,
+    
+    -- Constraints
+    UNIQUE(email)
+);
+
+-- Enable RLS
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+-- Create indexes
+CREATE INDEX idx_profiles_organization_id ON profiles(organization_id);
+CREATE INDEX idx_profiles_email ON profiles(email);
+CREATE INDEX idx_profiles_role ON profiles(role);
+CREATE INDEX idx_profiles_status ON profiles(status);
+
+-- Profiles RLS Policies
+-- Users can see their own profile
+CREATE POLICY "Users can see their own profile"
+ON profiles
+FOR SELECT
+USING (id = auth.uid());
+
+-- Users can update their own profile
+CREATE POLICY "Users can update their own profile"
+ON profiles
+FOR UPDATE
+USING (id = auth.uid());
+
+-- Admins can see profiles in their organization
+CREATE POLICY "Admins can see profiles in their organization"
+ON profiles
+FOR SELECT
+USING (
+    organization_id IN (
+        SELECT organization_id 
+        FROM profiles 
+        WHERE id = auth.uid() 
+        AND role IN ('admin', 'manager')
+    )
+);
+
+-- Master/SaaS Staff can see all profiles
+CREATE POLICY "Master can see all profiles"
+ON profiles
+FOR SELECT
+USING (
+    EXISTS (
+        SELECT 1 FROM profiles 
+        WHERE id = auth.uid() 
+        AND role IN ('master', 'saas_staff')
+    )
+);
+
+-- System can insert profiles (via service role)
+CREATE POLICY "System can insert profiles"
+ON profiles
+FOR INSERT
+WITH CHECK (true);
+
+SELECT 'Profiles table created successfully!' as status;
+
+-- ============================================
+-- STEP 3: CREATE UNITS TABLE
 -- ============================================
 
 -- Drop if exists (for clean migration)
@@ -93,7 +185,7 @@ CREATE INDEX idx_units_type ON units(type);
 SELECT 'Units table created successfully!' as status;
 
 -- ============================================
--- STEP 3: IMPLEMENT PROPER RLS POLICIES
+-- STEP 4: IMPLEMENT PROPER RLS POLICIES FOR ORGANIZATIONS
 -- ============================================
 
 -- ============================================
@@ -199,7 +291,7 @@ USING (
 SELECT 'Units RLS policies created!' as status;
 
 -- ============================================
--- STEP 4: CREATE HELPER FUNCTIONS
+-- STEP 5: CREATE HELPER FUNCTIONS
 -- ============================================
 
 -- Function to automatically update updated_at timestamp
@@ -228,7 +320,7 @@ CREATE TRIGGER update_units_updated_at
 SELECT 'Triggers created for automatic timestamp updates!' as status;
 
 -- ============================================
--- STEP 5: ADD INDEXES FOR PERFORMANCE
+-- STEP 6: ADD INDEXES FOR PERFORMANCE
 -- ============================================
 
 -- Organizations indexes
@@ -243,7 +335,7 @@ CREATE INDEX IF NOT EXISTS idx_units_slug ON units(organization_id, slug);
 SELECT 'Performance indexes created!' as status;
 
 -- ============================================
--- STEP 6: VALIDATION QUERIES
+-- STEP 7: VALIDATION QUERIES
 -- ============================================
 
 -- Verify organizations schema
