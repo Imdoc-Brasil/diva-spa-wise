@@ -27,7 +27,7 @@ import { maskPhone, maskCEP, maskCNPJ, maskCpfCnpj } from '../../../utils/masks'
 import { SAAS_PLANS_CONFIG } from './saasPlans';
 import { SaaSLeadsService } from '../../../services/saas/SaaSLeadsService';
 import { supabase } from '../../../services/supabase';
-import { LeadCard } from './components';
+import { LeadCard, CreateLeadModal } from './components';
 
 
 const SaaSCrmModule: React.FC = () => {
@@ -1076,237 +1076,25 @@ const SaaSCrmModule: React.FC = () => {
             }
 
             {/* NEW LEAD MODAL */}
-            {
-                showNewLeadModal && (
-                    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                        <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-3xl p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto custom-scrollbar">
-                            <button
-                                onClick={() => setShowNewLeadModal(false)}
-                                className="absolute top-6 right-6 text-slate-400 hover:text-white transition-colors"
-                            >
-                                <XCircle size={28} />
-                            </button>
+            <CreateLeadModal
+                isOpen={showNewLeadModal}
+                onClose={() => setShowNewLeadModal(false)}
+                onCreate={async (lead) => {
+                    try {
+                        const success = await addSaaSLead(lead);
+                        if (!success) return;
 
-                            <h3 className="text-2xl font-bold text-white mb-2">Adicionar cliente</h3>
-                            <p className="text-slate-400 text-sm mb-8">Preencha os campos abaixo para adicionar o seu cliente.</p>
+                        // Trigger Automation for Manual Lead
+                        await automationService.processConversion('MANUAL_LEAD_CREATED', lead);
 
-                            <div className="space-y-8">
+                        setShowNewLeadModal(false);
+                    } catch (error) {
+                        console.error('Error creating lead:', error);
+                        addToast('Erro ao criar lead.', 'error');
+                    }
+                }}
+            />
 
-                                {/* DADOS DO CLIENTE */}
-                                <div>
-                                    <h4 className="text-lg font-bold text-white mb-4 border-b border-white/5 pb-2">Dados do cliente</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="md:col-span-1">
-                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Nome</label>
-                                            <input
-                                                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
-                                                value={newLeadData.name}
-                                                onChange={e => setNewLeadData({ ...newLeadData, name: e.target.value })}
-                                                placeholder="Informe o nome do cliente"
-                                            />
-                                        </div>
-                                        <div className="md:col-span-1">
-                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">CPF ou CNPJ (Opcional)</label>
-                                            <input
-                                                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
-                                                value={newLeadData.cnpj || ''}
-                                                onChange={e => setNewLeadData({ ...newLeadData, cnpj: maskCpfCnpj(e.target.value) })}
-                                                maxLength={18}
-                                                placeholder="Informe o CPF ou CNPJ do cliente"
-                                            />
-                                        </div>
-                                        <div className="md:col-span-1">
-                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Email</label>
-                                            <input
-                                                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
-                                                value={newLeadData.email}
-                                                onChange={e => setNewLeadData({ ...newLeadData, email: e.target.value })}
-                                                placeholder="Informe o email do cliente"
-                                            />
-                                        </div>
-                                        <div className="md:col-span-1">
-                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Celular</label>
-                                            <input
-                                                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
-                                                value={newLeadData.phone}
-                                                onChange={e => setNewLeadData({ ...newLeadData, phone: maskPhone(e.target.value) })}
-                                                maxLength={15}
-                                                placeholder="(00) 00000-0000"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                                        <div className="md:col-span-1">
-                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Nome da Clínica (Interno)</label>
-                                            <input
-                                                className="w-full bg-slate-800/50 border border-white/5 rounded-lg px-4 py-2 text-sm text-slate-300 focus:border-blue-500 outline-none transition-colors"
-                                                value={newLeadData.clinicName}
-                                                onChange={e => setNewLeadData({ ...newLeadData, clinicName: e.target.value })}
-                                                placeholder="Ex: Clínica Real"
-                                            />
-                                        </div>
-                                        <div className="md:col-span-1">
-                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Razão Social (Interno)</label>
-                                            <input
-                                                className="w-full bg-slate-800/50 border border-white/5 rounded-lg px-4 py-2 text-sm text-slate-300 focus:border-blue-500 outline-none transition-colors"
-                                                value={newLeadData.legalName || ''}
-                                                onChange={e => setNewLeadData({ ...newLeadData, legalName: e.target.value })}
-                                                placeholder="Ex: Razão Social LTDA"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* ENDEREÇO */}
-                                <div>
-                                    <h4 className="text-lg font-bold text-white mb-4 border-b border-white/5 pb-2">Endereço</h4>
-                                    <div className="grid grid-cols-4 gap-6">
-                                        <div className="col-span-4 md:col-span-1">
-                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">CEP (Opcional)</label>
-                                            <input
-                                                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
-                                                value={newLeadData.zipCode || ''}
-                                                onChange={async (e) => {
-                                                    const val = maskCEP(e.target.value);
-                                                    setNewLeadData(prev => ({ ...prev, zipCode: val }));
-                                                    if (val.length === 9) {
-                                                        try {
-                                                            const res = await fetch(`https://viacep.com.br/ws/${val.replace('-', '')}/json/`);
-                                                            const data = await res.json();
-                                                            if (!data.erro) {
-                                                                setNewLeadData(prev => ({
-                                                                    ...prev,
-                                                                    zipCode: val,
-                                                                    address: data.logradouro,
-                                                                    neighborhood: data.bairro,
-                                                                    city: data.localidade,
-                                                                    state: data.uf
-                                                                }));
-                                                            }
-                                                        } catch (error) { console.error(error); }
-                                                    }
-                                                }}
-                                                placeholder="00000-000"
-                                                maxLength={9}
-                                            />
-                                        </div>
-                                        <div className="col-span-4 md:col-span-3 hidden md:block"></div>
-
-                                        <div className="col-span-4 md:col-span-3">
-                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Rua (Opcional)</label>
-                                            <input
-                                                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
-                                                value={newLeadData.address || ''}
-                                                onChange={e => setNewLeadData({ ...newLeadData, address: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="col-span-4 md:col-span-1">
-                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Número (Opcional)</label>
-                                            <input
-                                                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
-                                                value={newLeadData.number || ''}
-                                                onChange={e => setNewLeadData({ ...newLeadData, number: e.target.value })}
-                                            />
-                                        </div>
-
-                                        <div className="col-span-4 md:col-span-2">
-                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Complemento (Opcional)</label>
-                                            <input
-                                                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
-                                                value={newLeadData.complement || ''}
-                                                onChange={e => setNewLeadData({ ...newLeadData, complement: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="col-span-4 md:col-span-2">
-                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Bairro (Opcional)</label>
-                                            <input
-                                                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
-                                                value={newLeadData.neighborhood || ''}
-                                                onChange={e => setNewLeadData({ ...newLeadData, neighborhood: e.target.value })}
-                                            />
-                                        </div>
-
-                                        <div className="col-span-4 md:col-span-3">
-                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Cidade (Opcional)</label>
-                                            <input
-                                                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
-                                                value={newLeadData.city || ''}
-                                                onChange={e => setNewLeadData({ ...newLeadData, city: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="col-span-4 md:col-span-1">
-                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Estado</label>
-                                            <select
-                                                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
-                                                value={newLeadData.state || ''}
-                                                onChange={e => setNewLeadData({ ...newLeadData, state: e.target.value })}
-                                            >
-                                                <option value="">UF</option>
-                                                {BRAZIL_STATES.map(uf => (
-                                                    <option key={uf} value={uf}>{uf}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* DADOS COMERCIAIS */}
-                                <div>
-                                    <h4 className="text-lg font-bold text-white mb-4 border-b border-white/5 pb-2">Dados Comerciais (Interno)</h4>
-                                    <div className="grid grid-cols-2 gap-6">
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Plano de Interesse</label>
-                                            <select
-                                                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none"
-                                                value={newLeadData.planInterest}
-                                                onChange={e => {
-                                                    const newPlan = e.target.value as SaaSPlan;
-                                                    const config = SAAS_PLANS_CONFIG[newPlan];
-                                                    setNewLeadData({
-                                                        ...newLeadData,
-                                                        planInterest: newPlan,
-                                                        estimatedValue: config ? config.monthlyPrice : 0
-                                                    });
-                                                }}
-                                            >
-                                                <option value={SaaSPlan.START}>Start</option>
-                                                <option value={SaaSPlan.GROWTH}>Growth</option>
-                                                <option value={SaaSPlan.EMPIRE}>Empire</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Valor Estimado (R$)</label>
-                                            <input
-                                                type="number"
-                                                className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none"
-                                                value={newLeadData.estimatedValue}
-                                                onChange={e => setNewLeadData({ ...newLeadData, estimatedValue: Number(e.target.value) })}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                            </div>
-
-                            <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-white/5">
-                                <button
-                                    onClick={() => setShowNewLeadModal(false)}
-                                    className="px-6 py-3 rounded-full border border-white/10 text-white font-medium hover:bg-white/5 transition-colors"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    onClick={handleCreateLead}
-                                    className="px-6 py-3 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-bold transition-colors shadow-lg shadow-blue-500/20"
-                                >
-                                    Adicionar cliente
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
 
             {/* IMPLEMENTATION PROJECT DETAILS MODAL */}
             {

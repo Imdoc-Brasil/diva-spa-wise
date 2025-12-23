@@ -4,9 +4,9 @@
  */
 
 export { LeadCard } from './LeadCard';
+export { CreateLeadModal } from './CreateLeadModal';
 
 // Future exports:
-// export { CreateLeadModal } from './CreateLeadModal';
 // export { ClosingLeadModal } from './ClosingLeadModal';
 // export { LeadDetailsModal } from './LeadDetailsModal';
 // export { SubscriberTable } from './SubscriberTable';
