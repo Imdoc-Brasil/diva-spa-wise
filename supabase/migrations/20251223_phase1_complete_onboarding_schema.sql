@@ -31,10 +31,12 @@ ADD COLUMN IF NOT EXISTS state TEXT,
 ADD COLUMN IF NOT EXISTS zip_code TEXT;
 
 -- Add trial tracking
+ALTER TABLE organizations
 ADD COLUMN IF NOT EXISTS trial_started_at TIMESTAMP WITH TIME ZONE,
 ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMP WITH TIME ZONE;
 
 -- Add billing info
+ALTER TABLE organizations
 ADD COLUMN IF NOT EXISTS billing_email TEXT,
 ADD COLUMN IF NOT EXISTS payment_method TEXT,
 ADD COLUMN IF NOT EXISTS recurrence TEXT DEFAULT 'monthly';
