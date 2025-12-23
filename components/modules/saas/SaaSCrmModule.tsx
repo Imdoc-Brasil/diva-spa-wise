@@ -28,6 +28,7 @@ import { SAAS_PLANS_CONFIG } from './saasPlans';
 import { SaaSLeadsService } from '../../../services/saas/SaaSLeadsService';
 import { supabase } from '../../../services/supabase';
 import { LeadCard, CreateLeadModal, ClosingLeadModal } from './components';
+import { PlanBadge } from './components/shared';
 
 
 const SaaSCrmModule: React.FC = () => {
@@ -116,14 +117,7 @@ const SaaSCrmModule: React.FC = () => {
         addToast(`Projeto movido para ${newStage}`, 'success');
     };
 
-    const getPlanBadge = (plan: SaaSPlan) => {
-        switch (plan) {
-            case SaaSPlan.START: return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-700 text-slate-300 uppercase">Start</span>;
-            case SaaSPlan.GROWTH: return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-900/50 text-purple-300 border border-purple-500/30 uppercase">Growth</span>;
-            case SaaSPlan.EMPIRE: return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-900/50 text-yellow-300 border border-yellow-500/30 uppercase">Empire</span>;
-            default: return null;
-        }
-    };
+
 
     const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
     const [draggedProjectId, setDraggedProjectId] = useState<string | null>(null);
@@ -1434,7 +1428,7 @@ const SaaSCrmModule: React.FC = () => {
                                     <p className="text-slate-400 text-sm">{viewLead.name}</p>
 
                                     <div className="mt-3 flex justify-center">
-                                        {getPlanBadge(viewLead.planInterest)}
+                                        <PlanBadge plan={viewLead.planInterest} />
                                     </div>
                                 </div>
 
@@ -1874,7 +1868,7 @@ const SaaSCrmModule: React.FC = () => {
                                                 </div>
                                             </td>
                                             <td className="p-4">
-                                                {getPlanBadge(sub.plan)}
+                                                <PlanBadge plan={sub.plan} />
                                             </td>
                                             <td className="p-4 text-slate-300 capitalize">
                                                 {sub.recurrence === 'monthly' ? 'Mensal' : 'Anual'}
