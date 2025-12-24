@@ -209,12 +209,27 @@ export class OnboardingService {
             const now = new Date().toISOString();
             const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(); // 14 days trial
 
+            // Check if slug already exists
+            let finalSlug = data.slug;
+            const { data: existing, error: checkError } = await supabase
+                .from('organizations')
+                .select('id, slug')
+                .eq('slug', data.slug)
+                .single();
+
+            if (existing) {
+                // Slug exists, generate unique one with timestamp
+                const timestamp = Date.now();
+                finalSlug = `${data.slug}-${timestamp}`;
+                console.warn(`⚠️ [Onboarding] Slug "${data.slug}" already exists, using "${finalSlug}"`);
+            }
+
             const { data: org, error } = await supabase
                 .from('organizations')
                 .insert({
-                    id: `org_${data.slug}`,
+                    id: `org_${finalSlug}`,
                     name: data.name,
-                    slug: data.slug,
+                    slug: finalSlug,
                     type: 'clinic',
                     subscription_status: 'trial',
                     subscription_plan_id: data.planId,
@@ -244,8 +259,8 @@ export class OnboardingService {
                     message: error.message,
                     details: error.details,
                     hint: error.hint,
-                    slug: data.slug,
-                    orgId: `org_${data.slug}`
+                    slug: finalSlug,
+                    orgId: `org_${finalSlug}`
                 });
                 return null;
             }
