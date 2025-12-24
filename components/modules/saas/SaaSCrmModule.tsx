@@ -29,6 +29,7 @@ import { SaaSLeadsService } from '../../../services/saas/SaaSLeadsService';
 import { supabase } from '../../../services/supabase';
 import { LeadCard, CreateLeadModal, ClosingLeadModal } from './components';
 import { PlanBadge } from './components/shared';
+import { onboardingService } from '../../../services/saas/OnboardingService';
 
 
 const SaaSCrmModule: React.FC = () => {
@@ -346,41 +347,52 @@ const SaaSCrmModule: React.FC = () => {
     // --- CONVERSION ACTION ---
     const handleConvertToSubscriber = async (lead: SaaSLead) => {
         try {
-            const slug = lead.clinicName.toLowerCase().trim().replace(/[\s\W-]+/g, '-');
+            addToast('Criando assinante... Por favor aguarde.', 'info');
 
-            // Create Organization record
-            // Use 'any' cast if Typescript complains about table schema not matching locally defined types yet
-            const { data: orgData, error: orgError } = await supabase
-                .from('organizations')
-                .insert({
-                    id: `org_${slug}`,
-                    name: lead.clinicName,
-                    slug: slug,
-                    type: 'clinic',
-                    subscription_status: 'trial',
-                    subscription_plan_id: lead.planInterest || 'start'
-                } as any)
-                .select()
-                .single();
+            // Use OnboardingService to create complete subscriber
+            const result = await onboardingService.createCompleteSubscriber(lead);
 
-            if (orgError) throw orgError;
-            if (!orgData) throw new Error('Failed to create organization data');
+            if (!result.success) {
+                throw new Error(result.error || 'Falha ao criar assinante');
+            }
 
             // Update Lead Status
             await updateSaaSLead(lead.id, {
                 stage: SaaSLeadStage.TRIAL_STARTED,
                 status: 'active',
-                notes: lead.notes + `\n[System] Converted to Organization: ${(orgData as any).name} (${(orgData as any).id})`
+                notes: (lead.notes || '') + `\n[System] Converted to Organization: ${result.organization?.name} (${result.organization?.id})\nAccess URL: ${result.accessUrl}\nAdmin: ${result.adminUser?.email}\nTemporary Password: ${result.adminUser?.temporaryPassword}`
             });
 
-            addToast(`Lead convertido em Assinante (Trial): ${lead.clinicName}`, 'success');
+            // Create Implementation Project
+            const newProject: ImplementationProject = {
+                id: crypto.randomUUID(),
+                subscriberId: result.organization!.id,
+                clinicName: lead.clinicName,
+                stage: ImplementationStage.NEW_SUBSCRIBER,
+                status: 'on_track',
+                startDate: new Date().toISOString(),
+                deadlineDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                notes: `Admin: ${lead.name} (${lead.email})\nPlan: ${lead.planInterest.toUpperCase()}\nAccess: ${result.accessUrl}`
+            };
+            addImplementationProject(newProject);
 
-            // Force reload to refresh subscribers list (simplest/safest for now)
-            setTimeout(() => window.location.reload(), 1500);
+            // Trigger automation
+            automationService.processConversion('NEW_CUSTOMER_ONBOARDING', lead);
+
+            // Show success message with access URL
+            addToast(
+                `✅ Assinante criado com sucesso!\n\n🔗 URL de Acesso:\n${result.accessUrl}\n\n📧 Email: ${result.adminUser?.email}\n🔑 Senha Temporária: ${result.adminUser?.temporaryPassword}\n\n⚠️ Credenciais enviadas por email!`,
+                'success'
+            );
+
+            // Switch to subscribers tab to show the new subscriber
+            setActivePipeline('subscribers');
+
+            console.log('✅ [Conversion] Complete subscriber created:', result);
 
         } catch (error: any) {
-            console.error('Conversion Failed:', error);
-            addToast(`Erro ao converter: ${error.message}`, 'error');
+            console.error('❌ [Conversion] Failed:', error);
+            addToast(`Erro ao converter lead: ${error.message}`, 'error');
         }
     };
 
