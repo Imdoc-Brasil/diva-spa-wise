@@ -53,13 +53,6 @@ export function LeadCard({
                         </button>
 
                         <button
-                            onClick={onConvert}
-                            className="w-full text-left px-4 py-3 hover:bg-emerald-900/50 text-xs text-emerald-400 font-bold border-t border-white/5 block flex items-center gap-2"
-                        >
-                            ✨ Converter em Assinante
-                        </button>
-
-                        <button
                             onClick={onArchive}
                             className="w-full text-left px-4 py-3 hover:bg-red-900/50 text-xs text-red-400 border-t border-white/5 block"
                         >
