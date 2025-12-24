@@ -1881,9 +1881,9 @@ const SaaSCrmModule: React.FC = () => {
                                             </td>
                                             <td className="p-4">
                                                 {(() => {
-                                                    // Prioritize DB slug, fallback to sanitized name, never ID for URL
+                                                    // Use path-based URL (not subdomain)
                                                     const accessSlug = sub.slug || sub.clinicName.toLowerCase().trim().replace(/[\s\W-]+/g, '-');
-                                                    const fullUrl = `https://${accessSlug}.imdoc.com.br`;
+                                                    const fullUrl = `https://www.imdoc.com.br/${accessSlug}#/login`;
 
                                                     return (
                                                         <div className="flex items-center gap-2 group/link">
@@ -1891,9 +1891,9 @@ const SaaSCrmModule: React.FC = () => {
                                                                 href={fullUrl}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
-                                                                className="text-xs text-blue-400 hover:text-blue-300 underline decoration-dotted truncate max-w-[150px] block"
+                                                                className="text-xs text-blue-400 hover:text-blue-300 underline decoration-dotted truncate max-w-[200px] block"
                                                             >
-                                                                {accessSlug}.imdoc.com.br
+                                                                imdoc.com.br/{accessSlug}
                                                             </a>
                                                             <button
                                                                 onClick={(e) => {
