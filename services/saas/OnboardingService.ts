@@ -239,13 +239,24 @@ export class OnboardingService {
                 .single();
 
             if (error) {
-                console.error('Error creating organization:', error);
+                console.error('❌ [Onboarding] Supabase error creating organization:', {
+                    code: error.code,
+                    message: error.message,
+                    details: error.details,
+                    hint: error.hint,
+                    slug: data.slug,
+                    orgId: `org_${data.slug}`
+                });
                 return null;
             }
 
             return org as any;
-        } catch (error) {
-            console.error('Exception creating organization:', error);
+        } catch (error: any) {
+            console.error('❌ [Onboarding] Exception creating organization:', {
+                message: error.message,
+                stack: error.stack,
+                slug: data.slug
+            });
             return null;
         }
     }

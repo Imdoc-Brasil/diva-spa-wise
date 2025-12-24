@@ -38,8 +38,31 @@ export function CreateLeadModal({ isOpen, onClose, onCreate }: CreateLeadModalPr
     }, [isOpen, formData.planInterest, formData.estimatedValue]);
 
     const handleSubmit = async () => {
-        if (!formData.name || !formData.clinicName || !formData.email || !formData.phone) {
-            alert('Preencha Nome, Clínica, Email e Telefone.');
+        // Specific field validation
+        const missingFields: string[] = [];
+
+        if (!formData.name?.trim()) missingFields.push('Nome');
+        if (!formData.clinicName?.trim()) missingFields.push('Clínica');
+        if (!formData.email?.trim()) missingFields.push('Email');
+        if (!formData.phone?.trim()) missingFields.push('Telefone');
+
+        if (missingFields.length > 0) {
+            const fieldList = missingFields.join(', ');
+            alert(`⚠️ Campos obrigatórios não preenchidos:\n\n${fieldList}\n\nPor favor, preencha todos os campos obrigatórios.`);
+            return;
+        }
+
+        // Email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.email!)) {
+            alert('⚠️ Email inválido!\n\nPor favor, insira um email válido.\nExemplo: contato@clinica.com.br');
+            return;
+        }
+
+        // Phone validation (must have at least 10 digits)
+        const phoneDigits = formData.phone!.replace(/\D/g, '');
+        if (phoneDigits.length < 10) {
+            alert('⚠️ Telefone inválido!\n\nPor favor, insira um telefone válido com DDD.\nExemplo: (11) 99999-9999');
             return;
         }
 

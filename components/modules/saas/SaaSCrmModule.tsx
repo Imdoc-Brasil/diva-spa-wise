@@ -100,12 +100,49 @@ const SaaSCrmModule: React.FC = () => {
     const handleMove = (id: string, newStage: SaaSLeadStage) => {
         const lead = saasLeads.find(l => l.id === id);
         if (lead) {
-            // Optimistic update
+            // Special confirmation for moving to TRIAL
+            if (newStage === SaaSLeadStage.TRIAL_STARTED) {
+                const confirmed = window.confirm(
+                    `⚠️ ATENÇÃO: Conversão para Trial\n\n` +
+                    `Você está movendo "${lead.clinicName}" para o período de teste.\n\n` +
+                    `Isso irá:\n` +
+                    `• Criar uma organização completa\n` +
+                    `• Criar usuário admin\n` +
+                    `• Criar unidade padrão\n` +
+                    `• Iniciar trial de 14 dias\n\n` +
+                    `Tem certeza que deseja continuar?`
+                );
+
+                if (!confirmed) {
+                    addToast('Conversão cancelada', 'info');
+                    return;
+                }
+
+                // Use OnboardingService for TRIAL conversion
+                onboardingService.createCompleteSubscriber(lead).then(result => {
+                    if (result.success) {
+                        // Update lead to TRIAL
+                        updateSaaSLead(id, { stage: newStage });
+
+                        addToast(
+                            `✅ Lead convertido para Trial!\n\n` +
+                            `🔗 Acesso: ${result.accessUrl}\n` +
+                            `📧 Email: ${result.adminUser?.email}\n` +
+                            `🔑 Senha: ${result.adminUser?.temporaryPassword}`,
+                            'success'
+                        );
+                    } else {
+                        addToast(`Erro ao converter: ${result.error}`, 'error');
+                    }
+                });
+
+                return;
+            }
+
+            // Normal stage change (no confirmation needed)
             updateSaaSLead(id, { stage: newStage });
 
             // Trigger Automation
-            // We map the stage change to a trigger event
-            // e.g., 'STAGE_CHANGED_TO_TRIAL_STARTED'
             const triggerId = `STAGE_CHANGED_TO_${newStage}`;
             automationService.processConversion(triggerId, { ...lead, stage: newStage }, { oldStage: lead.stage });
 
