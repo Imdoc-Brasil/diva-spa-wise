@@ -2073,35 +2073,67 @@ const SaaSCrmModule: React.FC = () => {
                 onConfirm={async (data) => {
                     if (!closingLead) return;
 
-                    updateSaaSLead(closingLead.id, {
-                        stage: SaaSLeadStage.TRIAL_STARTED,
-                        planInterest: data.plan,
-                        paymentMethod: data.paymentMethod,
-                        recurrence: data.recurrence,
-                        trialStartDate: new Date().toISOString()
-                    });
+                    try {
+                        addToast('Criando assinante... Por favor aguarde.', 'info');
 
-                    automationService.processConversion('NEW_CUSTOMER_ONBOARDING', closingLead);
+                        // 1. Update lead with modal data
+                        await updateSaaSLead(closingLead.id, {
+                            planInterest: data.plan,
+                            paymentMethod: data.paymentMethod,
+                            recurrence: data.recurrence
+                        });
 
-                    const newProject: ImplementationProject = {
-                        id: crypto.randomUUID(),
-                        subscriberId: closingLead.id,
-                        clinicName: closingLead.clinicName,
-                        stage: ImplementationStage.NEW_SUBSCRIBER,
-                        status: 'on_track',
-                        startDate: new Date().toISOString(),
-                        deadlineDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-                        notes: `Admin: ${closingLead.name} (${closingLead.email}) | Plan: ${data.plan.toUpperCase()}`
-                    };
-                    addImplementationProject(newProject);
+                        // 2. Use OnboardingService to create complete subscriber
+                        const result = await onboardingService.createCompleteSubscriber({
+                            ...closingLead,
+                            planInterest: data.plan,
+                            paymentMethod: data.paymentMethod,
+                            recurrence: data.recurrence
+                        });
 
-                    addToast(
-                        'Venda Confirmada! 🎉 Trial iniciado e projeto de implantação criado.',
-                        'success'
-                    );
+                        if (!result.success) {
+                            throw new Error(result.error || 'Falha ao criar assinante');
+                        }
 
-                    setClosingLead(null);
-                    setViewLead(null);
+                        // 3. Update lead to TRIAL
+                        await updateSaaSLead(closingLead.id, {
+                            stage: SaaSLeadStage.TRIAL_STARTED,
+                            trialStartDate: new Date().toISOString()
+                        });
+
+                        // 4. Create Implementation Project
+                        const newProject: ImplementationProject = {
+                            id: crypto.randomUUID(),
+                            subscriberId: result.organization!.id,
+                            clinicName: closingLead.clinicName,
+                            stage: ImplementationStage.NEW_SUBSCRIBER,
+                            status: 'on_track',
+                            startDate: new Date().toISOString(),
+                            deadlineDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                            notes: `Admin: ${closingLead.name} (${closingLead.email})\nPlan: ${data.plan.toUpperCase()}\nAccess: ${result.accessUrl}`
+                        };
+                        addImplementationProject(newProject);
+
+                        // 5. Trigger automation
+                        automationService.processConversion('NEW_CUSTOMER_ONBOARDING', closingLead);
+
+                        // 6. Show success with credentials
+                        addToast(
+                            `✅ Venda Confirmada! Trial iniciado!\n\n` +
+                            `🔗 URL de Acesso:\n${result.accessUrl}\n\n` +
+                            `📧 Email: ${result.adminUser?.email}\n` +
+                            `🔑 Senha Temporária: ${result.adminUser?.temporaryPassword}\n\n` +
+                            `⚠️ Credenciais enviadas por email!`,
+                            'success'
+                        );
+
+                        setClosingLead(null);
+                        setViewLead(null);
+
+                    } catch (error: any) {
+                        console.error('❌ [Fechar Venda] Error:', error);
+                        addToast(`Erro ao fechar venda: ${error.message}`, 'error');
+                    }
                 }}
             />
 

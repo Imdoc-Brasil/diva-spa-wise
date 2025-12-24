@@ -88,18 +88,6 @@ export function LeadCard({
                     R$ {lead.estimatedValue}
                 </span>
             </div>
-
-            {/* Quick Actions overlay on hover */}
-            <div className="absolute inset-x-0 bottom-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-t from-slate-900 via-slate-900 to-transparent flex justify-center gap-2">
-                {lead.stage !== SaaSLeadStage.CLOSED_WON && (
-                    <button
-                        onClick={onClose}
-                        className="px-3 py-1 bg-green-600 text-white text-xs font-bold rounded shadow-lg hover:bg-green-500"
-                    >
-                        Fechar
-                    </button>
-                )}
-            </div>
         </div>
     );
 }
