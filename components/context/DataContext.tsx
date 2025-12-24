@@ -2310,7 +2310,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // 2. Supabase
     if (supabase) {
       const updates: any = {};
-      if (data.stage) updates.status = data.stage; // App 'stage' maps to DB 'status' column (enum)
+      if (data.stage) updates.stage = data.stage; // ✅ FIXED: Map to 'stage' column, not 'status'
+      if (data.status) updates.status = data.status; // Status is separate from stage
       if (data.name) updates.name = data.name;
       if (data.notes) updates.notes = data.notes;
       if (data.estimatedValue) updates.estimated_value = data.estimatedValue;
