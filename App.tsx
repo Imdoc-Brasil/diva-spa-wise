@@ -67,6 +67,7 @@ import SalesPageEditorModule from './components/modules/saas/SalesPageEditorModu
 import SaaSMarketingModule from './components/modules/saas/SaaSMarketingModule';
 import AnalyticsManager from './components/ui/AnalyticsManager';
 import { OrganizationSetup } from './components/auth/OrganizationSetup';
+import { useOrganizationSlug } from './hooks/useOrganizationSlug';
 
 // Scroll Restoration Component (Window level backup, main logic is in Layout)
 const ScrollToTop = () => {
@@ -79,10 +80,52 @@ const ScrollToTop = () => {
 
 const AppContent: React.FC = () => {
     const { currentUser: user, login, logout } = useData();
+    const { organization, loading, error, isMultiTenant } = useOrganizationSlug();
 
     const handleRoleSwitch = (newRole: UserRole, realUser?: any) => {
         login(newRole, realUser);
     };
+
+    // Show loading state while detecting organization
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mx-auto mb-4"></div>
+                    <p className="text-white">Carregando organização...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Show error if organization not found
+    if (error && isMultiTenant) {
+        return (
+            <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+                <div className="text-center max-w-md">
+                    <h1 className="text-4xl font-bold text-red-500 mb-4">❌ Organização não encontrada</h1>
+                    <p className="text-white mb-4">{error}</p>
+                    <a href="https://www.imdoc.com.br" className="text-yellow-500 hover:text-yellow-400 underline">
+                        Voltar para página inicial
+                    </a>
+                </div>
+            </div>
+        );
+    }
+
+    // Show organization info in console
+    useEffect(() => {
+        if (organization) {
+            console.log('🏢 [App] Organization loaded:', {
+                name: organization.name,
+                slug: organization.slug,
+                status: organization.subscription_status,
+                plan: organization.subscription_plan_id
+            });
+        } else {
+            console.log('🏢 [App] Master mode - no organization');
+        }
+    }, [organization]);
 
     return (
         <Router>
