@@ -68,6 +68,7 @@ import SaaSMarketingModule from './components/modules/saas/SaaSMarketingModule';
 import AnalyticsManager from './components/ui/AnalyticsManager';
 import { OrganizationSetup } from './components/auth/OrganizationSetup';
 import { useOrganizationSlug } from './hooks/useOrganizationSlug';
+import { CurrentOrganizationProvider } from './components/context/CurrentOrganizationContext';
 
 // Scroll Restoration Component (Window level backup, main logic is in Layout)
 const ScrollToTop = () => {
@@ -622,10 +623,12 @@ const App: React.FC = () => {
     return (
         <ToastProvider>
             <OrganizationProvider>
-                <DataProvider>
-                    <AnalyticsManager />
-                    <AppContent />
-                </DataProvider>
+                <CurrentOrganizationProvider>
+                    <DataProvider>
+                        <AnalyticsManager />
+                        <AppContent />
+                    </DataProvider>
+                </CurrentOrganizationProvider>
             </OrganizationProvider>
         </ToastProvider>
     );
