@@ -16,6 +16,7 @@ import UnitSelector from './ui/UnitSelector';
 import OrganizationSwitcher from './ui/OrganizationSwitcher';
 import { useData } from './context/DataContext';
 import { useOrganization } from './context/OrganizationContext';
+import { useCurrentOrganization } from './context/CurrentOrganizationContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -36,12 +37,15 @@ interface NavSection {
   items: NavItem[];
 }
 
+
 const roleTranslations: Record<UserRole, string> = {
   [UserRole.ADMIN]: 'Administrador',
   [UserRole.MANAGER]: 'Gerente',
   [UserRole.STAFF]: 'Profissional',
   [UserRole.FINANCE]: 'Financeiro',
-  [UserRole.CLIENT]: 'Paciente'
+  [UserRole.CLIENT]: 'Paciente',
+  [UserRole.MASTER]: 'Master',
+  [UserRole.SAAS_STAFF]: 'SaaS Staff'
 };
 
 const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch }) => {
@@ -55,7 +59,16 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
   const navigate = useNavigate();
   const { notifications } = useData();
   const { organization } = useOrganization();
+  const { currentOrganization, isMultiTenant } = useCurrentOrganization();
   const unreadCount = notifications ? notifications.filter(n => !n.read).length : 0;
+
+  // Log organization info
+  useEffect(() => {
+    if (currentOrganization) {
+      console.log('🏢 [Layout] Current Organization:', currentOrganization.name);
+      console.log('🔒 [Layout] Multi-tenant mode:', isMultiTenant);
+    }
+  }, [currentOrganization, isMultiTenant]);
 
   // Handle Resize & Initial Mobile Check
   useEffect(() => {
