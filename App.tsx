@@ -88,492 +88,490 @@ const AppContent: React.FC = () => {
 
     return (
         <Router>
-            <CurrentOrganizationProvider>
-                <DemoBanner />
-                <ScrollToTop />
-                <Routes>
-                    {/* PUBLIC SITE ROUTE (Accessible without Login) */}
-                    <Route path="/site" element={<PublicPage />} />
-                    <Route path="/sales" element={<SalesPage />} />
-                    <Route path="/tools/revenue-calculator" element={<RevenueCalculatorPage />} />
-                    <Route path="/blog" element={<BlogPage />} />
-                    <Route path="/blog/:slug" element={<BlogPostPage />} />
-                    <Route path="/signup" element={<SignupPage />} />
-                    <Route path="/setup" element={<OrganizationSetup />} />
+            <DemoBanner />
+            <ScrollToTop />
+            <Routes>
+                {/* PUBLIC SITE ROUTE (Accessible without Login) */}
+                <Route path="/site" element={<PublicPage />} />
+                <Route path="/sales" element={<SalesPage />} />
+                <Route path="/tools/revenue-calculator" element={<RevenueCalculatorPage />} />
+                <Route path="/blog" element={<BlogPage />} />
+                <Route path="/blog/:slug" element={<BlogPostPage />} />
+                <Route path="/signup" element={<SignupPage />} />
+                <Route path="/setup" element={<OrganizationSetup />} />
 
-                    {user ? (
-                        <>
-                            {/* KIOSK ROUTE (STANDALONE) */}
-                            <Route
-                                path="/kiosk"
-                                element={
-                                    <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF]}>
-                                        <KioskModule />
-                                    </ProtectedRoute>
-                                }
-                            />
-
-                            {/* TV / DIGITAL SIGNAGE ROUTE (STANDALONE) */}
-                            <Route
-                                path="/tv"
-                                element={
-                                    <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF]}>
-                                        <TvModule />
-                                    </ProtectedRoute>
-                                }
-                            />
-
-
-                            {/* MASTER / SAAS ADMIN ROUTES */}
-                            <Route path="/master/*" element={
-                                <ProtectedRoute user={user} allowedRoles={[UserRole.MASTER, UserRole.SAAS_STAFF]}>
-                                    <MasterLayout />
+                {user ? (
+                    <>
+                        {/* KIOSK ROUTE (STANDALONE) */}
+                        <Route
+                            path="/kiosk"
+                            element={
+                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF]}>
+                                    <KioskModule />
                                 </ProtectedRoute>
-                            }>
-                                <Route index element={<SaaSDashboard />} />
-                                <Route path="crm" element={<SaaSCrmModule />} />
-                                <Route path="finance" element={<SaaSFinanceModule />} />
-                                <Route path="cms" element={<SalesPageEditorModule />} />
-                                <Route path="marketing" element={<SaaSMarketingModule />} />
-                            </Route>
+                            }
+                        />
 
-                            {/* MAIN APP ROUTES (WITH LAYOUT) */}
-                            <Route path="/*" element={
-                                <Layout user={user} onLogout={logout} onRoleSwitch={handleRoleSwitch}>
-                                    <Routes>
-                                        <Route
-                                            path="/"
-                                            element={
-                                                (user.role === UserRole.MASTER || user.role === UserRole.SAAS_STAFF) ? <Navigate to="/master" /> :
-                                                    user.role === UserRole.CLIENT ? <Navigate to="/portal" /> :
-                                                        user.role === UserRole.STAFF ? <StaffDashboard /> :
-                                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.FINANCE]}>
-                                                                <Dashboard />
-                                                            </ProtectedRoute>
-                                            }
-                                        />
+                        {/* TV / DIGITAL SIGNAGE ROUTE (STANDALONE) */}
+                        <Route
+                            path="/tv"
+                            element={
+                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF]}>
+                                    <TvModule />
+                                </ProtectedRoute>
+                            }
+                        />
 
-                                        {/* Client Portal */}
-                                        <Route
-                                            path="/portal"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.CLIENT]}>
-                                                    <ClientPortalModule user={user} />
-                                                </ProtectedRoute>
-                                            }
-                                        />
 
-                                        {/* Staff Dashboard */}
-                                        <Route
-                                            path="/staff-dashboard"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.STAFF]}>
-                                                    <StaffDashboard />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                        {/* MASTER / SAAS ADMIN ROUTES */}
+                        <Route path="/master/*" element={
+                            <ProtectedRoute user={user} allowedRoles={[UserRole.MASTER, UserRole.SAAS_STAFF]}>
+                                <MasterLayout />
+                            </ProtectedRoute>
+                        }>
+                            <Route index element={<SaaSDashboard />} />
+                            <Route path="crm" element={<SaaSCrmModule />} />
+                            <Route path="finance" element={<SaaSFinanceModule />} />
+                            <Route path="cms" element={<SalesPageEditorModule />} />
+                            <Route path="marketing" element={<SaaSMarketingModule />} />
+                        </Route>
 
-                                        {/* User Profile */}
-                                        <Route
-                                            path="/profile"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF, UserRole.FINANCE]}>
-                                                    <UserProfileModule user={user} onLogout={logout} />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                        {/* MAIN APP ROUTES (WITH LAYOUT) */}
+                        <Route path="/*" element={
+                            <Layout user={user} onLogout={logout} onRoleSwitch={handleRoleSwitch}>
+                                <Routes>
+                                    <Route
+                                        path="/"
+                                        element={
+                                            (user.role === UserRole.MASTER || user.role === UserRole.SAAS_STAFF) ? <Navigate to="/master" /> :
+                                                user.role === UserRole.CLIENT ? <Navigate to="/portal" /> :
+                                                    user.role === UserRole.STAFF ? <StaffDashboard /> :
+                                                        <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.FINANCE]}>
+                                                            <Dashboard />
+                                                        </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Website Builder */}
-                                        <Route
-                                            path="/website"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER]}>
-                                                    <WebsiteModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Client Portal */}
+                                    <Route
+                                        path="/portal"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.CLIENT]}>
+                                                <ClientPortalModule user={user} />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Inbox Omnichannel */}
-                                        <Route
-                                            path="/inbox"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF, UserRole.CLIENT]}>
-                                                    <CommunicationModule user={user} />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Staff Dashboard */}
+                                    <Route
+                                        path="/staff-dashboard"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.STAFF]}>
+                                                <StaffDashboard />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Diva Voice */}
-                                        <Route
-                                            path="/voice"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER]}>
-                                                    <VoiceModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* User Profile */}
+                                    <Route
+                                        path="/profile"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF, UserRole.FINANCE]}>
+                                                <UserProfileModule user={user} onLogout={logout} />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Events & Workshops */}
-                                        <Route
-                                            path="/events"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER]}>
-                                                    <EventsModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Website Builder */}
+                                    <Route
+                                        path="/website"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER]}>
+                                                <WebsiteModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        <Route
-                                            path="/compliance"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER]}>
-                                                    <ComplianceModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Inbox Omnichannel */}
+                                    <Route
+                                        path="/inbox"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF, UserRole.CLIENT]}>
+                                                <CommunicationModule user={user} />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Franchise & Multi-Unit */}
-                                        <Route
-                                            path="/franchise"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER]}>
-                                                    <FranchiseModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Diva Voice */}
+                                    <Route
+                                        path="/voice"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER]}>
+                                                <VoiceModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Laundry */}
-                                        <Route
-                                            path="/laundry"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF]}>
-                                                    <LaundryModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Events & Workshops */}
+                                    <Route
+                                        path="/events"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER]}>
+                                                <EventsModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Loyalty */}
-                                        <Route
-                                            path="/loyalty"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.FINANCE]}>
-                                                    <LoyaltyModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    <Route
+                                        path="/compliance"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER]}>
+                                                <ComplianceModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Partners / Affiliates */}
-                                        <Route
-                                            path="/partners"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.FINANCE]}>
-                                                    <PartnersModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Franchise & Multi-Unit */}
+                                    <Route
+                                        path="/franchise"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER]}>
+                                                <FranchiseModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Promotions & Coupons */}
-                                        <Route
-                                            path="/promotions"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER]}>
-                                                    <PromotionsModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Laundry */}
+                                    <Route
+                                        path="/laundry"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF]}>
+                                                <LaundryModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* CRM */}
-                                        <Route
-                                            path="/crm"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.STAFF, UserRole.ADMIN, UserRole.MANAGER]}>
-                                                    <CrmModule user={user!} />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Loyalty */}
+                                    <Route
+                                        path="/loyalty"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.FINANCE]}>
+                                                <LoyaltyModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Scheduling */}
-                                        <Route
-                                            path="/schedule"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.STAFF, UserRole.ADMIN, UserRole.CLIENT]}>
-                                                    <SchedulingModule user={user!} />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Partners / Affiliates */}
+                                    <Route
+                                        path="/partners"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.FINANCE]}>
+                                                <PartnersModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Concierge */}
-                                        <Route
-                                            path="/concierge"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.STAFF, UserRole.ADMIN, UserRole.MANAGER]}>
-                                                    <ConciergeModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Promotions & Coupons */}
+                                    <Route
+                                        path="/promotions"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER]}>
+                                                <PromotionsModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Finance */}
-                                        <Route
-                                            path="/finance"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.FINANCE, UserRole.STAFF]}>
-                                                    <FinanceModule user={user!} />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* CRM */}
+                                    <Route
+                                        path="/crm"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.STAFF, UserRole.ADMIN, UserRole.MANAGER]}>
+                                                <CrmModule user={user!} />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Diva Pay */}
-                                        <Route
-                                            path="/pay"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.FINANCE]}>
-                                                    <PayModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Scheduling */}
+                                    <Route
+                                        path="/schedule"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.STAFF, UserRole.ADMIN, UserRole.CLIENT]}>
+                                                <SchedulingModule user={user!} />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Marketing */}
-                                        <Route
-                                            path="/marketing"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER]}>
-                                                    <MarketingModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Concierge */}
+                                    <Route
+                                        path="/concierge"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.STAFF, UserRole.ADMIN, UserRole.MANAGER]}>
+                                                <ConciergeModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Reports */}
-                                        <Route
-                                            path="/reports"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.FINANCE]}>
-                                                    <ReportsModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Finance */}
+                                    <Route
+                                        path="/finance"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.FINANCE, UserRole.STAFF]}>
+                                                <FinanceModule user={user!} />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Staff Management */}
-                                        <Route
-                                            path="/staff"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER]}>
-                                                    <StaffModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Diva Pay */}
+                                    <Route
+                                        path="/pay"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.FINANCE]}>
+                                                <PayModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Recruitment / Talent */}
-                                        <Route
-                                            path="/talent"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER]}>
-                                                    <TalentModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Marketing */}
+                                    <Route
+                                        path="/marketing"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER]}>
+                                                <MarketingModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Marketplace */}
-                                        <Route
-                                            path="/marketplace"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.CLIENT, UserRole.ADMIN, UserRole.STAFF]}>
-                                                    <MarketplaceModule user={user!} />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Reports */}
+                                    <Route
+                                        path="/reports"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.FINANCE]}>
+                                                <ReportsModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Funnel */}
-                                        <Route
-                                            path="/funnel"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER]}>
-                                                    <FunnelModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Staff Management */}
+                                    <Route
+                                        path="/staff"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER]}>
+                                                <StaffModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Rooms */}
-                                        <Route
-                                            path="/rooms"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.STAFF]}>
-                                                    <RoomsModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Recruitment / Talent */}
+                                    <Route
+                                        path="/talent"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER]}>
+                                                <TalentModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Assets & Maintenance */}
-                                        <Route
-                                            path="/assets"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF]}>
-                                                    <AssetsModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Marketplace */}
+                                    <Route
+                                        path="/marketplace"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.CLIENT, UserRole.ADMIN, UserRole.STAFF]}>
+                                                <MarketplaceModule user={user!} />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Tasks & Ops */}
-                                        <Route
-                                            path="/tasks"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF]}>
-                                                    <TasksModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Funnel */}
+                                    <Route
+                                        path="/funnel"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER]}>
+                                                <FunnelModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Franchise */}
-                                        <Route
-                                            path="/franchise"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN]}>
-                                                    <FranchiseModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Rooms */}
+                                    <Route
+                                        path="/rooms"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.STAFF]}>
+                                                <RoomsModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Integrations */}
-                                        <Route
-                                            path="/integrations"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN]}>
-                                                    <IntegrationsModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Assets & Maintenance */}
+                                    <Route
+                                        path="/assets"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF]}>
+                                                <AssetsModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Security */}
-                                        <Route
-                                            path="/security"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN]}>
-                                                    <SecurityModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Tasks & Ops */}
+                                    <Route
+                                        path="/tasks"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF]}>
+                                                <TasksModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Reputation */}
-                                        <Route
-                                            path="/reputation"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER]}>
-                                                    <ReputationModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Franchise */}
+                                    <Route
+                                        path="/franchise"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN]}>
+                                                <FranchiseModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Pharmacy */}
-                                        <Route
-                                            path="/pharmacy"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF]}>
-                                                    <PharmacyModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Integrations */}
+                                    <Route
+                                        path="/integrations"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN]}>
+                                                <IntegrationsModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Diva Drive */}
-                                        <Route
-                                            path="/drive"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF]}>
-                                                    <DriveModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Security */}
+                                    <Route
+                                        path="/security"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN]}>
+                                                <SecurityModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Treatment Plans */}
-                                        <Route
-                                            path="/plans"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF]}>
-                                                    <TreatmentPlansModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Reputation */}
+                                    <Route
+                                        path="/reputation"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER]}>
+                                                <ReputationModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Academy */}
-                                        <Route
-                                            path="/academy"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF]}>
-                                                    <AcademyModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Pharmacy */}
+                                    <Route
+                                        path="/pharmacy"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF]}>
+                                                <PharmacyModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Help Center */}
-                                        <Route
-                                            path="/help"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF]}>
-                                                    <HelpModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Diva Drive */}
+                                    <Route
+                                        path="/drive"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF]}>
+                                                <DriveModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Create Organization Wizard */}
-                                        <Route
-                                            path="/settings/organization/new"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF]}>
-                                                    <NewOrganizationWizard />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Treatment Plans */}
+                                    <Route
+                                        path="/plans"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF]}>
+                                                <TreatmentPlansModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Organization Settings */}
-                                        <Route
-                                            path="/settings/organization"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN]}>
-                                                    <OrganizationSettings />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Academy */}
+                                    <Route
+                                        path="/academy"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF]}>
+                                                <AcademyModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Settings */}
-                                        <Route
-                                            path="/settings"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER]}>
-                                                    <SettingsModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Help Center */}
+                                    <Route
+                                        path="/help"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF]}>
+                                                <HelpModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Migration */}
-                                        <Route
-                                            path="/migration"
-                                            element={
-                                                <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN]}>
-                                                    <MigrationModule />
-                                                </ProtectedRoute>
-                                            }
-                                        />
+                                    {/* Create Organization Wizard */}
+                                    <Route
+                                        path="/settings/organization/new"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF]}>
+                                                <NewOrganizationWizard />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                                        {/* Catch-all Route for 404 */}
-                                        <Route path="*" element={<NotFound />} />
-                                    </Routes>
-                                </Layout>
-                            } />
-                        </>
-                    ) : (
-                        // Show Sales Page (Landing) at root, and specific login route
-                        <>
-                            <Route path="/" element={<SalesPage />} />
-                            <Route path="/login" element={<LoginPage onLogin={login} />} />
-                            <Route path="/:orgSlug" element={<LoginPage onLogin={login} />} />
-                            <Route path="*" element={<Navigate to="/" replace />} />
-                        </>
-                    )}
+                                    {/* Organization Settings */}
+                                    <Route
+                                        path="/settings/organization"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN]}>
+                                                <OrganizationSettings />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                    {/* Public Routes (Accessible without login) */}
-                    <Route path="/portal/:token" element={<PortalRoute />} />
+                                    {/* Settings */}
+                                    <Route
+                                        path="/settings"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN, UserRole.MANAGER]}>
+                                                <SettingsModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
 
-                </Routes>
-            </CurrentOrganizationProvider>
-        </Router>
+                                    {/* Migration */}
+                                    <Route
+                                        path="/migration"
+                                        element={
+                                            <ProtectedRoute user={user} allowedRoles={[UserRole.ADMIN]}>
+                                                <MigrationModule />
+                                            </ProtectedRoute>
+                                        }
+                                    />
+
+                                    {/* Catch-all Route for 404 */}
+                                    <Route path="*" element={<NotFound />} />
+                                </Routes>
+                            </Layout>
+                        } />
+                    </>
+                ) : (
+                    // Show Sales Page (Landing) at root, and specific login route
+                    <>
+                        <Route path="/" element={<SalesPage />} />
+                        <Route path="/login" element={<LoginPage onLogin={login} />} />
+                        <Route path="/:orgSlug" element={<LoginPage onLogin={login} />} />
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                    </>
+                )}
+
+                {/* Public Routes (Accessible without login) */}
+                <Route path="/portal/:token" element={<PortalRoute />} />
+
+            </Routes>
+        </Router >
     );
 };
 
