@@ -1,14 +1,36 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useOrganization } from '../context/OrganizationContext';
-import { ChevronDown, Check, Plus, Settings } from 'lucide-react';
+import { ChevronDown, Check, Plus, Settings, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useOrganizationSlug } from '../../hooks/useOrganizationSlug';
 
 const OrganizationSwitcher: React.FC = () => {
     const { organization, switchOrganization, userOrganizations } = useOrganization();
+    const { organization: urlOrganization, isMultiTenant } = useOrganizationSlug();
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
+
+    // If in multi-tenant mode, show read-only organization
+    if (isMultiTenant && urlOrganization) {
+        return (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-lg border border-gray-200 text-gray-600 text-sm">
+                <div className="w-6 h-6 bg-gradient-to-br from-diva-primary to-diva-accent rounded flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                    {urlOrganization.name.charAt(0)}
+                </div>
+                <div className="flex flex-col items-start mr-1">
+                    <span className="font-bold text-xs text-gray-400 uppercase tracking-wider mb-[1px]">Organização</span>
+                    <span className="font-bold text-sm max-w-[150px] truncate leading-none text-diva-dark">
+                        {urlOrganization.name}
+                    </span>
+                </div>
+                <div title="Organização fixa">
+                    <Lock size={12} className="text-gray-400" />
+                </div>
+            </div>
+        );
+    }
 
     // Close dropdown when clicking outside
     useEffect(() => {
