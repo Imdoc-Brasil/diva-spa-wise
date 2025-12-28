@@ -5,6 +5,7 @@ import { UserRole } from '../types';
 import { Lock, Mail, ArrowRight, User, Shield, Stethoscope, Sparkles, CheckCircle, ChevronRight, Headphones } from 'lucide-react';
 
 import { supabase } from '../services/supabase';
+import { useOrganizationSlug } from '../hooks/useOrganizationSlug';
 
 interface LoginPageProps {
     onLogin: (role: UserRole, realUser?: any) => void;
@@ -17,31 +18,22 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [showContent, setShowContent] = useState(false);
 
-    const { orgSlug } = useParams<{ orgSlug: string }>();
-    const [clinicBranding, setClinicBranding] = useState<{ name: string, logo?: string } | null>(null);
+    // Detect organization from URL
+    const { organization, loading: orgLoading, error: orgError } = useOrganizationSlug();
 
-    // Animation trigger on mount & Org Slug Check
+    // Animation trigger on mount
     useEffect(() => {
         setShowContent(true);
+    }, []);
 
-        // Simulate fetching branding based on slug
-        if (orgSlug) {
-            // In real app: await supabase.from('organizations').select('name, logo').eq('slug', orgSlug).single();
-            const knownSlugs: Record<string, string> = {
-                'demo': 'Diva Spa Demo',
-                'royal-face': 'Royal Face Jardins',
-                'dr-silva': 'Dr. Silva Dermatologia'
-            };
-
-            if (knownSlugs[orgSlug]) {
-                setClinicBranding({ name: knownSlugs[orgSlug] });
-            } else {
-                // Fallback: format slug to title case
-                const name = orgSlug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                setClinicBranding({ name });
-            }
+    // Log organization detection
+    useEffect(() => {
+        if (organization) {
+            console.log('🏢 [LoginPage] Organization detected:', organization.name);
+        } else if (!orgLoading) {
+            console.log('🏢 [LoginPage] No organization - master mode');
         }
-    }, [orgSlug]);
+    }, [organization, orgLoading]);
 
     const handleRoleSelect = (role: UserRole) => {
         setSelectedRole(role);
@@ -135,7 +127,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 // Map to App User with STRONG fallbacks
                 const appUser = {
                     uid: data.user.id,
-                    organizationId: p?.organization_id || 'org_demo',
+                    organizationId: p?.organization_id || organization?.id || 'org_demo',
                     email: data.user.email || '',
                     displayName: p?.full_name || data.user.email?.split('@')[0] || 'User',
                     role: roleEnum,
@@ -211,10 +203,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                             <span className="text-xl font-serif font-bold tracking-widest text-white/90">I'mDoc SaaS</span>
                         </div>
                         <h1 className="text-6xl font-serif font-medium leading-[1.1] mb-6">
-                            {clinicBranding ? (
+                            {organization ? (
                                 <>
                                     Welcome to <br />
-                                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-diva-light to-white font-italic">{clinicBranding.name}</span>
+                                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-diva-light to-white font-italic">{organization.name}</span>
                                 </>
                             ) : (
                                 <>
@@ -259,10 +251,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                     {/* Header Text */}
                     <div className="text-center mb-10 animate-slide-up" style={{ animationDelay: '0ms' }}>
                         <h2 className="text-3xl font-bold text-diva-dark mb-2">
-                            {clinicBranding ? clinicBranding.name : 'Bem-vindo de volta'}
+                            {organization ? organization.name : 'Bem-vindo de volta'}
                         </h2>
                         <p className="text-gray-500 text-sm">
-                            {clinicBranding ? 'Área exclusiva para colaboradores.' : 'Acesse sua conta para gerenciar o spa.'}
+                            {organization ? 'Área exclusiva para colaboradores.' : 'Acesse sua conta para gerenciar o spa.'}
                         </p>
                     </div>
 
