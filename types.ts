@@ -3,8 +3,8 @@ export * from './types_financial';
 import {
     SaaSLead, SaaSSubscriber, SaaSTask, SaaSPlan,
     ImplementationProject, SupportTicket, FeatureRequest, ImplementationStage
-} from './types_saas';
-export * from './types_saas';
+} from './types/saas';
+export * from './types/saas';
 
 // ============================================
 // CONSTANTS (Centralized)
