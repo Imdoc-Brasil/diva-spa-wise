@@ -1468,19 +1468,65 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Team Logic
-  const inviteMember = (email: string, role: string, name: string) => {
-    const newMember: OrganizationMember = {
-      id: `mem_${Date.now()} `,
-      organizationId: currentOrgId,
-      email,
-      name,
-      role: role as UserRole, // Cast for now
-      status: 'invited',
-      invitedAt: new Date().toISOString(),
-      avatarUrl: `https://ui-avatars.com/api/?name=${name}&background=random`
-    };
-    setMembers(prev => [...prev, newMember]);
-    addToast(`Convite enviado para ${email}`, 'success');
+  const inviteMember = async (email: string, role: string, name: string) => {
+    // For demo organization, use mock behavior
+    if (currentOrgId === 'org_demo') {
+      const newMember: OrganizationMember = {
+        id: `mem_${Date.now()} `,
+        organizationId: currentOrgId,
+        email,
+        name,
+        role: role as UserRole,
+        status: 'invited',
+        invitedAt: new Date().toISOString(),
+        avatarUrl: `https://ui-avatars.com/api/?name=${name}&background=random`
+      };
+      setMembers(prev => [...prev, newMember]);
+      addToast(`Convite enviado para ${email}`, 'success');
+      return;
+    }
+
+    // For production organizations, use Edge Function to create real user
+    try {
+      // Import the createUser service
+      const { createUser } = await import('../../services/userService');
+
+      // Generate a temporary password (should be sent via email in production)
+      const tempPassword = `Temp${Math.random().toString(36).slice(-8)}!`;
+
+      const result = await createUser({
+        email,
+        password: tempPassword,
+        fullName: name,
+        role: role as UserRole,
+        organizationId: currentOrgId,
+        unitId: selectedUnitId !== 'all' ? selectedUnitId : undefined,
+      });
+
+      if (result.success && result.user) {
+        // Create member entry for UI
+        const newMember: OrganizationMember = {
+          id: result.user.id,
+          organizationId: currentOrgId,
+          email: result.user.email,
+          name: result.user.fullName,
+          role: result.user.role,
+          status: 'active',
+          invitedAt: new Date().toISOString(),
+          avatarUrl: `https://ui-avatars.com/api/?name=${name}&background=random`
+        };
+        setMembers(prev => [...prev, newMember]);
+        addToast(`Usuário ${email} criado com sucesso! Senha temporária: ${tempPassword}`, 'success');
+
+        // TODO: Send email with temporary password
+        console.log(`🔐 Temporary password for ${email}: ${tempPassword}`);
+      } else {
+        addToast(`Erro ao criar usuário: ${result.error}`, 'error');
+      }
+    } catch (error) {
+      console.error('Error creating user:', error);
+      addToast(`Erro ao criar usuário: ${error instanceof Error ? error.message : 'Erro desconhecido'}`, 'error');
+    }
   };
 
   const updateMemberRole = (memberId: string, role: string) => {
