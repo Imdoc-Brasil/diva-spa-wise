@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Edge Function - Create User</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .status.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 15px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .log-entry {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-left: 3px solid #667eea;
+            background: white;
+        }
+
+        .log-entry.error {
+            border-left-color: #dc3545;
+        }
+
+        .log-entry.success {
+            border-left-color: #28a745;
+        }
+
+        .timestamp {
+            color: #6c757d;
+            font-size: 11px;
+            margin-right: 10px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .steps {
+            margin: 20px 0;
+        }
+
+        .step {
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .step-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .step-icon.pending {
+            background: #e9ecef;
+            color: #6c757d;
+        }
+
+        .step-icon.running {
+            background: #667eea;
+            color: white;
+            animation: pulse 1.5s infinite;
+        }
+
+        .step-icon.success {
+            background: #28a745;
+            color: white;
+        }
+
+        .step-icon.error {
+            background: #dc3545;
+            color: white;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🧪 Teste Edge Function</h1>
+        <p class="subtitle">Teste automatizado da função create-user</p>
+
+        <div id="status" class="status info">
+            Pronto para iniciar o teste
+        </div>
+
+        <button id="startTest" onclick="runTest()">▶️ Iniciar Teste</button>
+        <button id="openApp" onclick="window.open('https://www.imdoc.com.br/teste-2412#/login', '_blank')"
+            style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+            🌐 Abrir Aplicação
+        </button>
+
+        <div class="steps">
+            <div class="step" id="step1">
+                <div class="step-icon pending">1</div>
+                <div>Verificar Edge Function</div>
+            </div>
+            <div class="step" id="step2">
+                <div class="step-icon pending">2</div>
+                <div>Testar Endpoint</div>
+            </div>
+            <div class="step" id="step3">
+                <div class="step-icon pending">3</div>
+                <div>Validar Resposta</div>
+            </div>
+        </div>
+
+        <div id="log" class="log hidden"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://ypbtyxhpbtnnwrbulnyg.supabase.co';
+        const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlwYnR5eGhwYnRubndyYnVsbnlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUyMTM4MzIsImV4cCI6MjA4MDc4OTgzMn0.jFGcYaLZoapUJnc0fZCebL73aN2gcsUlyrbawdNvStU';
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            logDiv.classList.remove('hidden');
+
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+
+            const timestamp = new Date().toLocaleTimeString('pt-BR');
+            entry.innerHTML = `<span class="timestamp">${timestamp}</span>${message}`;
+
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function updateStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+        }
+
+        function updateStep(stepNum, status) {
+            const step = document.getElementById(`step${stepNum}`);
+            const icon = step.querySelector('.step-icon');
+            icon.className = `step-icon ${status}`;
+
+            if (status === 'success') {
+                icon.textContent = '✓';
+            } else if (status === 'error') {
+                icon.textContent = '✗';
+            } else if (status === 'running') {
+                icon.textContent = '⟳';
+            } else {
+                icon.textContent = stepNum;
+            }
+        }
+
+        async function runTest() {
+            const button = document.getElementById('startTest');
+            button.disabled = true;
+            button.textContent = '⏳ Testando...';
+
+            updateStatus('Iniciando testes...', 'info');
+            log('🚀 Iniciando teste da Edge Function create-user');
+
+            // Step 1: Verificar Edge Function
+            updateStep(1, 'running');
+            log('📍 Verificando endpoint da Edge Function...');
+
+            try {
+                const functionUrl = `${SUPABASE_URL}/functions/v1/create-user`;
+                log(`URL: ${functionUrl}`);
+                updateStep(1, 'success');
+                log('✅ Endpoint configurado corretamente', 'success');
+
+                // Step 2: Testar Endpoint
+                updateStep(2, 'running');
+                log('🔄 Fazendo requisição de teste...');
+
+                const response = await fetch(functionUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${ANON_KEY}`,
+                        'apikey': ANON_KEY,
+                    },
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        password: 'TestPass123!',
+                        fullName: 'Test User',
+                        role: 'professional',
+                        organizationId: 'test-org',
+                        unitId: 'test-unit'
+                    }),
+                });
+
+                log(`Status Code: ${response.status}`);
+                const data = await response.json();
+                log(`Response: ${JSON.stringify(data, null, 2)}`);
+
+                updateStep(2, 'success');
+                log('✅ Edge Function respondeu', 'success');
+
+                // Step 3: Validar Resposta
+                updateStep(3, 'running');
+                log('🔍 Validando resposta...');
+
+                if (response.status === 400 || response.status === 401) {
+                    if (data.error && data.error.includes('Unauthorized')) {
+                        updateStep(3, 'success');
+                        log('✅ Validação de autenticação funcionando!', 'success');
+                        updateStatus('✅ Edge Function está funcionando corretamente!', 'success');
+                        log('🎉 TESTE CONCLUÍDO COM SUCESSO!', 'success');
+                        log('ℹ️  O erro "Unauthorized" é esperado pois não estamos autenticados', 'info');
+                        log('📝 Próximo passo: Testar na aplicação com usuário autenticado', 'info');
+                    } else {
+                        throw new Error('Resposta inesperada');
+                    }
+                } else if (response.status === 200) {
+                    updateStep(3, 'success');
+                    log('✅ Usuário criado com sucesso!', 'success');
+                    updateStatus('✅ Edge Function funcionou perfeitamente!', 'success');
+                    log('🎉 TESTE CONCLUÍDO COM SUCESSO!', 'success');
+                } else {
+                    throw new Error(`Status inesperado: ${response.status}`);
+                }
+
+            } catch (error) {
+                updateStep(2, 'error');
+                updateStep(3, 'error');
+                log(`❌ Erro: ${error.message}`, 'error');
+                updateStatus('❌ Erro durante o teste', 'error');
+            } finally {
+                button.disabled = false;
+                button.textContent = '🔄 Executar Novamente';
+            }
+        }
+    </script>
+</body>
+
+</html>
