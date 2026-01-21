@@ -3,29 +3,73 @@
  * @module types
  * 
  * Import all types from a single location:
- * import { User, SaaSLead, Transaction } from '@/types';
+ * import { User, Client, ServiceAppointment } from '@/types';
  */
 
 // ============================================
-// CORE TYPES
+// CORE & COMMON TYPES
 // ============================================
 export * from './core';
+export * from './common';
 
 // ============================================
-// SAAS TYPES
+// SAAS & MULTI-TENANT
 // ============================================
 export * from './saas';
 
 // ============================================
-// FINANCIAL TYPES (Legacy - to be migrated)
+// MIGRATION
 // ============================================
-export * from '../types_financial';
+export * from './migration';
+
+// ============================================
+// DOMAIN-SPECIFIC TYPES
+// ============================================
+
+// Authentication & Users
+export * from './auth';
+
+// Clients & Leads
+export * from './client';
+
+// Appointments & Services
+export * from './appointment';
+
+// Finance & Payments
+export * from './finance';
+
+// Staff & Team
+export * from './staff';
+
+// Inventory & Products
+export * from './inventory';
+
+// Marketing & Campaigns
+export * from './marketing';
+
+// Communication & Forms
+export * from './communication';
+
+// UI & Configuration
+export * from './ui';
+
+// Events & Operations
+export * from './operations';
+
+// Treatment Plans
+export * from './treatment';
+
+// Business Units
+export * from './unit';
+
+// Context Types
+export * from './context';
 
 // ============================================
 // TYPE GUARDS & UTILITIES
 // ============================================
 
-import { UserRole } from './core';
+import { UserRole } from './auth';
 import { SaaSLeadStage, SaaSPlan } from './saas';
 
 /**
@@ -62,14 +106,6 @@ export const isPremiumPlan = (plan: SaaSPlan): boolean => {
 // ============================================
 // CONSTANTS
 // ============================================
-
-export const BRAZIL_STATES = [
-    'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
-    'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
-    'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
-] as const;
-
-export type BrazilState = typeof BRAZIL_STATES[number];
 
 /**
  * Lead stage progression order
