@@ -1,13 +1,18 @@
-import React, { Suspense, useEffect } from 'react';
+import React, { Suspense, useEffect, lazy } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { DataProvider } from './components/context/DataContext';
+import { DataProvider, useData } from './components/context/DataContext';
 import { ToastProvider } from './components/ui/ToastContext';
 import { CurrentOrganizationProvider } from './components/context/CurrentOrganizationContext';
 import { useOrganizationSlug } from './hooks/useOrganizationSlug';
 import AnalyticsManager from './components/ui/AnalyticsManager';
+import { UserRole } from './types';
 
 // Route modules with lazy loading
 import { PublicRoutes, AuthRoutes, DashboardRoutes, SaaSRoutes } from './routes';
+
+// Lazy load additional components
+const LoginPage = lazy(() => import('./components/LoginPage'));
+const SalesPage = lazy(() => import('./components/public/SalesPage'));
 
 // Loading fallback
 const LoadingFallback = () => (
@@ -35,35 +40,56 @@ const ScrollToTop = () => {
 
 /**
  * Main App Content
- * Handles routing and organization context
+ * Handles routing with authentication context
  */
 const AppContent = () => {
-    const { slug, isLoading } = useOrganizationSlug();
+    const { loading } = useOrganizationSlug();
+    const { currentUser: user, login } = useData();
 
-    if (isLoading) {
+    if (loading) {
         return <LoadingFallback />;
     }
 
     return (
-        <CurrentOrganizationProvider slug={slug}>
+        <CurrentOrganizationProvider>
             <AnalyticsManager />
             <ScrollToTop />
 
             <Suspense fallback={<LoadingFallback />}>
                 <Routes>
-                    {/* Public Routes */}
-                    <PublicRoutes />
+                    {user ? (
+                        <>
+                            {/* Authenticated Routes */}
+                            <DashboardRoutes />
+                            <SaaSRoutes />
 
-                    {/* Auth Routes */}
-                    <AuthRoutes />
+                            {/* Default redirect based on role */}
+                            <Route path="/" element={
+                                (user.role === UserRole.MASTER || user.role === UserRole.SAAS_STAFF) ?
+                                    <Navigate to="/dashboard/saas/crm" replace /> :
+                                    user.role === UserRole.CLIENT ?
+                                        <Navigate to="/dashboard/profile" replace /> :
+                                        user.role === UserRole.STAFF ?
+                                            <Navigate to="/dashboard/staff" replace /> :
+                                            <Navigate to="/dashboard" replace />
+                            } />
+                        </>
+                    ) : (
+                        <>
+                            {/* Public Routes */}
+                            <PublicRoutes />
 
-                    {/* Dashboard Routes */}
-                    <DashboardRoutes />
+                            {/* Auth Routes */}
+                            <AuthRoutes />
 
-                    {/* SaaS Routes */}
-                    <SaaSRoutes />
+                            {/* Default routes for unauthenticated users */}
+                            <Route path="/" element={<SalesPage />} />
+                            <Route path="/login" element={<LoginPage onLogin={login} />} />
+                            <Route path="/:orgSlug" element={<LoginPage onLogin={login} />} />
+                        </>
+                    )}
 
-                    {/* Default Redirect */}
+                    {/* Catch-all redirect */}
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </Suspense>
