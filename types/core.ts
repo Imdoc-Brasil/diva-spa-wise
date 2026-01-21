@@ -1,49 +1,12 @@
 /**
- * Core Types - User, Organization, Authentication
+ * Core Types - Organization & Multi-tenant
  * @module types/core
+ * 
+ * Note: User and Address types are now in auth.ts and common.ts respectively
  */
 
-// ============================================
-// USER & AUTHENTICATION
-// ============================================
-
-export enum UserRole {
-    MASTER = 'master',           // God mode - SaaS admin
-    SAAS_STAFF = 'saas_staff',  // SaaS team member
-    ADMIN = 'admin',             // Clinic owner
-    MANAGER = 'manager',         // Clinic manager
-    STAFF = 'staff',             // Clinic staff
-    FINANCE = 'finance',         // Finance team
-    CLIENT = 'client'            // End customer
-}
-
-export interface User {
-    id: string;
-    name: string;
-    email: string;
-    role: UserRole;
-    organizationId?: string;
-    avatar?: string;
-    phone?: string;
-    cpf?: string;
-    createdAt: string;
-    lastLogin?: string;
-}
-
-// ============================================
-// ADDRESS
-// ============================================
-
-export interface Address {
-    street: string;
-    number: string;
-    complement?: string;
-    neighborhood: string;
-    city: string;
-    state: string;
-    zipCode: string;
-    country: string;
-}
+// Import types that are used in Organization
+import type { Address } from './common';
 
 // ============================================
 // ORGANIZATION (Multi-tenant)

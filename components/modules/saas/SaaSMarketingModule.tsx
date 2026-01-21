@@ -6,7 +6,7 @@ import {
     Sparkles, LayoutTemplate, MousePointerClick, Folder, Search, Copy, FolderInput, Pencil, MoreVertical
 } from 'lucide-react';
 import { useToast } from '../../ui/ToastContext';
-import { MarketingCampaign, MessageTemplate, AutomationActionType } from '../../../types_marketing';
+import { MarketingCampaign, MessageTemplate, AutomationActionType } from '@/types';
 import { automationService } from '../../../services/saas/AutomationService';
 
 const MOCK_TEMPLATES: MessageTemplate[] = [

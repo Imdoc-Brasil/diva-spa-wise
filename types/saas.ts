@@ -29,7 +29,7 @@ export enum SaaSLeadStage {
 
 export type SaaSLeadSource = 'landing_page' | 'referral' | 'outbound' | 'calculator' | 'ebook' | 'other';
 export type SaaSLeadStatus = 'active' | 'archived';
-export type PaymentMethod = 'boleto' | 'pix' | 'credit_card';
+export type SaaSPaymentMethod = 'boleto' | 'pix' | 'credit_card';
 export type Recurrence = 'monthly' | 'annual';
 
 export interface SaaSLead {
@@ -58,7 +58,7 @@ export interface SaaSLead {
     state?: string;
 
     // Payment
-    paymentMethod?: PaymentMethod;
+    paymentMethod?: SaaSPaymentMethod;
     recurrence?: Recurrence;
     trialStartDate?: string;
 

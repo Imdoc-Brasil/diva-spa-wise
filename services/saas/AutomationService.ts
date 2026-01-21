@@ -1,6 +1,5 @@
 
-import { SaaSLead } from '../../types_saas';
-import { MarketingCampaign, AutomationAction, AutomationActionType, MessageTemplate } from '../../types_marketing';
+import { SaaSLead, MarketingCampaign, AutomationAction, AutomationActionType, MessageTemplate } from '@/types';
 import { supabase } from '../supabase';
 
 // Workflows pré-definidos (HARDCODED FOR DEMO)
