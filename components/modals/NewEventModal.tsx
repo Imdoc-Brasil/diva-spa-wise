@@ -44,6 +44,7 @@ const NewEventModal: React.FC<NewEventModalProps> = ({ isOpen, onClose, onSave }
 
     const newEvent: ClinicEvent = {
       id: `ev_${Date.now()}`,
+      organizationId: 'org_demo',
       title: formData.title,
       date: formData.date,
       time: formData.time,

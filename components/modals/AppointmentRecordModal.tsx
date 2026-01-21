@@ -118,11 +118,14 @@ const AppointmentRecordModal: React.FC<AppointmentRecordModalProps> = ({
 
     const handleRemoveProduct = (index: number) => {
         const newProducts = [...(editedRecord.productsUsed || [])];
-        if (newProducts[index].quantity > 1) {
-            newProducts[index].quantity -= 1;
-        } else {
-            newProducts.splice(index, 1);
-        }
+        newProducts.splice(index, 1);
+        setEditedRecord({ ...editedRecord, productsUsed: newProducts });
+    };
+
+    const handleUpdateProductQuantity = (index: number, newQuantity: number) => {
+        if (newQuantity < 1) return;
+        const newProducts = [...(editedRecord.productsUsed || [])];
+        newProducts[index].quantity = newQuantity;
         setEditedRecord({ ...editedRecord, productsUsed: newProducts });
     };
 
@@ -417,11 +420,26 @@ const AppointmentRecordModal: React.FC<AppointmentRecordModalProps> = ({
                                             <div key={idx} className="flex justify-between items-center bg-gray-50 p-2 rounded group">
                                                 <span className="text-sm text-gray-900">{product.productName}</span>
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-xs font-bold text-gray-600">{product.quantity}x</span>
+                                                    {isEditing ? (
+                                                        <div className="flex items-center gap-1">
+                                                            <input
+                                                                type="number"
+                                                                min="1"
+                                                                value={product.quantity}
+                                                                onChange={(e) => handleUpdateProductQuantity(idx, parseInt(e.target.value) || 1)}
+                                                                className="w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:border-diva-primary outline-none text-center"
+                                                            />
+                                                            <span className="text-xs text-gray-500">un</span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs font-bold text-gray-600">{product.quantity} un</span>
+                                                    )}
+
                                                     {isEditing && (
                                                         <button
                                                             onClick={() => handleRemoveProduct(idx)}
-                                                            className="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded transition-colors"
+                                                            title="Remover produto"
                                                         >
                                                             <Trash2 size={14} />
                                                         </button>

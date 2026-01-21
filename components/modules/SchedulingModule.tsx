@@ -21,7 +21,7 @@ interface SchedulingModuleProps {
 }
 
 const SchedulingModule: React.FC<SchedulingModuleProps> = ({ user }) => {
-    const { appointments, addTransaction, updateAppointmentStatus, deleteAppointment, clients, waitlist, addToWaitlist, removeFromWaitlist, staff, updateStaff, updateClient, products, rooms } = useUnitData();
+    const { appointments, addTransaction, updateAppointmentStatus, deleteAppointment, clients, waitlist, addToWaitlist, removeFromWaitlist, staff, updateStaff, updateClient, products, rooms, services } = useUnitData();
     const { filterAppointments, canViewAllData } = useDataIsolation(user);
 
     // Combine real rooms with virtual/online room
@@ -90,6 +90,7 @@ const SchedulingModule: React.FC<SchedulingModuleProps> = ({ user }) => {
             // Add to waitlist
             const newItem: WaitlistItem = {
                 id: `w_${Date.now()}`,
+                organizationId: user.organizationId || 'org_demo',
                 clientName: appt.clientName,
                 service: appt.serviceName,
                 preference: 'Reagendamento (Veio da Agenda)',
@@ -134,6 +135,7 @@ const SchedulingModule: React.FC<SchedulingModuleProps> = ({ user }) => {
             invoice.splitDetails.forEach((split, index) => {
                 const transaction: Transaction = {
                     id: `t_${Date.now()}_${index}`,
+                    organizationId: user.organizationId || 'org_demo',
                     description: `Pagamento (Parcial): ${invoice.clientName} - ${invoice.items[0].description}`,
                     amount: split.amount,
                     type: 'income',
@@ -147,6 +149,7 @@ const SchedulingModule: React.FC<SchedulingModuleProps> = ({ user }) => {
         } else {
             const transaction: Transaction = {
                 id: `t_${Date.now()}`,
+                organizationId: user.organizationId || 'org_demo',
                 description: `Pagamento: ${invoice.clientName} - ${invoice.items[0].description}`,
                 amount: invoice.total,
                 type: 'income',
@@ -173,6 +176,7 @@ const SchedulingModule: React.FC<SchedulingModuleProps> = ({ user }) => {
                     if (commissionAmount > 0) {
                         const commissionTransaction: Transaction = {
                             id: `comm_${Date.now()}`,
+                            organizationId: user.organizationId || 'org_demo',
                             description: `Comissão: ${staffMember.name} - ${invoice.clientName}`,
                             amount: commissionAmount,
                             type: 'expense',
@@ -288,6 +292,7 @@ const SchedulingModule: React.FC<SchedulingModuleProps> = ({ user }) => {
 
     const mockFallbackClient: Client = {
         clientId: '0',
+        organizationId: user.organizationId || 'org_demo',
         userId: '0',
         name: selectedAppointment?.clientName || 'Cliente',
         email: '',
@@ -317,57 +322,64 @@ const SchedulingModule: React.FC<SchedulingModuleProps> = ({ user }) => {
         <div className="flex flex-col h-[calc(100vh-140px)] gap-6">
 
             {/* HEADER: Controls */}
-            <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl border border-diva-light/30 shadow-sm shrink-0 gap-4">
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center bg-gray-100 rounded-lg p-1">
-                        <button onClick={() => handleDateChange('prev')} className="p-1 hover:bg-white rounded shadow-sm transition-all"><ChevronLeft size={18} /></button>
-                        <div className="px-4 font-bold text-diva-dark flex items-center gap-2 min-w-[200px] justify-center">
-                            <CalendarIcon size={16} className="text-diva-primary" />
-                            {viewMode === 'week' ? (
-                                <span className="text-sm">
-                                    {weekDays[0].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} - {weekDays[5].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                                </span>
-                            ) : (
-                                selectedDate.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'long' })
-                            )}
+            <div className="flex flex-col gap-3 bg-white p-3 md:p-4 rounded-xl border border-diva-light/30 shadow-sm shrink-0">
+                {/* Top Row: Date Navigation */}
+                <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center bg-gray-100 rounded-lg p-1 flex-1 md:flex-initial">
+                        <button onClick={() => handleDateChange('prev')} className="p-1.5 md:p-1 hover:bg-white rounded shadow-sm transition-all active:scale-95"><ChevronLeft size={18} /></button>
+                        <div className="px-2 md:px-4 font-bold text-diva-dark flex items-center gap-2 min-w-0 flex-1 md:min-w-[200px] justify-center">
+                            <CalendarIcon size={16} className="text-diva-primary shrink-0" />
+                            <span className="text-xs md:text-sm truncate">
+                                {viewMode === 'week' ? (
+                                    <>
+                                        {weekDays[0].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} - {weekDays[5].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                                    </>
+                                ) : (
+                                    selectedDate.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'long' })
+                                )}
+                            </span>
                         </div>
-                        <button onClick={() => handleDateChange('next')} className="p-1 hover:bg-white rounded shadow-sm transition-all"><ChevronRight size={18} /></button>
+                        <button onClick={() => handleDateChange('next')} className="p-1.5 md:p-1 hover:bg-white rounded shadow-sm transition-all active:scale-95"><ChevronRight size={18} /></button>
                     </div>
-                    <button onClick={() => setSelectedDate(new Date())} className="text-sm text-diva-primary font-bold hover:underline">Hoje</button>
+                    <button onClick={() => setSelectedDate(new Date())} className="text-xs md:text-sm text-diva-primary font-bold hover:underline whitespace-nowrap px-2">Hoje</button>
                 </div>
 
-                <div className="flex items-center gap-3">
+                {/* Bottom Row: View Controls & Actions */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+                    {/* View Mode Toggle */}
                     <div className="flex p-1 bg-gray-100 rounded-lg border border-gray-200">
                         <button
                             onClick={() => setViewMode('list')}
-                            className={`p-2 rounded flex items-center gap-2 text-xs font-bold transition-all ${viewMode === 'list' ? 'bg-white text-diva-dark shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                            className={`flex-1 sm:flex-initial p-2 rounded flex items-center justify-center gap-2 text-xs font-bold transition-all active:scale-95 ${viewMode === 'list' ? 'bg-white text-diva-dark shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                             title="Lista"
                         >
                             <List size={16} />
+                            <span className="sm:hidden">Lista</span>
                         </button>
                         <button
                             onClick={() => setViewMode('grid')}
-                            className={`p-2 rounded flex items-center gap-2 text-xs font-bold transition-all ${viewMode === 'grid' ? 'bg-white text-diva-dark shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                            className={`flex-1 sm:flex-initial p-2 rounded flex items-center justify-center gap-2 text-xs font-bold transition-all active:scale-95 ${viewMode === 'grid' ? 'bg-white text-diva-dark shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                             title="Dia"
                         >
-                            <Grid size={16} /> Dia
+                            <Grid size={16} /> <span className="hidden sm:inline">Dia</span>
                         </button>
                         <button
                             onClick={() => setViewMode('week')}
-                            className={`p-2 rounded flex items-center gap-2 text-xs font-bold transition-all ${viewMode === 'week' ? 'bg-white text-diva-dark shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                            className={`flex-1 sm:flex-initial p-2 rounded flex items-center justify-center gap-2 text-xs font-bold transition-all active:scale-95 ${viewMode === 'week' ? 'bg-white text-diva-dark shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                             title="Semana"
                         >
-                            <LayoutGrid size={16} /> Semana
+                            <LayoutGrid size={16} /> <span className="hidden sm:inline">Semana</span>
                         </button>
                     </div>
 
+                    {/* Room Filter (Week View Only) */}
                     {viewMode === 'week' && (
                         <div className="flex items-center bg-gray-100 rounded-lg px-3 border border-gray-200 h-[38px]">
                             <Filter size={14} className="text-gray-500 mr-2" />
                             <select
                                 value={selectedRoomFilter}
                                 onChange={(e) => setSelectedRoomFilter(e.target.value)}
-                                className="bg-transparent text-xs font-bold text-diva-dark outline-none cursor-pointer min-w-[140px]"
+                                className="bg-transparent text-xs font-bold text-diva-dark outline-none cursor-pointer flex-1 min-w-0"
                             >
                                 <option value="all">Todas as Salas</option>
                                 {activeResources.map(room => (
@@ -377,19 +389,21 @@ const SchedulingModule: React.FC<SchedulingModuleProps> = ({ user }) => {
                         </div>
                     )}
 
+                    {/* New Appointment Button */}
                     <button
                         onClick={() => setIsNewAppointmentModalOpen(true)}
-                        className="bg-diva-primary text-white px-4 py-2.5 rounded-lg text-sm font-bold flex items-center hover:bg-diva-dark shadow-md transition-colors"
+                        className="bg-diva-primary text-white px-4 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center hover:bg-diva-dark shadow-md transition-colors active:scale-95 sm:ml-auto"
                     >
                         <Plus size={18} className="mr-2" /> Novo Agendamento
                     </button>
                 </div>
             </div>
 
-            <div className="flex-1 flex gap-6 overflow-hidden">
+            <div className="flex-1 flex flex-col lg:flex-row gap-4 lg:gap-6 overflow-hidden">
 
                 {/* MAIN CALENDAR AREA */}
-                <div className="flex-1 bg-white rounded-xl border border-diva-light/30 shadow-sm overflow-hidden flex flex-col relative">
+                <div className="flex-1 bg-white rounded-xl border border-diva-light/30 shadow-sm overflow-hidden flex flex-col relative min-h-[500px]">
+
 
                     {viewMode === 'list' ? (
                         /* LIST VIEW */
@@ -690,12 +704,19 @@ const SchedulingModule: React.FC<SchedulingModuleProps> = ({ user }) => {
             {/* MODALS */}
             {selectedAppointment && (
                 <ServiceModal
+                    key={selectedAppointment.appointmentId}
                     isOpen={isServiceModalOpen}
                     onClose={() => setIsServiceModalOpen(false)}
                     onSave={handleSaveRecord}
                     onEdit={handleEditAppointment}
                     appointment={selectedAppointment}
                     client={selectedClient || mockFallbackClient}
+                    mode={(() => {
+                        const s = services.find(srv => srv.id === selectedAppointment.serviceId) || services.find(srv => srv.name === selectedAppointment.serviceName);
+                        if (s?.category === 'laser') return 'laser';
+                        if (selectedAppointment.serviceName.toLowerCase().includes('laser')) return 'laser';
+                        return 'clinical';
+                    })()}
                 />
             )}
 

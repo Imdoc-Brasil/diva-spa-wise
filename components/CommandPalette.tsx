@@ -46,7 +46,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
       // --- CORE NAVIGATION ---
       { id: 'nav-dashboard', title: 'Dashboard Central', type: 'navigation', icon: <Home size={18} />, action: () => navigate('/') },
       { id: 'nav-schedule', title: 'Agenda de Atendimentos', type: 'navigation', icon: <Calendar size={18} />, action: () => navigate('/schedule') },
-      { id: 'nav-crm', title: 'CRM & Clientes', type: 'navigation', icon: <User size={18} />, action: () => navigate('/crm') },
+      { id: 'nav-crm', title: 'CRM & Pacientes', type: 'navigation', icon: <User size={18} />, action: () => navigate('/crm') },
       { id: 'nav-finance', title: 'Financeiro & Fluxo', type: 'navigation', icon: <CreditCard size={18} />, action: () => navigate('/finance') },
       { id: 'nav-rooms', title: 'Mapa de Salas', type: 'navigation', icon: <Box size={18} />, action: () => navigate('/rooms') },
       { id: 'nav-settings', title: 'Configurações', type: 'navigation', icon: <Settings size={18} />, action: () => navigate('/settings') },
@@ -66,7 +66,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
 
       // --- QUICK ACTIONS ---
       { id: 'act-new-appt', title: 'Novo Agendamento', subtitle: 'Criar horário na agenda', type: 'action', icon: <Plus size={18} />, action: () => navigate('/schedule') },
-      { id: 'act-new-client', title: 'Cadastrar Cliente', subtitle: 'Adicionar novo perfil', type: 'action', icon: <User size={18} />, action: () => navigate('/crm') },
+      { id: 'act-new-client', title: 'Cadastrar Paciente', subtitle: 'Adicionar novo perfil', type: 'action', icon: <User size={18} />, action: () => navigate('/crm') },
       { id: 'act-new-sale', title: 'Nova Venda (PDV)', subtitle: 'Abrir caixa rápido', type: 'action', icon: <CreditCard size={18} />, action: () => navigate('/marketplace') },
       { id: 'act-new-ticket', title: 'Abrir Chamado', subtitle: 'Suporte Técnico', type: 'action', icon: <Plus size={18} />, action: () => navigate('/help') },
     ];

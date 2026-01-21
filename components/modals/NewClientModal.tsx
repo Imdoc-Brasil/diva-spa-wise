@@ -27,6 +27,7 @@ const NewClientModal: React.FC<NewClientModalProps> = ({ isOpen, onClose }) => {
   const [referrerSearch, setReferrerSearch] = useState('');
   const [showReferrerList, setShowReferrerList] = useState(false);
   const [selectedReferrer, setSelectedReferrer] = useState<Client | null>(null);
+  const [referralType, setReferralType] = useState<'client' | 'other'>('client');
 
   if (!isOpen) return null;
 
@@ -48,12 +49,14 @@ const NewClientModal: React.FC<NewClientModalProps> = ({ isOpen, onClose }) => {
     }
 
     const newClient: Client = {
+      organizationId: 'org_demo',
       clientId: `c_${Date.now()}`,
       userId: `u_${Date.now()}`,
       name: formData.name,
       phone: formData.phone,
       email: formData.email,
       cpf: formData.cpf,
+      notes: formData.notes,
       rfmScore: 0,
       behaviorTags: ['Novo'],
       lifetimeValue: 0,
@@ -172,7 +175,7 @@ const NewClientModal: React.FC<NewClientModalProps> = ({ isOpen, onClose }) => {
               >
                 <option value="instagram">Instagram</option>
                 <option value="google">Google / Site</option>
-                <option value="referral">Indicação (Amigo/Cliente)</option>
+                <option value="referral">Indicação (Amigo/Paciente)</option>
                 <option value="facebook">Facebook</option>
                 <option value="passing">Passou em frente</option>
                 <option value="influencer">Influenciador</option>
@@ -184,57 +187,97 @@ const NewClientModal: React.FC<NewClientModalProps> = ({ isOpen, onClose }) => {
           {/* Referral Flow */}
           {formData.channelSource === 'referral' && (
             <div className="bg-purple-50 border border-purple-100 p-3 rounded-lg animate-in fade-in">
-              <label className="block text-xs font-bold text-purple-700 uppercase mb-1">Quem Indicou?</label>
-
-              {!selectedReferrer ? (
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400" size={14} />
-                  <input
-                    type="text"
-                    className="w-full pl-9 pr-3 py-2 border border-purple-200 rounded-lg text-sm focus:outline-none focus:border-purple-400 bg-white text-gray-900"
-                    placeholder="Buscar paciente existente..."
-                    value={referrerSearch}
-                    onChange={(e) => {
-                      setReferrerSearch(e.target.value);
-                      setShowReferrerList(true);
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-bold text-purple-700 uppercase">Quem Indicou?</label>
+                <div className="flex bg-white rounded-lg p-0.5 border border-purple-100">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReferralType('client');
+                      setFormData({ ...formData, referredBy: '' });
                     }}
-                    onFocus={() => setShowReferrerList(true)}
-                  />
-
-                  {showReferrerList && referrerSearch && (
-                    <div className="absolute top-full left-0 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-32 overflow-y-auto z-10">
-                      {filteredReferrers.map(c => (
-                        <div
-                          key={c.clientId}
-                          onClick={() => handleReferrerSelect(c)}
-                          className="p-2 hover:bg-purple-50 cursor-pointer text-xs border-b border-gray-50 flex justify-between"
-                        >
-                          <span className="font-bold">{c.name}</span>
-                          <span className="text-gray-500">{c.phone}</span>
-                        </div>
-                      ))}
-                      {filteredReferrers.length === 0 && (
-                        <div className="p-2 text-xs text-gray-400 text-center">Nenhum paciente encontrado.</div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex items-center justify-between bg-white p-2 rounded border border-purple-200">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold">
-                      {selectedReferrer.name.charAt(0)}
-                    </div>
-                    <span className="text-sm font-medium text-gray-700">{selectedReferrer.name}</span>
-                  </div>
-                  <button onClick={() => { setSelectedReferrer(null); setReferrerSearch(''); }} className="text-gray-400 hover:text-red-500">
-                    <X size={14} />
+                    className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${referralType === 'client' ? 'bg-purple-100 text-purple-700 shadow-sm' : 'text-gray-400 hover:text-purple-500'}`}
+                  >
+                    Cliente
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReferralType('other');
+                      setSelectedReferrer(null);
+                      setFormData({ ...formData, referredBy: '' });
+                    }}
+                    className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${referralType === 'other' ? 'bg-purple-100 text-purple-700 shadow-sm' : 'text-gray-400 hover:text-purple-500'}`}
+                  >
+                    Outro
                   </button>
                 </div>
+              </div>
+
+              {referralType === 'client' ? (
+                /* Existing Client Search Logic */
+                !selectedReferrer ? (
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400" size={14} />
+                    <input
+                      type="text"
+                      className="w-full pl-9 pr-3 py-2 border border-purple-200 rounded-lg text-sm focus:outline-none focus:border-purple-400 bg-white text-gray-900"
+                      placeholder="Buscar paciente existente..."
+                      value={referrerSearch}
+                      onChange={(e) => {
+                        setReferrerSearch(e.target.value);
+                        setShowReferrerList(true);
+                      }}
+                      onFocus={() => setShowReferrerList(true)}
+                    />
+
+                    {showReferrerList && referrerSearch && (
+                      <div className="absolute top-full left-0 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-32 overflow-y-auto z-10">
+                        {filteredReferrers.map(c => (
+                          <div
+                            key={c.clientId}
+                            onClick={() => handleReferrerSelect(c)}
+                            className="p-2 hover:bg-purple-50 cursor-pointer text-xs border-b border-gray-50 flex justify-between"
+                          >
+                            <span className="font-bold">{c.name}</span>
+                            <span className="text-gray-500">{c.phone}</span>
+                          </div>
+                        ))}
+                        {filteredReferrers.length === 0 && (
+                          <div className="p-2 text-xs text-gray-400 text-center">Nenhum paciente encontrado.</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between bg-white p-2 rounded border border-purple-200">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold">
+                        {selectedReferrer.name.charAt(0)}
+                      </div>
+                      <span className="text-sm font-medium text-gray-700">{selectedReferrer.name}</span>
+                    </div>
+                    <button onClick={() => { setSelectedReferrer(null); setReferrerSearch(''); }} className="text-gray-400 hover:text-red-500">
+                      <X size={14} />
+                    </button>
+                  </div>
+                )
+              ) : (
+                /* Manual Entry Logic */
+                <input
+                  type="text"
+                  className="w-full p-2 border border-purple-200 rounded-lg text-sm focus:outline-none focus:border-purple-400 bg-white text-gray-900"
+                  placeholder="Nome de quem indicou..."
+                  value={formData.referredBy}
+                  onChange={(e) => setFormData({ ...formData, referredBy: e.target.value })}
+                />
               )}
 
               <p className="text-[10px] text-purple-600 mt-1 flex items-center">
-                <Users size={10} className="mr-1" /> Vincular indicação gera pontos de fidelidade.
+                <Users size={10} className="mr-1" />
+                {referralType === 'client'
+                  ? 'Vincular indicação gera pontos de fidelidade.'
+                  : 'Indicação externa registrada apenas como texto.'}
               </p>
             </div>
           )}

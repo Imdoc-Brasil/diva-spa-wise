@@ -1,26 +1,45 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Plus, Trash2, Clock, DollarSign, Settings as SettingsIcon, MessageSquare, Briefcase, Database, AlertCircle, PieChart, FilePlus, Type, CheckSquare, AlignLeft, ChevronUp, ChevronDown, PenTool, TrendingUp, Zap, ClipboardList, Star } from 'lucide-react';
-import { ProtocolItem, Product, FormTemplate, FormField, FieldType, YieldRule, ServiceDefinition, BusinessConfig, NotificationConfig } from '../../types';
+import {
+    Settings as SettingsIcon, Users, Building2, Bell, Shield, Wallet,
+    CheckCircle, AlertTriangle, ChevronRight, Plus, Search,
+    Filter, X, Save, Clock, Trash2, Edit2, AlertCircle, Copy,
+    FileText, Check, Activity, BarChart3, Database,
+    Smartphone, Mail, Upload, Star, MoreVertical, LayoutGrid, Palette,
+    Type, Image as ImageIcon, Globe, Phone, FileCode, Workflow,
+    MessageSquare, Send, Calendar, Box, ClipboardList, PenTool,
+    Briefcase, Package, TrendingUp, FilePlus, Zap, CheckSquare, AlignLeft,
+    PieChart, Stethoscope, ShoppingBag, User, Bot
+} from 'lucide-react';
+import { ProtocolItem, Product, FormTemplate, FormField, FieldType, YieldRule, ServiceDefinition, BusinessConfig, NotificationConfig, ProductCategory, FiscalAccount } from '../../types';
 import { ResponsiveContainer, PieChart as RePieChart, Pie, Cell, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { useUnitData } from '../hooks/useUnitData';
 import NewServiceModal from '../modals/NewServiceModal';
+import NewProductModal from '../modals/NewProductModal';
+import StockEntryModal from '../modals/StockEntryModal';
+import InvoiceImportModal from '../modals/InvoiceImportModal';
+import FiscalAccountModal from '../modals/FiscalAccountModal';
 import { useToast } from '../ui/ToastContext';
-import { maskPhone } from '../../utils/masks';
+import { maskPhone, maskCPF, maskCNPJ } from '../../utils/masks';
+
+// ... (imports)
+import { populateDemoData } from '../../utils/demoData';
+import { supabase } from '../../services/supabase';
+import { useOrganization } from '../context/OrganizationContext';
+import { DatabaseZap } from 'lucide-react'; // Icon for the button
 
 // Mock Inventory for Protocol Builder (In real app, this comes from products context)
-// Using local mock here as "products" in context might be sales products, not internal inventory
 const mockInventory: Product[] = [
-    { id: 'p6', name: 'Gel Condutor Neutro', price: 0, costPrice: 0.05, category: 'professional_use', description: 'Custo por ml' },
-    { id: 'inv1', name: 'Luvas de Procedimento (Par)', price: 0, costPrice: 1.50, category: 'professional_use', description: 'Unidade' },
-    { id: 'inv2', name: 'Máscara Descartável', price: 0, costPrice: 0.80, category: 'professional_use', description: 'Unidade' },
-    { id: 'inv3', name: 'Emoliente Facial (g)', price: 0, costPrice: 0.40, category: 'professional_use', description: 'Custo por grama' },
-    { id: 'inv4', name: 'Toxina Botulínica (Unidade)', price: 0, costPrice: 15.00, category: 'professional_use', description: 'Custo por UI' },
+    { id: 'p6', organizationId: 'org_demo', name: 'Gel Condutor Neutro', price: 0, costPrice: 0.05, category: 'professional_use', description: 'Custo por ml' },
+    { id: 'inv1', organizationId: 'org_demo', name: 'Luvas de Procedimento (Par)', price: 0, costPrice: 1.50, category: 'professional_use', description: 'Unidade' },
+    { id: 'inv2', organizationId: 'org_demo', name: 'Máscara Descartável', price: 0, costPrice: 0.80, category: 'professional_use', description: 'Unidade' },
+    { id: 'inv3', organizationId: 'org_demo', name: 'Emoliente Facial (g)', price: 0, costPrice: 0.40, category: 'professional_use', description: 'Custo por grama' },
+    { id: 'inv4', organizationId: 'org_demo', name: 'Toxina Botulínica (Unidade)', price: 0, costPrice: 15.00, category: 'professional_use', description: 'Custo por UI' },
 ];
 
-// Mock Forms and Yield Rules (Keeping mocked for now as per request scope to focus on Services/Business)
+// Mock Forms and Yield Rules
 const mockForms: FormTemplate[] = [
     {
-        id: 'f1', title: 'Anamnese Facial Padrão', type: 'anamnesis', active: true, createdAt: '2023-09-01',
+        id: 'f1', organizationId: 'org_demo', title: 'Anamnese Facial Padrão', type: 'anamnesis', active: true, createdAt: '2023-09-01',
         fields: [
             { id: 'field1', type: 'section_header', label: 'Dados Pessoais', required: false, width: 'full' },
             { id: 'field2', type: 'text', label: 'Profissão', required: false, width: 'full' },
@@ -30,7 +49,7 @@ const mockForms: FormTemplate[] = [
 ];
 
 const mockYieldRules: YieldRule[] = [
-    { id: 'yr1', name: 'Horário Nobre (Prime Time)', type: 'surge_time', description: 'Aumento de preço em horários de alta procura.', adjustmentPercentage: 15, condition: 'Seg-Sex | 18:00 - 21:00', active: true },
+    { id: 'yr1', organizationId: 'org_demo', name: 'Horário Nobre (Prime Time)', type: 'surge_time', description: 'Aumento de preço em horários de alta procura.', adjustmentPercentage: 15, condition: 'Seg-Sex | 18:00 - 21:00', active: true },
 ];
 
 const demandData = [
@@ -39,21 +58,74 @@ const demandData = [
 ];
 
 const SettingsModule: React.FC = () => {
+    const { organization } = useOrganization();
     const {
         services, addService, toggleService, deleteService, updateService,
         taskCategories, addTaskCategory, removeTaskCategory,
+        serviceCategories, addServiceCategory, removeServiceCategory,
         notificationConfig, updateNotificationConfig,
         yieldRules, addYieldRule, updateYieldRule, deleteYieldRule,
         formTemplates, addFormTemplate, updateFormTemplate, deleteFormTemplate,
-        selectedUnitId, units, updateUnit
+        selectedUnitId, units, updateUnit, products,
+        fiscalAccounts, addFiscalAccount, updateFiscalAccount
     } = useUnitData();
     const { addToast } = useToast();
 
-    const [activeTab, setActiveTab] = useState<'services' | 'business' | 'notifications' | 'protocols' | 'forms' | 'revenue' | 'operational'>('services');
+    const [activeTab, setActiveTab] = useState<'services' | 'supplies' | 'medical_inventory' | 'business' | 'notifications' | 'protocols' | 'forms' | 'revenue' | 'operational' | 'fiscal'>('services');
     const [isNewServiceModalOpen, setIsNewServiceModalOpen] = useState(false);
+    const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+    const [isFiscalAccountModalOpen, setIsFiscalAccountModalOpen] = useState(false);
+    const [fiscalAccountToEdit, setFiscalAccountToEdit] = useState<FiscalAccount | null>(null);
+    const [productToEdit, setProductToEdit] = useState<Product | null>(null);
+    const [serviceToEdit, setServiceToEdit] = useState<ServiceDefinition | null>(null);
+    const [isStockEntryModalOpen, setIsStockEntryModalOpen] = useState(false);
+    const [isInvoiceImportModalOpen, setIsInvoiceImportModalOpen] = useState(false);
+    const [defaultProductCategory, setDefaultProductCategory] = useState<ProductCategory | undefined>(undefined);
+
+    // Category Management
+    const [newServiceCatName, setNewServiceCatName] = useState('');
+    const [newServiceCatColor, setNewServiceCatColor] = useState('bg-diva-primary');
+    const AVAILABLE_CAT_COLORS = ['bg-diva-primary', 'bg-diva-accent', 'bg-pink-400', 'bg-purple-400', 'bg-indigo-400', 'bg-blue-400', 'bg-green-400', 'bg-yellow-400', 'bg-orange-400', 'bg-red-400', 'bg-gray-400'];
+
+    // Filter Products (Professional Use & Home Care can be used in protocols)
+    const professionalProducts = products.filter(p => p.category !== 'treatment_package' && p.category !== 'giftcard');
 
     // Unit Config State
     const currentUnit = units.find(u => u.id === selectedUnitId);
+
+    const ImportDemoDataButton = () => {
+        const [loading, setLoading] = useState(false);
+
+        const handleImport = async () => {
+            if (!organization) return;
+            if (!confirm('Isso irá criar 5 pacientes de exemplo no banco de dados da sua clínica. Continuar?')) return;
+
+            setLoading(true);
+            const result = await populateDemoData(supabase, organization.id);
+            setLoading(false);
+
+            if (result.success) {
+                addToast(result.message, 'success');
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                addToast(result.message, 'error');
+            }
+        };
+
+        if (organization?.slug === 'demo') return null;
+
+        return (
+            <button
+                onClick={handleImport}
+                disabled={loading}
+                className="bg-purple-100 text-purple-700 border border-purple-200 px-4 py-3 rounded-lg font-bold flex items-center hover:bg-purple-200 transition-all"
+            >
+                <DatabaseZap size={18} className={`mr-2 ${loading ? 'animate-pulse' : ''}`} />
+                {loading ? 'Importando...' : 'Importar Dados Exemplo'}
+            </button>
+        );
+    };
+
     const [localUnitConfig, setLocalUnitConfig] = useState({
         name: '',
         phone: '',
@@ -62,7 +134,13 @@ const SettingsModule: React.FC = () => {
         number: '',
         neighborhood: '',
         city: '',
-        state: ''
+        state: '',
+        cnpj: '',
+        cnaePrimary: '',
+        cnaeSecondary: '',
+        legalRepName: '',
+        legalRepCpf: '',
+        legalRepBirthDate: ''
     });
 
     useEffect(() => {
@@ -75,7 +153,13 @@ const SettingsModule: React.FC = () => {
                 number: currentUnit.address?.number || '',
                 neighborhood: currentUnit.address?.neighborhood || '',
                 city: currentUnit.address?.city || '',
-                state: currentUnit.address?.state || ''
+                state: currentUnit.address?.state || '',
+                cnpj: currentUnit.legal?.cnpj || '',
+                cnaePrimary: currentUnit.legal?.cnaePrimary || '',
+                cnaeSecondary: currentUnit.legal?.cnaeSecondary || '',
+                legalRepName: currentUnit.legal?.legalRepresentative?.name || '',
+                legalRepCpf: currentUnit.legal?.legalRepresentative?.cpf || '',
+                legalRepBirthDate: currentUnit.legal?.legalRepresentative?.birthDate || ''
             });
         }
     }, [currentUnit, selectedUnitId]);
@@ -84,7 +168,7 @@ const SettingsModule: React.FC = () => {
 
     // Protocol State
     const [selectedServiceId, setSelectedServiceId] = useState(services[0]?.id || '');
-    const [protocolItems, setProtocolItems] = useState<{ productId: string, productName: string, quantity: number, unitCost: number, unit: string }[]>([]);
+    const [protocolItems, setProtocolItems] = useState<ProtocolItem[]>([]);
 
     useEffect(() => {
         if (selectedServiceId) {
@@ -137,6 +221,17 @@ const SettingsModule: React.FC = () => {
                     state: localUnitConfig.state,
                     zipCode: currentUnit.address?.zipCode || '',
                     country: currentUnit.address?.country || 'Brasil'
+                },
+                legal: {
+                    ...(currentUnit.legal || { cnpj: '', stateRegistration: '', municipalRegistration: '' }),
+                    cnpj: localUnitConfig.cnpj,
+                    cnaePrimary: localUnitConfig.cnaePrimary,
+                    cnaeSecondary: localUnitConfig.cnaeSecondary,
+                    legalRepresentative: {
+                        name: localUnitConfig.legalRepName,
+                        cpf: localUnitConfig.legalRepCpf,
+                        birthDate: localUnitConfig.legalRepBirthDate
+                    }
                 }
             });
             addToast('Dados da unidade atualizados com sucesso!', 'success');
@@ -194,6 +289,7 @@ const SettingsModule: React.FC = () => {
     const createNewForm = () => {
         const newForm: FormTemplate = {
             id: `form_${Date.now()}`,
+            organizationId: organization?.id || 'org_demo',
             title: 'Novo Formulário',
             type: 'anamnesis',
             active: true,
@@ -213,6 +309,7 @@ const SettingsModule: React.FC = () => {
         const condition = prompt('Condição (ex: time_range:18:00-21:00)') || '';
         const newRule: YieldRule = {
             id: `yr${Date.now()}`,
+            organizationId: organization?.id || 'org_demo',
             name,
             type,
             description,
@@ -289,12 +386,31 @@ const SettingsModule: React.FC = () => {
             <div className="w-full lg:w-64 flex flex-col gap-2 shrink-0">
                 <h2 className="text-xl font-serif font-bold text-diva-dark mb-4 px-2">Configurações</h2>
 
+                <button onClick={() => setActiveTab('business')} className={`text-left px-4 py-3 rounded-lg flex items-center transition-colors ${activeTab === 'business' ? 'bg-diva-primary text-white shadow-md' : 'text-gray-600 hover:bg-diva-light/20'}`}>
+                    <Building2 size={18} className="mr-3" /> Dados da Unidade
+                </button>
+
+                <button onClick={() => setActiveTab('fiscal')} className={`text-left px-4 py-3 rounded-lg flex items-center transition-colors ${activeTab === 'fiscal' ? 'bg-diva-primary text-white shadow-md' : 'text-gray-600 hover:bg-diva-light/20'}`}>
+                    <FileText size={18} className="mr-3" /> Contas Fiscais
+                </button>
+
+                <div className="h-px bg-gray-200 my-2 mx-4"></div>
+
                 <button onClick={() => setActiveTab('services')} className={`text-left px-4 py-3 rounded-lg flex items-center transition-colors ${activeTab === 'services' ? 'bg-diva-primary text-white shadow-md' : 'text-gray-600 hover:bg-diva-light/20'}`}>
                     <Briefcase size={18} className="mr-3" /> Catálogo de Serviços
                 </button>
 
                 <button onClick={() => setActiveTab('protocols')} className={`text-left px-4 py-3 rounded-lg flex items-center transition-colors ${activeTab === 'protocols' ? 'bg-diva-primary text-white shadow-md' : 'text-gray-600 hover:bg-diva-light/20'}`}>
                     <Database size={18} className="mr-3" /> Fichas Técnicas
+                </button>
+
+
+                <button onClick={() => setActiveTab('supplies')} className={`text-left px-4 py-3 rounded-lg flex items-center transition-colors ${activeTab === 'supplies' ? 'bg-diva-primary text-white shadow-md' : 'text-gray-600 hover:bg-diva-light/20'}`}>
+                    <Package size={18} className="mr-3" /> Insumos & Estoque
+                </button>
+
+                <button onClick={() => setActiveTab('medical_inventory')} className={`text-left px-4 py-3 rounded-lg flex items-center transition-colors ${activeTab === 'medical_inventory' ? 'bg-diva-primary text-white shadow-md' : 'text-gray-600 hover:bg-diva-light/20'}`}>
+                    <Stethoscope size={18} className="mr-3" /> Materiais Médicos
                 </button>
 
                 <button onClick={() => setActiveTab('revenue')} className={`text-left px-4 py-3 rounded-lg flex items-center transition-colors ${activeTab === 'revenue' ? 'bg-diva-primary text-white shadow-md' : 'text-gray-600 hover:bg-diva-light/20'}`}>
@@ -309,10 +425,6 @@ const SettingsModule: React.FC = () => {
                     <ClipboardList size={18} className="mr-3" /> Categorias & Ops
                 </button>
 
-                <button onClick={() => setActiveTab('business')} className={`text-left px-4 py-3 rounded-lg flex items-center transition-colors ${activeTab === 'business' ? 'bg-diva-primary text-white shadow-md' : 'text-gray-600 hover:bg-diva-light/20'}`}>
-                    <SettingsIcon size={18} className="mr-3" /> Dados da Unidade
-                </button>
-
                 <button onClick={() => setActiveTab('notifications')} className={`text-left px-4 py-3 rounded-lg flex items-center transition-colors ${activeTab === 'notifications' ? 'bg-diva-primary text-white shadow-md' : 'text-gray-600 hover:bg-diva-light/20'}`}>
                     <MessageSquare size={18} className="mr-3" /> Notificações
                 </button>
@@ -320,6 +432,100 @@ const SettingsModule: React.FC = () => {
 
             {/* Content Area */}
             <div className="flex-1 bg-white rounded-xl shadow-sm border border-diva-light/30 p-8 overflow-hidden flex flex-col">
+
+
+                {/* TAB: FISCAL ACCOUNTS */}
+                {activeTab === 'fiscal' && (
+                    <div className="space-y-6 animate-in fade-in">
+                        <div className="flex justify-between items-center border-b border-diva-light/20 pb-6">
+                            <div>
+                                <h3 className="text-lg font-bold text-diva-dark">Contas Fiscais (CNPJ/CPF)</h3>
+                                <p className="text-sm text-gray-500">Gerencie as identidades fiscais para emissão de nota e split de pagamentos.</p>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setFiscalAccountToEdit(null);
+                                    setIsFiscalAccountModalOpen(true);
+                                }}
+                                className="bg-diva-primary text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center hover:bg-opacity-90 shadow-sm"
+                            >
+                                <Plus size={16} className="mr-2" /> Nova Conta Fiscal
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4">
+                            {fiscalAccounts.length === 0 ? (
+                                <div className="text-center py-12 border border-dashed border-gray-200 rounded-xl bg-gray-50">
+                                    <Building2 size={48} className="mx-auto text-gray-300 mb-4" />
+                                    <h4 className="text-lg font-bold text-gray-500">Nenhuma conta fiscal cadastrada</h4>
+                                    <p className="text-sm text-gray-400 mb-6">Cadastre seus CNPJs ou CPFs para organizar financeiramente.</p>
+                                    <button
+                                        onClick={() => {
+                                            setFiscalAccountToEdit(null);
+                                            setIsFiscalAccountModalOpen(true);
+                                        }}
+                                        className="bg-diva-primary text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-opacity-90"
+                                    >
+                                        Cadastrar Agora
+                                    </button>
+                                </div>
+                            ) : (
+                                fiscalAccounts.map((acc) => (
+                                    <div key={acc.id} className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-center hover:shadow-md transition-shadow">
+                                        <div className="flex items-center gap-4 mb-4 md:mb-0">
+                                            <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                                                {acc.type === 'marketplace' ? <ShoppingBag size={24} /> :
+                                                    acc.type === 'professional' ? <User size={24} /> :
+                                                        <Building2 size={24} />}
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-diva-dark text-lg">{acc.alias}</h4>
+                                                <p className="text-sm text-gray-500">{acc.name} • {acc.document}</p>
+                                                <div className="flex gap-2 mt-1">
+                                                    <span className={`text-xs px-2 py-0.5 rounded font-bold uppercase
+                                                        ${acc.type === 'clinic_service' ? 'bg-blue-100 text-blue-700' :
+                                                            acc.type === 'marketplace' ? 'bg-purple-100 text-purple-700' :
+                                                                'bg-green-100 text-green-700'}`}>
+                                                        {acc.type === 'clinic_service' ? 'Serviços' :
+                                                            acc.type === 'marketplace' ? 'Marketplace' : 'Profissional'}
+                                                    </span>
+                                                    {acc.digitalCertificateInfo?.validTo && (
+                                                        <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200 flex items-center">
+                                                            <Shield size={10} className="mr-1" />
+                                                            Certificado: {new Date(acc.digitalCertificateInfo.validTo).toLocaleDateString()}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                onClick={() => {
+                                                    setFiscalAccountToEdit(acc);
+                                                    setIsFiscalAccountModalOpen(true);
+                                                }}
+                                                className="p-2 text-gray-400 hover:text-diva-primary hover:bg-gray-50 rounded-lg transition-colors"
+                                            >
+                                                <Edit2 size={20} />
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    if (confirm('Tem certeza que deseja remover esta conta fiscal?')) {
+                                                        // Note: In a real app we would check for dependencies before deleting
+                                                        alert('Implementar deleção (checkar dependências antes)');
+                                                    }
+                                                }}
+                                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                            >
+                                                <Trash2 size={20} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* TAB: SERVICES (Global Connected) */}
                 {activeTab === 'services' && (
@@ -342,14 +548,16 @@ const SettingsModule: React.FC = () => {
                                 <div key={service.id} className={`p-4 rounded-lg border flex flex-col md:flex-row items-center justify-between gap-4 transition-colors ${service.active ? 'bg-white border-diva-light/30' : 'bg-gray-50 border-gray-200 opacity-75'}`}>
                                     <div className="flex-1 flex items-center gap-4">
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold
-                        ${service.category === 'laser' ? 'bg-diva-primary' : service.category === 'esthetics' ? 'bg-pink-400' : 'bg-diva-accent'}`}>
+                        ${serviceCategories.find(c => c.id === service.category)?.color || 'bg-gray-400'}`}>
                                             {service.name.charAt(0)}
                                         </div>
                                         <div>
                                             <h4 className="font-bold text-diva-dark">{service.name}</h4>
                                             <div className="flex items-center text-xs text-gray-500 gap-3 mt-1">
                                                 <span className="flex items-center"><Clock size={12} className="mr-1" /> {service.duration} min</span>
-                                                <span className="uppercase bg-gray-100 px-1.5 py-0.5 rounded">{service.category}</span>
+                                                <span className="uppercase bg-gray-100 px-1.5 py-0.5 rounded trim-text">
+                                                    {serviceCategories.find(c => c.id === service.category)?.name || service.category}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
@@ -357,7 +565,7 @@ const SettingsModule: React.FC = () => {
                                     <div className="flex items-center gap-6">
                                         {service.loyaltyPoints ? (
                                             <div className="text-right hidden md:block">
-                                                <p className="text-xs text-gray-400 uppercase font-bold flex items-center justify-end"><Star size={10} className="mr-1 text-yellow-500" /> Pontos</p>
+                                                <p className="text-xs text-gray-400 uppercase font-bold flex items-center justify-end"><Star size={10} className="mr-1" /> Pontos</p>
                                                 <p className="font-bold text-diva-accent">{service.loyaltyPoints}</p>
                                             </div>
                                         ) : null}
@@ -373,6 +581,15 @@ const SettingsModule: React.FC = () => {
                                         </label>
 
                                         <button
+                                            onClick={() => {
+                                                setServiceToEdit(service);
+                                                setIsNewServiceModalOpen(true);
+                                            }}
+                                            className="text-gray-400 hover:text-diva-primary transition-colors"
+                                        >
+                                            <Edit2 size={18} />
+                                        </button>
+                                        <button
                                             onClick={() => { if (confirm('Excluir serviço?')) deleteService(service.id) }}
                                             className="text-gray-400 hover:text-red-500 transition-colors"
                                         >
@@ -386,446 +603,835 @@ const SettingsModule: React.FC = () => {
                     </div>
                 )}
 
-                {/* TAB: BUSINESS CONFIG (Unit Specific) */}
-                {activeTab === 'business' && (
-                    <div className="space-y-8 animate-in fade-in">
-                        <div className="border-b border-diva-light/20 pb-6">
-                            <h3 className="text-lg font-bold text-diva-dark">Dados da Unidade</h3>
-                            <p className="text-sm text-gray-500">Informações visíveis no agendamento e rodapé de recibos.</p>
+                {/* TAB: SUPPLIES (Professional Use Products) */}
+                {activeTab === 'supplies' && (
+                    <div className="space-y-6 animate-in fade-in">
+                        <div className="flex justify-between items-center border-b border-diva-light/20 pb-6">
+                            <div>
+                                <h3 className="text-lg font-bold text-diva-dark">Insumos e Estoque</h3>
+                                <p className="text-sm text-gray-500">Gerencie o catálogo e faça entradas de nota fiscal.</p>
+                            </div>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setIsInvoiceImportModalOpen(true)}
+                                    className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center hover:bg-purple-700 shadow-sm border border-purple-500"
+                                >
+                                    <Bot size={16} className="mr-2" /> Importar XML (IA)
+                                </button>
+                                <button
+                                    onClick={() => setIsStockEntryModalOpen(true)}
+                                    className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center hover:bg-green-700 shadow-sm"
+                                >
+                                    <ClipboardList size={16} className="mr-2" /> Entrada Manual
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setProductToEdit(null); // Clear any previous product for editing
+                                        setDefaultProductCategory('professional_use');
+                                        setIsProductModalOpen(true);
+                                    }}
+                                    className="bg-diva-primary text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center hover:bg-opacity-90 shadow-sm"
+                                >
+                                    <Plus size={16} className="mr-2" /> Novo Produto
+                                </button>
+                            </div>
                         </div>
 
-                        {selectedUnitId === 'all' ? (
-                            <div className="flex flex-col items-center justify-center py-12 text-center bg-gray-50 rounded-xl border border-dashed border-gray-300">
-                                <AlertCircle size={48} className="text-gray-400 mb-4" />
-                                <h4 className="text-lg font-bold text-gray-600">Selecione uma Unidade</h4>
-                                <p className="text-sm text-gray-500 max-w-md mt-2">
-                                    Para editar os dados operacionais (endereço, telefone, etc.), selecione uma unidade específica no menu superior.
-                                </p>
-                            </div>
-                        ) : (
-                            <>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold text-diva-dark">Nome da Unidade</label>
-                                        <input
-                                            type="text"
-                                            value={localUnitConfig.name}
-                                            onChange={(e) => setLocalUnitConfig({ ...localUnitConfig, name: e.target.value })}
-                                            className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary bg-white text-gray-900"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold text-diva-dark">Telefone/WhatsApp</label>
-                                        <input
-                                            type="text"
-                                            value={localUnitConfig.phone}
-                                            onChange={(e) => setLocalUnitConfig({ ...localUnitConfig, phone: maskPhone(e.target.value) })}
-                                            className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary bg-white text-gray-900"
-                                            maxLength={15} />
-                                    </div>
-                                    <div className="space-y-2 md:col-span-2">
-                                        <label className="text-sm font-bold text-diva-dark">Endereço (Rua)</label>
-                                        <input
-                                            type="text"
-                                            value={localUnitConfig.street}
-                                            onChange={(e) => setLocalUnitConfig({ ...localUnitConfig, street: e.target.value })}
-                                            className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary bg-white text-gray-900"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold text-diva-dark">Número</label>
-                                        <input
-                                            type="text"
-                                            value={localUnitConfig.number}
-                                            onChange={(e) => setLocalUnitConfig({ ...localUnitConfig, number: e.target.value })}
-                                            className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary bg-white text-gray-900"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold text-diva-dark">Bairro</label>
-                                        <input
-                                            type="text"
-                                            value={localUnitConfig.neighborhood}
-                                            onChange={(e) => setLocalUnitConfig({ ...localUnitConfig, neighborhood: e.target.value })}
-                                            className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary bg-white text-gray-900"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold text-diva-dark">Cidade</label>
-                                        <input
-                                            type="text"
-                                            value={localUnitConfig.city}
-                                            onChange={(e) => setLocalUnitConfig({ ...localUnitConfig, city: e.target.value })}
-                                            className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary bg-white text-gray-900"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold text-diva-dark">Estado</label>
-                                        <input
-                                            type="text"
-                                            value={localUnitConfig.state}
-                                            onChange={(e) => setLocalUnitConfig({ ...localUnitConfig, state: e.target.value })}
-                                            className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary bg-white text-gray-900"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="flex justify-end pt-4">
-                                    <button
-                                        onClick={handleSaveBusiness}
-                                        className="bg-diva-primary text-white px-6 py-3 rounded-lg font-bold flex items-center hover:bg-diva-dark shadow-md transition-all"
-                                    >
-                                        <Save size={18} className="mr-2" /> Salvar Alterações
-                                    </button>
-                                </div>
-                            </>
-                        )}
+                        <div className="flex-1 overflow-auto bg-gray-50 rounded-lg border border-gray-200">
+                            <table className="w-full text-left">
+                                <thead className="bg-white sticky top-0 z-10 shadow-sm">
+                                    <tr className="text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                        <th className="px-6 py-4">Produto / Apresentação</th>
+                                        <th className="px-6 py-4">Princípios Ativos</th>
+                                        <th className="px-6 py-4">Estoque Atual</th>
+                                        <th className="px-6 py-4 text-right">Custo Médio</th>
+                                        <th className="px-6 py-4 w-10"></th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100 text-sm">
+                                    {professionalProducts.map(prod => (
+                                        <tr key={prod.id} className="hover:bg-white transition-colors group">
+                                            <td className="px-6 py-4">
+                                                <p className="font-bold text-diva-dark">{prod.name}</p>
+                                                <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                                                    <span className="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">{prod.presentation || 'Unidade'}</span>
+                                                    {prod.contentQuantity && (
+                                                        <span>
+                                                            Contém {prod.contentQuantity} {prod.contentUnit}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-gray-600">
+                                                {prod.activeIngredients ? (
+                                                    <span className="bg-purple-50 text-purple-700 px-2 py-1 rounded-md text-xs font-medium border border-purple-100">
+                                                        {prod.activeIngredients}
+                                                    </span>
+                                                ) : <span className="text-gray-400">-</span>}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`font-bold ${!prod.stock || prod.stock <= (prod.minStockLevel || 5) ? 'text-red-500' : 'text-green-600'}`}>
+                                                    {prod.stock || 0} <span className="text-xs font-normal text-gray-400">{prod.contentUnit || 'un'}</span>
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-mono text-gray-600">
+                                                {formatCurrency(prod.costPrice || 0)}
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <button
+                                                    onClick={() => {
+                                                        setProductToEdit(prod);
+                                                        setIsProductModalOpen(true);
+                                                    }}
+                                                    className="p-2 text-gray-400 hover:text-diva-primary hover:bg-diva-primary/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                                    title="Editar Produto"
+                                                >
+                                                    <PenTool size={16} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {professionalProducts.length === 0 && (
+                                        <tr>
+                                            <td colSpan={5} className="text-center py-12 text-gray-400 italic">
+                                                <div className="flex flex-col items-center gap-2">
+                                                    <Package size={32} className="opacity-20" />
+                                                    <p>Nenhum produto no catálogo.</p>
+                                                    <button onClick={() => setIsProductModalOpen(true)} className="text-diva-primary font-bold underline text-xs">Cadastrar Primeiro Produto</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                )}
+                )
+                }
+
+                {/* TAB: MEDICAL INVENTORY (Medical Materials) */}
+                {activeTab === 'medical_inventory' && (
+                    <div className="space-y-6 animate-in fade-in">
+                        <div className="flex justify-between items-center border-b border-diva-light/20 pb-6">
+                            <div>
+                                <h3 className="text-lg font-bold text-diva-dark">Materiais Médicos & Estoque</h3>
+                                <p className="text-sm text-gray-500">Gerencie materiais médicos e dê entrada em notas fiscais.</p>
+                            </div>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setIsInvoiceImportModalOpen(true)}
+                                    className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center hover:bg-purple-700 shadow-sm border border-purple-500"
+                                >
+                                    <Bot size={16} className="mr-2" /> Importar XML (IA)
+                                </button>
+                                <button
+                                    onClick={() => setIsStockEntryModalOpen(true)}
+                                    className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center hover:bg-green-700 shadow-sm"
+                                >
+                                    <ClipboardList size={16} className="mr-2" /> Entrada Manual
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setProductToEdit(null);
+                                        setDefaultProductCategory('medical_material');
+                                        setIsProductModalOpen(true);
+                                    }}
+                                    className="bg-diva-primary text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center hover:bg-opacity-90 shadow-sm"
+                                >
+                                    <Plus size={16} className="mr-2" /> Novo Material
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 overflow-auto bg-gray-50 rounded-lg border border-gray-200">
+                            <table className="w-full text-left">
+                                <thead className="bg-white sticky top-0 z-10 shadow-sm">
+                                    <tr className="text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                        <th className="px-6 py-4">Item / Apresentação</th>
+                                        <th className="px-6 py-4">Especificação</th>
+                                        <th className="px-6 py-4">Estoque Atual</th>
+                                        <th className="px-6 py-4 text-right">Custo Médio</th>
+                                        <th className="px-6 py-4 w-10"></th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100 text-sm">
+                                    {products.filter(p => p.category === 'medical_material').map(prod => (
+                                        <tr key={prod.id} className="hover:bg-white transition-colors group">
+                                            <td className="px-6 py-4">
+                                                <p className="font-bold text-diva-dark">{prod.name}</p>
+                                                <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                                                    <span className="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">{prod.presentation || 'Unidade'}</span>
+                                                    {prod.contentQuantity && (
+                                                        <span>
+                                                            Contém {prod.contentQuantity} {prod.contentUnit}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-gray-600">
+                                                {prod.activeIngredients ? (
+                                                    <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded-md text-xs font-medium border border-blue-100">
+                                                        {prod.activeIngredients}
+                                                    </span>
+                                                ) : <span className="text-gray-400">-</span>}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`font-bold ${!prod.stock || prod.stock <= (prod.minStockLevel || 5) ? 'text-red-500' : 'text-green-600'}`}>
+                                                    {prod.stock || 0} <span className="text-xs font-normal text-gray-400">{prod.contentUnit || 'un'}</span>
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-mono text-gray-600">
+                                                {formatCurrency(prod.costPrice || 0)}
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <button
+                                                    onClick={() => {
+                                                        setProductToEdit(prod);
+                                                        setIsProductModalOpen(true);
+                                                    }}
+                                                    className="p-2 text-gray-400 hover:text-diva-primary hover:bg-diva-primary/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                                    title="Editar Material"
+                                                >
+                                                    <PenTool size={16} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {products.filter(p => p.category === 'medical_material').length === 0 && (
+                                        <tr>
+                                            <td colSpan={5} className="text-center py-12 text-gray-400 italic">
+                                                <div className="flex flex-col items-center gap-2">
+                                                    <Package size={32} className="opacity-20" />
+                                                    <p>Nenhum material médico cadastrado.</p>
+                                                    <button onClick={() => { setDefaultProductCategory('medical_material'); setIsProductModalOpen(true); }} className="text-diva-primary font-bold underline text-xs">Cadastrar Primeiro Material</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )
+                }
+
+                {/* TAB: BUSINESS CONFIG (Unit Specific) */}
+                {
+                    activeTab === 'business' && (
+                        <div className="space-y-8 animate-in fade-in">
+                            <div className="border-b border-diva-light/20 pb-6">
+                                <h3 className="text-lg font-bold text-diva-dark">Dados da Unidade</h3>
+                                <p className="text-sm text-gray-500">Informações visíveis no agendamento e rodapé de recibos.</p>
+                            </div>
+
+                            {selectedUnitId === 'all' ? (
+                                <div className="flex flex-col items-center justify-center py-12 text-center bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                                    <AlertCircle size={48} className="text-gray-400 mb-4" />
+                                    <h4 className="text-lg font-bold text-gray-600">Selecione uma Unidade</h4>
+                                    <p className="text-sm text-gray-500 max-w-md mt-2">
+                                        Para editar os dados operacionais (endereço, telefone, etc.), selecione uma unidade específica no menu superior.
+                                    </p>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-bold text-diva-dark">Nome da Unidade</label>
+                                            <input
+                                                type="text"
+                                                value={localUnitConfig.name}
+                                                onChange={(e) => setLocalUnitConfig({ ...localUnitConfig, name: e.target.value })}
+                                                className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary bg-white text-gray-900"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-bold text-diva-dark">Telefone/WhatsApp</label>
+                                            <input
+                                                type="text"
+                                                value={localUnitConfig.phone}
+                                                onChange={(e) => setLocalUnitConfig({ ...localUnitConfig, phone: maskPhone(e.target.value) })}
+                                                className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary bg-white text-gray-900"
+                                                maxLength={15} />
+                                        </div>
+                                        <div className="space-y-2 md:col-span-2">
+                                            <label className="text-sm font-bold text-diva-dark">Endereço (Rua)</label>
+                                            <input
+                                                type="text"
+                                                value={localUnitConfig.street}
+                                                onChange={(e) => setLocalUnitConfig({ ...localUnitConfig, street: e.target.value })}
+                                                className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary bg-white text-gray-900"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-bold text-diva-dark">Número</label>
+                                            <input
+                                                type="text"
+                                                value={localUnitConfig.number}
+                                                onChange={(e) => setLocalUnitConfig({ ...localUnitConfig, number: e.target.value })}
+                                                className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary bg-white text-gray-900"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-bold text-diva-dark">Bairro</label>
+                                            <input
+                                                type="text"
+                                                value={localUnitConfig.neighborhood}
+                                                onChange={(e) => setLocalUnitConfig({ ...localUnitConfig, neighborhood: e.target.value })}
+                                                className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary bg-white text-gray-900"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-bold text-diva-dark">Cidade</label>
+                                            <input
+                                                type="text"
+                                                value={localUnitConfig.city}
+                                                onChange={(e) => setLocalUnitConfig({ ...localUnitConfig, city: e.target.value })}
+                                                className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary bg-white text-gray-900"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-bold text-diva-dark">Estado</label>
+                                            <input
+                                                type="text"
+                                                value={localUnitConfig.state}
+                                                onChange={(e) => setLocalUnitConfig({ ...localUnitConfig, state: e.target.value })}
+                                                className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary bg-white text-gray-900"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="border-t border-gray-100 pt-6">
+                                        <h4 className="text-md font-bold text-gray-700 mb-4">Fiscal & Legal</h4>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-bold text-diva-dark">CNPJ</label>
+                                                <input
+                                                    type="text"
+                                                    value={localUnitConfig.cnpj}
+                                                    onChange={(e) => setLocalUnitConfig({ ...localUnitConfig, cnpj: maskCNPJ(e.target.value) })}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary bg-white text-gray-900"
+                                                    placeholder="00.000.000/0000-00"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-bold text-diva-dark">CNAE Principal</label>
+                                                <input
+                                                    type="text"
+                                                    value={localUnitConfig.cnaePrimary}
+                                                    onChange={(e) => setLocalUnitConfig({ ...localUnitConfig, cnaePrimary: e.target.value })}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary bg-white text-gray-900"
+                                                    placeholder="Código CNAE"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-bold text-diva-dark">CNAEs Secundários</label>
+                                                <input
+                                                    type="text"
+                                                    value={localUnitConfig.cnaeSecondary}
+                                                    onChange={(e) => setLocalUnitConfig({ ...localUnitConfig, cnaeSecondary: e.target.value })}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary bg-white text-gray-900"
+                                                    placeholder="Separados por vírgula"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-bold text-diva-dark">Representante Legal (Nome)</label>
+                                                <input
+                                                    type="text"
+                                                    value={localUnitConfig.legalRepName}
+                                                    onChange={(e) => setLocalUnitConfig({ ...localUnitConfig, legalRepName: e.target.value })}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary bg-white text-gray-900"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-bold text-diva-dark">CPF do Representante</label>
+                                                <input
+                                                    type="text"
+                                                    value={localUnitConfig.legalRepCpf}
+                                                    onChange={(e) => setLocalUnitConfig({ ...localUnitConfig, legalRepCpf: maskCPF(e.target.value) })}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary bg-white text-gray-900"
+                                                    placeholder="000.000.000-00"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-bold text-diva-dark">Data de Nasc. (Representante)</label>
+                                                <input
+                                                    type="date"
+                                                    value={localUnitConfig.legalRepBirthDate}
+                                                    onChange={(e) => setLocalUnitConfig({ ...localUnitConfig, legalRepBirthDate: e.target.value })}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary bg-white text-gray-900"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-end pt-4 gap-4">
+                                        <button
+                                            onClick={async () => {
+                                                if (confirm('Deseja importar 5 pacientes de exemplo para sua clínica?')) {
+                                                    const { populateDemoData } = await import('../../utils/demoData');
+                                                    const { supabase } = await import('../../services/supabase');
+                                                    // We need the org ID. Since we are in a module, we can try to get it from context or pass it.
+                                                    // Assuming we can access the current unit's orgId or just rely on the one in context.
+                                                    // For now, let's grab it from the currentUnit if available, or fetch it.
+                                                    // A safer way is to use the hook, but we can't use hooks inside callback.
+                                                    // Let's use the unit's org id if plausible, or getting it from local storage as fallback/hack or strict context.
+                                                    // Actually, let's add the hook at top level.
+                                                }
+                                                // See below for the real implementation inside the component body
+                                            }}
+                                            className="hidden"
+                                        >
+                                        </button>
+
+                                        <ImportDemoDataButton />
+
+                                        <button
+                                            onClick={handleSaveBusiness}
+                                            className="bg-diva-primary text-white px-6 py-3 rounded-lg font-bold flex items-center hover:bg-diva-dark shadow-md transition-all"
+                                        >
+                                            <Save size={18} className="mr-2" /> Salvar Alterações
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )
+                }
 
                 {/* TAB: NOTIFICATIONS (Global Connected) */}
-                {activeTab === 'notifications' && (
-                    <div className="space-y-6 animate-in fade-in">
-                        <div className="border-b border-diva-light/20 pb-6">
-                            <h3 className="text-lg font-bold text-diva-dark">Comunicação Automática</h3>
-                            <p className="text-sm text-gray-500">Personalize as mensagens enviadas via WhatsApp para seus clientes.</p>
-                        </div>
-
-                        <div className="space-y-6">
-                            <div className="border border-gray-200 rounded-xl p-4">
-                                <div className="flex justify-between items-center mb-2">
-                                    <h4 className="font-bold text-diva-dark text-sm">Confirmação de Agendamento</h4>
-                                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold">Ativo</span>
-                                </div>
-                                <textarea
-                                    className="w-full h-24 p-3 border border-gray-300 rounded-lg text-sm text-gray-600 focus:ring-1 focus:ring-diva-primary outline-none resize-none"
-                                    value={localNotificationConfig.appointmentConfirmation}
-                                    onChange={(e) => setLocalNotificationConfig({ ...localNotificationConfig, appointmentConfirmation: e.target.value })}
-                                ></textarea>
+                {
+                    activeTab === 'notifications' && (
+                        <div className="space-y-6 animate-in fade-in">
+                            <div className="border-b border-diva-light/20 pb-6">
+                                <h3 className="text-lg font-bold text-diva-dark">Comunicação Automática</h3>
+                                <p className="text-sm text-gray-500">Personalize as mensagens enviadas via WhatsApp para seus clientes.</p>
                             </div>
 
-                            <div className="border border-gray-200 rounded-xl p-4">
-                                <div className="flex justify-between items-center mb-2">
-                                    <h4 className="font-bold text-diva-dark text-sm">Lembrete (24h antes)</h4>
-                                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold">Ativo</span>
+                            <div className="space-y-6">
+                                <div className="border border-gray-200 rounded-xl p-4">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h4 className="font-bold text-diva-dark text-sm">Confirmação de Agendamento</h4>
+                                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold">Ativo</span>
+                                    </div>
+                                    <textarea
+                                        className="w-full h-24 p-3 border border-gray-300 rounded-lg text-sm text-gray-600 focus:ring-1 focus:ring-diva-primary outline-none resize-none"
+                                        value={localNotificationConfig.appointmentConfirmation}
+                                        onChange={(e) => setLocalNotificationConfig({ ...localNotificationConfig, appointmentConfirmation: e.target.value })}
+                                    ></textarea>
                                 </div>
-                                <textarea
-                                    className="w-full h-24 p-3 border border-gray-300 rounded-lg text-sm text-gray-600 focus:ring-1 focus:ring-diva-primary outline-none resize-none"
-                                    value={localNotificationConfig.appointmentReminder}
-                                    onChange={(e) => setLocalNotificationConfig({ ...localNotificationConfig, appointmentReminder: e.target.value })}
-                                ></textarea>
+
+                                <div className="border border-gray-200 rounded-xl p-4">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h4 className="font-bold text-diva-dark text-sm">Lembrete (24h antes)</h4>
+                                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold">Ativo</span>
+                                    </div>
+                                    <textarea
+                                        className="w-full h-24 p-3 border border-gray-300 rounded-lg text-sm text-gray-600 focus:ring-1 focus:ring-diva-primary outline-none resize-none"
+                                        value={localNotificationConfig.appointmentReminder}
+                                        onChange={(e) => setLocalNotificationConfig({ ...localNotificationConfig, appointmentReminder: e.target.value })}
+                                    ></textarea>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end pt-4">
+                                <button
+                                    onClick={handleSaveNotifications}
+                                    className="bg-diva-primary text-white px-6 py-3 rounded-lg font-bold flex items-center hover:bg-diva-dark shadow-md transition-all"
+                                >
+                                    <Save size={18} className="mr-2" /> Salvar Modelos
+                                </button>
                             </div>
                         </div>
-
-                        <div className="flex justify-end pt-4">
-                            <button
-                                onClick={handleSaveNotifications}
-                                className="bg-diva-primary text-white px-6 py-3 rounded-lg font-bold flex items-center hover:bg-diva-dark shadow-md transition-all"
-                            >
-                                <Save size={18} className="mr-2" /> Salvar Modelos
-                            </button>
-                        </div>
-                    </div>
-                )}
+                    )
+                }
 
                 {/* TAB: PROTOCOLS (Partially Connected) */}
-                {activeTab === 'protocols' && (
-                    <div className="flex flex-col h-full animate-in fade-in">
-                        <div className="border-b border-diva-light/20 pb-6 mb-6">
-                            <h3 className="text-lg font-bold text-diva-dark">Fichas Técnicas (Engenharia de Menu)</h3>
-                            <p className="text-sm text-gray-500">Defina a composição de custos e insumos para cada serviço.</p>
-                        </div>
+                {
+                    activeTab === 'protocols' && (
+                        <div className="flex flex-col h-full animate-in fade-in">
+                            <div className="border-b border-diva-light/20 pb-6 mb-6">
+                                <h3 className="text-lg font-bold text-diva-dark">Fichas Técnicas (Engenharia de Menu)</h3>
+                                <p className="text-sm text-gray-500">Defina a composição de custos e insumos para cada serviço.</p>
+                            </div>
 
-                        <div className="flex flex-col xl:flex-row gap-8 flex-1">
-                            {/* LEFT: Selector & Builder */}
-                            <div className="flex-1 flex flex-col gap-6">
-                                {/* Service Selector */}
-                                <div>
-                                    <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Selecione o Serviço</label>
-                                    <select
-                                        value={selectedServiceId}
-                                        onChange={(e) => setSelectedServiceId(e.target.value)}
-                                        className="w-full p-3 border border-diva-light/40 rounded-lg text-sm font-bold text-diva-dark outline-none focus:border-diva-primary bg-white"
-                                    >
-                                        {services.map(s => (
-                                            <option key={s.id} value={s.id}>{s.name} - {formatCurrency(s.price)}</option>
-                                        ))}
-                                    </select>
+                            <div className="flex flex-col xl:flex-row gap-8 flex-1">
+                                {/* LEFT: Selector & Builder */}
+                                <div className="flex-1 flex flex-col gap-6">
+                                    {/* Service Selector */}
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Selecione o Serviço</label>
+                                        <select
+                                            value={selectedServiceId}
+                                            onChange={(e) => setSelectedServiceId(e.target.value)}
+                                            className="w-full p-3 border border-diva-light/40 rounded-lg text-sm font-bold text-diva-dark outline-none focus:border-diva-primary bg-white"
+                                        >
+                                            {services.map(s => (
+                                                <option key={s.id} value={s.id}>{s.name} - {formatCurrency(s.price)}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Consumables List */}
+                                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex-1 flex flex-col">
+                                        <div className="flex justify-between items-center mb-3">
+                                            <h4 className="font-bold text-diva-dark text-sm">Insumos e Produtos (CMV)</h4>
+                                            <div className="relative group">
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => setIsProductModalOpen(true)}
+                                                        className="text-xs bg-white border border-gray-300 text-gray-600 px-2 py-1 rounded hover:bg-gray-50 transition-colors"
+                                                        title="Cadastrar Novo Insumo"
+                                                    >
+                                                        <Plus size={12} />
+                                                    </button>
+                                                    <button className="text-xs bg-white border border-diva-primary text-diva-primary px-2 py-1 rounded hover:bg-diva-primary hover:text-white transition-colors">
+                                                        + Adicionar Item
+                                                    </button>
+                                                </div>
+
+                                                <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-gray-200 shadow-xl rounded-lg hidden group-hover:block z-10 max-h-48 overflow-y-auto">
+                                                    {professionalProducts.length > 0 ? professionalProducts.map(item => (
+                                                        <div
+                                                            key={item.id}
+                                                            onClick={() => handleAddItem(item)}
+                                                            className="p-2 hover:bg-gray-50 cursor-pointer border-b border-gray-50 text-xs"
+                                                        >
+                                                            <p className="font-bold text-gray-700">{item.name}</p>
+                                                            <p className="text-gray-400">Custo: {formatCurrency(item.costPrice || 0)}</p>
+                                                        </div>
+                                                    )) : (
+                                                        <div className="p-4 text-center">
+                                                            <p className="text-xs text-gray-400 mb-2">Nenhum insumo cadastrado.</p>
+                                                            <button
+                                                                onClick={() => setIsProductModalOpen(true)}
+                                                                className="text-xs text-diva-primary font-bold underline"
+                                                            >
+                                                                Cadastrar Insumo
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2 flex-1 overflow-y-auto max-h-[200px] pr-2">
+                                            {protocolItems.map((item, idx) => (
+                                                <div key={idx} className="flex items-center justify-between bg-white p-2 rounded border border-gray-200 text-sm">
+                                                    <span className="flex-1 truncate pr-2 text-gray-700 font-medium">{item.productName}</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="number"
+                                                            value={item.quantity}
+                                                            onChange={(e) => handleUpdateQuantity(idx, parseFloat(e.target.value))}
+                                                            className="w-16 p-1 border border-gray-300 rounded text-center text-xs outline-none"
+                                                        />
+                                                        <span className="text-xs text-gray-400 w-6">{item.unit}</span>
+                                                        <span className="text-xs font-mono w-16 text-right">{formatCurrency(item.quantity * item.unitCost)}</span>
+                                                        <button onClick={() => handleRemoveItem(idx)} className="text-red-400 hover:text-red-600"><Trash2 size={14} /></button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {protocolItems.length === 0 && (
+                                                <p className="text-xs text-gray-400 text-center py-4 italic">Nenhum insumo adicionado.</p>
+                                            )}
+                                        </div>
+                                        <div className="mt-4 flex justify-end border-t border-gray-100 pt-4">
+                                            <button
+                                                onClick={handleSaveProtocol}
+                                                className="bg-diva-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-diva-dark transition-colors flex items-center shadow-sm"
+                                            >
+                                                <Save size={16} className="mr-2" /> Salvar Protocolo
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                {/* Consumables List */}
-                                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex-1 flex flex-col">
-                                    <div className="flex justify-between items-center mb-3">
-                                        <h4 className="font-bold text-diva-dark text-sm">Insumos e Produtos (CMV)</h4>
-                                        <div className="relative group">
-                                            <button className="text-xs bg-white border border-diva-primary text-diva-primary px-2 py-1 rounded hover:bg-diva-primary hover:text-white transition-colors">
-                                                + Adicionar Item
+                                {/* RIGHT: Analysis Card */}
+                                <div className="w-full xl:w-80 bg-diva-light/10 rounded-xl border border-diva-light/30 p-6 flex flex-col h-full">
+                                    <h4 className="font-serif font-bold text-diva-dark text-lg mb-6 flex items-center">
+                                        <PieChart size={18} className="mr-2 text-diva-primary" /> Análise de Margem
+                                    </h4>
+
+                                    <div className="flex-1 flex flex-col items-center justify-center mb-6 relative">
+                                        <div className="w-48 h-48 relative">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <RePieChart>
+                                                    <Pie data={costDistribution} innerRadius={60} outerRadius={80} paddingAngle={2} dataKey="value">
+                                                        {costDistribution.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                                                    </Pie>
+                                                    <Tooltip formatter={(val: number) => formatCurrency(val)} />
+                                                </RePieChart>
+                                            </ResponsiveContainer>
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                                <span className="text-xs text-gray-500 font-bold uppercase">Custo Total</span>
+                                                <span className="text-xl font-bold text-diva-dark">{formatCurrency(totalCost)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3 mb-6">
+                                        <div className="flex justify-between items-center text-sm">
+                                            <span className="text-gray-600">Preço de Venda</span>
+                                            <span className="font-bold text-diva-dark">{formatCurrency(selectedService?.price || 0)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-sm text-gray-500">
+                                            <span>Produtos</span>
+                                            <span>{formatCurrency(productCost)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-sm pt-2 border-t border-diva-light/20">
+                                            <span className="font-bold text-diva-primary">Margem</span>
+                                            <span className={`font-bold px-2 py-0.5 rounded ${margin < 30 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>
+                                                {margin.toFixed(1)}%
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        className="w-full mt-auto bg-diva-primary text-white py-3 rounded-xl font-bold shadow-md hover:bg-diva-dark transition-all flex items-center justify-center"
+                                        onClick={() => addToast('Ficha técnica salva (Simulado)', 'success')}
+                                    >
+                                        <Save size={18} className="mr-2" /> Salvar Ficha
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )
+                }
+
+                {/* TAB: OPERATIONAL (Global Connected) */}
+                {
+                    activeTab === 'operational' && (
+                        <div className="space-y-6 animate-in fade-in">
+                            <div className="space-y-8 animate-in fade-in">
+                                {/* Service Categories Section */}
+                                <div>
+                                    <div className="border-b border-diva-light/20 pb-4 mb-6">
+                                        <h3 className="text-lg font-bold text-diva-dark">Categorias de Serviços</h3>
+                                        <p className="text-sm text-gray-500">Defina as categorias para organização do Menu de Tratamentos.</p>
+                                    </div>
+
+                                    <div className="grid md:grid-cols-2 gap-8">
+                                        <div className="space-y-3">
+                                            <label className="text-sm font-bold text-gray-700">Adicionar Nova Categoria</label>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={newServiceCatName}
+                                                    onChange={(e) => setNewServiceCatName(e.target.value)}
+                                                    placeholder="Nome (ex: Protocolos Corporais)"
+                                                    className="flex-1 p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-diva-primary"
+                                                />
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                {AVAILABLE_CAT_COLORS.map(color => (
+                                                    <button
+                                                        key={color}
+                                                        onClick={() => setNewServiceCatColor(color)}
+                                                        className={`w-8 h-8 rounded-full transition-transform hover:scale-110 ${color} ${newServiceCatColor === color ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : ''}`}
+                                                    />
+                                                ))}
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    if (!newServiceCatName) return;
+                                                    addServiceCategory({
+                                                        id: `cat_${Date.now()}`,
+                                                        name: newServiceCatName,
+                                                        color: newServiceCatColor
+                                                    });
+                                                    setNewServiceCatName('');
+                                                }}
+                                                disabled={!newServiceCatName}
+                                                className="bg-diva-dark text-white px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-50 hover:bg-opacity-90 w-full md:w-auto"
+                                            >
+                                                Adicionar Categoria
                                             </button>
-                                            <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-gray-200 shadow-xl rounded-lg hidden group-hover:block z-10 max-h-48 overflow-y-auto">
-                                                {mockInventory.map(item => (
-                                                    <div
-                                                        key={item.id}
-                                                        onClick={() => handleAddItem(item)}
-                                                        className="p-2 hover:bg-gray-50 cursor-pointer border-b border-gray-50 text-xs"
-                                                    >
-                                                        <p className="font-bold text-gray-700">{item.name}</p>
-                                                        <p className="text-gray-400">Custo: {formatCurrency(item.costPrice || 0)}</p>
+                                        </div>
+
+                                        <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                                            <h4 className="text-xs font-bold text-gray-500 uppercase mb-3">Categorias Ativas</h4>
+                                            <div className="space-y-2 max-h-60 overflow-y-auto">
+                                                {serviceCategories.map(cat => (
+                                                    <div key={cat.id} className="bg-white p-3 rounded-lg border border-gray-200 flex justify-between items-center shadow-sm">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`w-4 h-4 rounded-full ${cat.color}`}></div>
+                                                            <span className="font-medium text-gray-800">{cat.name}</span>
+                                                        </div>
+                                                        {/* Prevent deleting default IDs if desired, or allow all */}
+                                                        <button
+                                                            onClick={() => { if (confirm('Excluir categoria?')) removeServiceCategory(cat.id) }}
+                                                            className="text-gray-400 hover:text-red-500"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
                                     </div>
-
-                                    <div className="space-y-2 flex-1 overflow-y-auto max-h-[200px] pr-2">
-                                        {protocolItems.map((item, idx) => (
-                                            <div key={idx} className="flex items-center justify-between bg-white p-2 rounded border border-gray-200 text-sm">
-                                                <span className="flex-1 truncate pr-2 text-gray-700 font-medium">{item.productName}</span>
-                                                <div className="flex items-center gap-2">
-                                                    <input
-                                                        type="number"
-                                                        value={item.quantity}
-                                                        onChange={(e) => handleUpdateQuantity(idx, parseFloat(e.target.value))}
-                                                        className="w-16 p-1 border border-gray-300 rounded text-center text-xs outline-none"
-                                                    />
-                                                    <span className="text-xs text-gray-400 w-6">{item.unit}</span>
-                                                    <span className="text-xs font-mono w-16 text-right">{formatCurrency(item.quantity * item.unitCost)}</span>
-                                                    <button onClick={() => handleRemoveItem(idx)} className="text-red-400 hover:text-red-600"><Trash2 size={14} /></button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                        {protocolItems.length === 0 && (
-                                            <p className="text-xs text-gray-400 text-center py-4 italic">Nenhum insumo adicionado.</p>
-                                        )}
-                                    </div>
-                                    <div className="mt-4 flex justify-end border-t border-gray-100 pt-4">
-                                        <button
-                                            onClick={handleSaveProtocol}
-                                            className="bg-diva-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-diva-dark transition-colors flex items-center shadow-sm"
-                                        >
-                                            <Save size={16} className="mr-2" /> Salvar Protocolo
-                                        </button>
-                                    </div>
                                 </div>
-                            </div>
 
-                            {/* RIGHT: Analysis Card */}
-                            <div className="w-full xl:w-80 bg-diva-light/10 rounded-xl border border-diva-light/30 p-6 flex flex-col h-full">
-                                <h4 className="font-serif font-bold text-diva-dark text-lg mb-6 flex items-center">
-                                    <PieChart size={18} className="mr-2 text-diva-primary" /> Análise de Margem
-                                </h4>
+                                <div className="border-t border-diva-light/20 my-6"></div>
 
-                                <div className="flex-1 flex flex-col items-center justify-center mb-6 relative">
-                                    <div className="w-48 h-48 relative">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <RePieChart>
-                                                <Pie data={costDistribution} innerRadius={60} outerRadius={80} paddingAngle={2} dataKey="value">
-                                                    {costDistribution.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
-                                                </Pie>
-                                                <Tooltip formatter={(val: number) => formatCurrency(val)} />
-                                            </RePieChart>
-                                        </ResponsiveContainer>
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                            <span className="text-xs text-gray-500 font-bold uppercase">Custo Total</span>
-                                            <span className="text-xl font-bold text-diva-dark">{formatCurrency(totalCost)}</span>
+                                {/* Task Categories (Existing) */}
+                                <div>
+                                    <div className="border-b border-diva-light/20 pb-4 mb-6">
+                                        <h3 className="text-lg font-bold text-diva-dark">Categorias de Tarefas (Operacional)</h3>
+                                        <p className="text-sm text-gray-500">Gerencie as categorias usadas no módulo de Tarefas.</p>
+                                    </div>
+
+                                    <div className="max-w-md">
+                                        <div className="flex gap-2 mb-6">
+                                            <input
+                                                type="text"
+                                                value={newCategoryName}
+                                                onChange={(e) => setNewCategoryName(e.target.value)}
+                                                placeholder="Nova Categoria (ex: Marketing)"
+                                                className="flex-1 p-3 border border-gray-300 rounded-lg outline-none focus:border-diva-primary bg-white text-gray-900"
+                                            />
+                                            <button
+                                                onClick={handleAddCategory}
+                                                className="bg-diva-primary text-white px-4 rounded-lg font-bold hover:bg-diva-dark"
+                                            >
+                                                Adicionar
+                                            </button>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            {taskCategories.map(cat => (
+                                                <div key={cat} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-200 group">
+                                                    <span className="text-diva-dark font-medium">{cat}</span>
+                                                    <button
+                                                        onClick={() => removeTaskCategory(cat)}
+                                                        className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    )
+                }
 
-                                <div className="space-y-3 mb-6">
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-gray-600">Preço de Venda</span>
-                                        <span className="font-bold text-diva-dark">{formatCurrency(selectedService?.price || 0)}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-sm text-gray-500">
-                                        <span>Produtos</span>
-                                        <span>{formatCurrency(productCost)}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-sm pt-2 border-t border-diva-light/20">
-                                        <span className="font-bold text-diva-primary">Margem</span>
-                                        <span className={`font-bold px-2 py-0.5 rounded ${margin < 30 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>
-                                            {margin.toFixed(1)}%
+                {
+                    activeTab === 'forms' && (
+                        <div className="flex flex-col h-full animate-in fade-in">
+                            <div className="border-b border-diva-light/20 pb-6 mb-6 flex justify-between items-start">
+                                <div>
+                                    <h3 className="text-lg font-bold text-diva-dark">Formulários Clínicos</h3>
+                                    <p className="text-sm text-gray-500 mb-2">Crie modelos de anamnese e termos de consentimento.</p>
+                                    <div className="flex gap-4 text-xs">
+                                        <span className="text-gray-600">
+                                            <strong className="text-diva-primary">{formTemplates.length}</strong> formulários
+                                        </span>
+                                        <span className="text-gray-600">
+                                            <strong className="text-green-600">{formTemplates.filter(f => f.active).length}</strong> ativos
+                                        </span>
+                                        <span className="text-gray-600">
+                                            <strong className="text-gray-400">{formTemplates.filter(f => f.fields.length === 0).length}</strong> sem campos
                                         </span>
                                     </div>
                                 </div>
-
-                                <button
-                                    className="w-full mt-auto bg-diva-primary text-white py-3 rounded-xl font-bold shadow-md hover:bg-diva-dark transition-all flex items-center justify-center"
-                                    onClick={() => addToast('Ficha técnica salva (Simulado)', 'success')}
-                                >
-                                    <Save size={18} className="mr-2" /> Salvar Ficha
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* TAB: OPERATIONAL (Global Connected) */}
-                {activeTab === 'operational' && (
-                    <div className="space-y-6 animate-in fade-in">
-                        <div className="border-b border-diva-light/20 pb-6">
-                            <h3 className="text-lg font-bold text-diva-dark">Categorias de Tarefas</h3>
-                            <p className="text-sm text-gray-500">Gerencie as categorias usadas no módulo de Operações e Tarefas.</p>
-                        </div>
-
-                        <div className="max-w-md">
-                            <div className="flex gap-2 mb-6">
-                                <input
-                                    type="text"
-                                    value={newCategoryName}
-                                    onChange={(e) => setNewCategoryName(e.target.value)}
-                                    placeholder="Nova Categoria (ex: Marketing)"
-                                    className="flex-1 p-3 border border-gray-300 rounded-lg outline-none focus:border-diva-primary bg-white text-gray-900"
-                                />
-                                <button
-                                    onClick={handleAddCategory}
-                                    className="bg-diva-primary text-white px-4 rounded-lg font-bold hover:bg-diva-dark"
-                                >
-                                    Adicionar
+                                <button onClick={createNewForm} className="bg-diva-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-diva-dark flex items-center">
+                                    <Plus size={16} className="mr-2" /> Novo Modelo
                                 </button>
                             </div>
 
-                            <div className="space-y-2">
-                                {taskCategories.map(cat => (
-                                    <div key={cat} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-200 group">
-                                        <span className="text-diva-dark font-medium">{cat}</span>
-                                        <button
-                                            onClick={() => removeTaskCategory(cat)}
-                                            className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {activeTab === 'forms' && (
-                    <div className="flex flex-col h-full animate-in fade-in">
-                        <div className="border-b border-diva-light/20 pb-6 mb-6 flex justify-between items-start">
-                            <div>
-                                <h3 className="text-lg font-bold text-diva-dark">Formulários Clínicos</h3>
-                                <p className="text-sm text-gray-500 mb-2">Crie modelos de anamnese e termos de consentimento.</p>
-                                <div className="flex gap-4 text-xs">
-                                    <span className="text-gray-600">
-                                        <strong className="text-diva-primary">{formTemplates.length}</strong> formulários
-                                    </span>
-                                    <span className="text-gray-600">
-                                        <strong className="text-green-600">{formTemplates.filter(f => f.active).length}</strong> ativos
-                                    </span>
-                                    <span className="text-gray-600">
-                                        <strong className="text-gray-400">{formTemplates.filter(f => f.fields.length === 0).length}</strong> sem campos
-                                    </span>
-                                </div>
-                            </div>
-                            <button onClick={createNewForm} className="bg-diva-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-diva-dark flex items-center">
-                                <Plus size={16} className="mr-2" /> Novo Modelo
-                            </button>
-                        </div>
-
-                        <div className="flex gap-8 h-full">
-                            {/* Templates List */}
-                            <div className="w-64 shrink-0 space-y-3">
-                                {formTemplates.map(form => (
-                                    <div
-                                        key={form.id}
-                                        className={`p-4 rounded-xl border transition-all ${editingForm?.id === form.id ? 'bg-diva-primary text-white shadow-md border-diva-primary' : 'bg-white border-gray-200 hover:border-diva-primary text-diva-dark'}`}
-                                    >
+                            <div className="flex gap-8 h-full">
+                                {/* Templates List */}
+                                <div className="w-64 shrink-0 space-y-3">
+                                    {formTemplates.map(form => (
                                         <div
-                                            onClick={() => setEditingForm(form)}
-                                            className="cursor-pointer"
+                                            key={form.id}
+                                            className={`p-4 rounded-xl border transition-all ${editingForm?.id === form.id ? 'bg-diva-primary text-white shadow-md border-diva-primary' : 'bg-white border-gray-200 hover:border-diva-primary text-diva-dark'}`}
                                         >
-                                            <div className="flex justify-between items-start mb-1">
-                                                <h4 className="font-bold text-sm">{form.title}</h4>
-                                                {form.active && <div className={`w-2 h-2 rounded-full ${editingForm?.id === form.id ? 'bg-white' : 'bg-green-500'}`}></div>}
+                                            <div
+                                                onClick={() => setEditingForm(form)}
+                                                className="cursor-pointer"
+                                            >
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <h4 className="font-bold text-sm">{form.title}</h4>
+                                                    {form.active && <div className={`w-2 h-2 rounded-full ${editingForm?.id === form.id ? 'bg-white' : 'bg-green-500'}`}></div>}
+                                                </div>
+                                                <p className={`text-xs ${editingForm?.id === form.id ? 'text-white/80' : 'text-gray-400'}`}>
+                                                    {form.type === 'anamnesis' ? 'Anamnese' : form.type === 'consent' ? 'Termo' : 'Evolução'} • {form.fields.length} campos
+                                                </p>
                                             </div>
-                                            <p className={`text-xs ${editingForm?.id === form.id ? 'text-white/80' : 'text-gray-400'}`}>
-                                                {form.type === 'anamnesis' ? 'Anamnese' : form.type === 'consent' ? 'Termo' : 'Evolução'} • {form.fields.length} campos
-                                            </p>
-                                        </div>
-                                        <div className="flex gap-2 mt-3 pt-3 border-t border-gray-200/20">
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    updateFormTemplate(form.id, { active: !form.active });
-                                                }}
-                                                className={`flex-1 px-3 py-1.5 rounded text-xs font-medium transition-colors ${form.active
-                                                    ? (editingForm?.id === form.id ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-green-50 text-green-600 hover:bg-green-100')
-                                                    : (editingForm?.id === form.id ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-gray-100 text-gray-500 hover:bg-gray-200')
-                                                    }`}
-                                            >
-                                                {form.active ? 'Ativo' : 'Inativo'}
-                                            </button>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (confirm(`Tem certeza que deseja excluir o formulário "${form.title}"?`)) {
-                                                        deleteFormTemplate(form.id);
-                                                        if (editingForm?.id === form.id) {
-                                                            setEditingForm(null);
-                                                        }
-                                                    }
-                                                }}
-                                                className={`px-3 py-1.5 rounded text-xs transition-colors ${editingForm?.id === form.id
-                                                    ? 'bg-white/20 text-white hover:bg-red-500'
-                                                    : 'bg-red-50 text-red-600 hover:bg-red-100'
-                                                    }`}
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Builder Area */}
-                            <div className="flex-1 bg-gray-50 rounded-xl border border-gray-200 p-6 flex flex-col overflow-hidden">
-                                {editingForm ? (
-                                    <>
-                                        <div className="flex gap-4 mb-6">
-                                            <input
-                                                type="text"
-                                                value={editingForm.title}
-                                                onChange={(e) => setEditingForm({ ...editingForm, title: e.target.value })}
-                                                className="flex-1 p-3 border border-gray-300 rounded-lg font-bold text-diva-dark outline-none focus:border-diva-primary"
-                                                placeholder="Título do Formulário"
-                                            />
-                                            <select
-                                                value={editingForm.type}
-                                                onChange={(e) => setEditingForm({ ...editingForm, type: e.target.value as any })}
-                                                className="p-3 border border-gray-300 rounded-lg text-sm outline-none bg-white"
-                                            >
-                                                <option value="anamnesis">Anamnese</option>
-                                                <option value="consent">Termo de Consentimento</option>
-                                                <option value="evolution">Evolução</option>
-                                            </select>
-                                        </div>
-
-                                        <div className="flex-1 overflow-y-auto space-y-3 pr-2 mb-4">
-                                            {editingForm.fields.map((field, idx) => (
-                                                <div
-                                                    key={field.id}
-                                                    onClick={() => setSelectedFieldId(field.id)}
-                                                    className={`p-4 rounded-lg border bg-white group relative transition-all ${selectedFieldId === field.id ? 'ring-2 ring-diva-primary border-transparent' : 'border-gray-200 hover:border-diva-light'}`}
+                                            <div className="flex gap-2 mt-3 pt-3 border-t border-gray-200/20">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        updateFormTemplate(form.id, { active: !form.active });
+                                                    }}
+                                                    className={`flex-1 px-3 py-1.5 rounded text-xs font-medium transition-colors ${form.active
+                                                        ? (editingForm?.id === form.id ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-green-50 text-green-600 hover:bg-green-100')
+                                                        : (editingForm?.id === form.id ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-gray-100 text-gray-500 hover:bg-gray-200')
+                                                        }`}
                                                 >
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="text-gray-400 cursor-move"><AlignLeft size={16} /></div>
-                                                        <div className="flex-1">
-                                                            {field.type === 'section_header' ? (
-                                                                <input
-                                                                    type="text"
-                                                                    value={field.label}
-                                                                    onChange={(e) => {
-                                                                        const newFields = [...editingForm.fields];
-                                                                        newFields[idx].label = e.target.value;
-                                                                        setEditingForm({ ...editingForm, fields: newFields });
-                                                                    }}
-                                                                    className="w-full font-bold text-lg text-diva-dark border-none focus:ring-0 p-0 bg-transparent placeholder-gray-300"
-                                                                    placeholder="Nome da Seção"
-                                                                />
-                                                            ) : (
-                                                                <div className="flex flex-col gap-1">
+                                                    {form.active ? 'Ativo' : 'Inativo'}
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (confirm(`Tem certeza que deseja excluir o formulário "${form.title}"?`)) {
+                                                            deleteFormTemplate(form.id);
+                                                            if (editingForm?.id === form.id) {
+                                                                setEditingForm(null);
+                                                            }
+                                                        }
+                                                    }}
+                                                    className={`px-3 py-1.5 rounded text-xs transition-colors ${editingForm?.id === form.id
+                                                        ? 'bg-white/20 text-white hover:bg-red-500'
+                                                        : 'bg-red-50 text-red-600 hover:bg-red-100'
+                                                        }`}
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Builder Area */}
+                                <div className="flex-1 bg-gray-50 rounded-xl border border-gray-200 p-6 flex flex-col overflow-hidden">
+                                    {editingForm ? (
+                                        <>
+                                            <div className="flex gap-4 mb-6">
+                                                <input
+                                                    type="text"
+                                                    value={editingForm.title}
+                                                    onChange={(e) => setEditingForm({ ...editingForm, title: e.target.value })}
+                                                    className="flex-1 p-3 border border-gray-300 rounded-lg font-bold text-diva-dark outline-none focus:border-diva-primary"
+                                                    placeholder="Título do Formulário"
+                                                />
+                                                <select
+                                                    value={editingForm.type}
+                                                    onChange={(e) => setEditingForm({ ...editingForm, type: e.target.value as any })}
+                                                    className="p-3 border border-gray-300 rounded-lg text-sm outline-none bg-white"
+                                                >
+                                                    <option value="anamnesis">Anamnese</option>
+                                                    <option value="consent">Termo de Consentimento</option>
+                                                    <option value="evolution">Evolução</option>
+                                                </select>
+                                            </div>
+
+                                            <div className="flex-1 overflow-y-auto space-y-3 pr-2 mb-4">
+                                                {editingForm.fields.map((field, idx) => (
+                                                    <div
+                                                        key={field.id}
+                                                        onClick={() => setSelectedFieldId(field.id)}
+                                                        className={`p-4 rounded-lg border bg-white group relative transition-all ${selectedFieldId === field.id ? 'ring-2 ring-diva-primary border-transparent' : 'border-gray-200 hover:border-diva-light'}`}
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="text-gray-400 cursor-move"><AlignLeft size={16} /></div>
+                                                            <div className="flex-1">
+                                                                {field.type === 'section_header' ? (
                                                                     <input
                                                                         type="text"
                                                                         value={field.label}
@@ -834,153 +1440,211 @@ const SettingsModule: React.FC = () => {
                                                                             newFields[idx].label = e.target.value;
                                                                             setEditingForm({ ...editingForm, fields: newFields });
                                                                         }}
-                                                                        className="w-full font-medium text-sm text-gray-700 border-none focus:ring-0 p-0 bg-transparent"
+                                                                        className="w-full font-bold text-lg text-diva-dark border-none focus:ring-0 p-0 bg-transparent placeholder-gray-300"
+                                                                        placeholder="Nome da Seção"
                                                                     />
-                                                                    <span className="text-xs text-gray-400 flex items-center gap-1">
-                                                                        {getFieldIcon(field.type)} {field.type}
-                                                                    </span>
-                                                                </div>
-                                                            )}
+                                                                ) : (
+                                                                    <div className="flex flex-col gap-1">
+                                                                        <input
+                                                                            type="text"
+                                                                            value={field.label}
+                                                                            onChange={(e) => {
+                                                                                const newFields = [...editingForm.fields];
+                                                                                newFields[idx].label = e.target.value;
+                                                                                setEditingForm({ ...editingForm, fields: newFields });
+                                                                            }}
+                                                                            className="w-full font-medium text-sm text-gray-700 border-none focus:ring-0 p-0 bg-transparent"
+                                                                        />
+                                                                        <span className="text-xs text-gray-400 flex items-center gap-1">
+                                                                            {getFieldIcon(field.type)} {field.type}
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    const newFields = editingForm.fields.filter((_, i) => i !== idx);
+                                                                    setEditingForm({ ...editingForm, fields: newFields });
+                                                                }}
+                                                                className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
                                                         </div>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                const newFields = editingForm.fields.filter((_, i) => i !== idx);
-                                                                setEditingForm({ ...editingForm, fields: newFields });
-                                                            }}
-                                                            className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                        >
-                                                            <Trash2 size={16} />
-                                                        </button>
                                                     </div>
-                                                </div>
-                                            ))}
-                                            {editingForm.fields.length === 0 && (
-                                                <div className="text-center py-12 text-gray-400 border-2 border-dashed border-gray-200 rounded-xl">
-                                                    <p>Arraste campos ou clique abaixo para adicionar</p>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="grid grid-cols-4 gap-2 mb-4">
-                                            <button onClick={() => addField('text')} className="p-2 bg-white border border-gray-200 rounded hover:bg-gray-50 text-xs font-medium text-gray-600 flex flex-col items-center gap-1">
-                                                <Type size={16} /> Texto Curto
-                                            </button>
-                                            <button onClick={() => addField('textarea')} className="p-2 bg-white border border-gray-200 rounded hover:bg-gray-50 text-xs font-medium text-gray-600 flex flex-col items-center gap-1">
-                                                <AlignLeft size={16} /> Texto Longo
-                                            </button>
-                                            <button onClick={() => addField('select')} className="p-2 bg-white border border-gray-200 rounded hover:bg-gray-50 text-xs font-medium text-gray-600 flex flex-col items-center gap-1">
-                                                <CheckSquare size={16} /> Seleção
-                                            </button>
-                                            <button onClick={() => addField('section_header')} className="p-2 bg-white border border-gray-200 rounded hover:bg-gray-50 text-xs font-medium text-gray-600 flex flex-col items-center gap-1">
-                                                <Type size={16} className="font-bold" /> Seção
-                                            </button>
-                                        </div>
-
-                                        <div className="flex justify-between gap-3 pt-4 border-t border-gray-200">
-                                            <button
-                                                onClick={duplicateForm}
-                                                className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 flex items-center text-sm"
-                                            >
-                                                <Plus size={16} className="mr-2" /> Duplicar
-                                            </button>
-                                            <button onClick={saveForm} className="bg-diva-primary text-white px-6 py-2 rounded-lg font-bold hover:bg-diva-dark flex items-center">
-                                                <Save size={16} className="mr-2" /> Salvar Modelo
-                                            </button>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
-                                        <FilePlus size={48} className="mb-4 opacity-50" />
-                                        <p>Selecione um modelo ou crie um novo</p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
-                {activeTab === 'revenue' && (
-                    <div className="flex flex-col h-full animate-in fade-in">
-                        <div className="border-b border-diva-light/20 pb-6 mb-6">
-                            <h3 className="text-lg font-bold text-diva-dark">Smart Pricing (Yield Management)</h3>
-                            <p className="text-sm text-gray-500">Configure regras de preços dinâmicos baseados na demanda.</p>
-                        </div>
-
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            {/* Rules List */}
-                            <div className="lg:col-span-1 space-y-4">
-                                <div className="flex justify-between items-center mb-2">
-                                    <h4 className="font-bold text-diva-dark text-sm">Regras Ativas</h4>
-                                    <button className="text-xs text-diva-primary font-bold hover:underline" onClick={addNewYieldRule}>+ Nova Regra</button>
-                                </div>
-                                {yieldRules.map(rule => (
-                                    <div key={rule.id} className="bg-white p-4 rounded-xl border border-diva-light/30 shadow-sm hover:border-diva-primary transition-colors cursor-pointer">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div className="flex items-center gap-2">
-                                                <Zap size={16} className="text-yellow-500 fill-current" />
-                                                <h5 className="font-bold text-diva-dark text-sm">{rule.name}</h5>
+                                                ))}
+                                                {editingForm.fields.length === 0 && (
+                                                    <div className="text-center py-12 text-gray-400 border-2 border-dashed border-gray-200 rounded-xl">
+                                                        <p>Arraste campos ou clique abaixo para adicionar</p>
+                                                    </div>
+                                                )}
                                             </div>
-                                            <label className="relative inline-flex items-center cursor-pointer">
-                                                <input type="checkbox" checked={rule.active} onChange={() => updateYieldRule(rule.id, { active: !rule.active })} className="sr-only peer" />
-                                                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-diva-primary"></div>
-                                            </label>
+
+                                            <div className="grid grid-cols-4 gap-2 mb-4">
+                                                <button onClick={() => addField('text')} className="p-2 bg-white border border-gray-200 rounded hover:bg-gray-50 text-xs font-medium text-gray-600 flex flex-col items-center gap-1">
+                                                    <Type size={16} /> Texto Curto
+                                                </button>
+                                                <button onClick={() => addField('textarea')} className="p-2 bg-white border border-gray-200 rounded hover:bg-gray-50 text-xs font-medium text-gray-600 flex flex-col items-center gap-1">
+                                                    <AlignLeft size={16} /> Texto Longo
+                                                </button>
+                                                <button onClick={() => addField('select')} className="p-2 bg-white border border-gray-200 rounded hover:bg-gray-50 text-xs font-medium text-gray-600 flex flex-col items-center gap-1">
+                                                    <CheckSquare size={16} /> Seleção
+                                                </button>
+                                                <button onClick={() => addField('section_header')} className="p-2 bg-white border border-gray-200 rounded hover:bg-gray-50 text-xs font-medium text-gray-600 flex flex-col items-center gap-1">
+                                                    <Type size={16} className="font-bold" /> Seção
+                                                </button>
+                                            </div>
+
+                                            <div className="flex justify-between gap-3 pt-4 border-t border-gray-200">
+                                                <button
+                                                    onClick={duplicateForm}
+                                                    className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 flex items-center text-sm"
+                                                >
+                                                    <Plus size={16} className="mr-2" /> Duplicar
+                                                </button>
+                                                <button onClick={saveForm} className="bg-diva-primary text-white px-6 py-2 rounded-lg font-bold hover:bg-diva-dark flex items-center">
+                                                    <Save size={16} className="mr-2" /> Salvar Modelo
+                                                </button>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
+                                            <FilePlus size={48} className="mb-4 opacity-50" />
+                                            <p>Selecione um modelo ou crie um novo</p>
                                         </div>
-                                        <p className="text-xs text-gray-500 mb-3">{rule.description}</p>
-                                        <div className="flex gap-2 text-[10px] font-bold uppercase text-gray-400">
-                                            <span className="bg-gray-100 px-2 py-1 rounded">{rule.condition}</span>
-                                            <span className="bg-green-50 text-green-600 px-2 py-1 rounded">+{rule.adjustmentPercentage}% Valor</span>
-                                        </div>
-                                    </div>
-                                ))}
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )
+                }
+                {
+                    activeTab === 'revenue' && (
+                        <div className="flex flex-col h-full animate-in fade-in">
+                            <div className="border-b border-diva-light/20 pb-6 mb-6">
+                                <h3 className="text-lg font-bold text-diva-dark">Smart Pricing (Yield Management)</h3>
+                                <p className="text-sm text-gray-500">Configure regras de preços dinâmicos baseados na demanda.</p>
                             </div>
 
-                            {/* Analytics Preview */}
-                            <div className="lg:col-span-2 bg-gray-50 rounded-xl border border-gray-200 p-6">
-                                <h4 className="font-bold text-diva-dark mb-6 flex items-center">
-                                    <TrendingUp size={18} className="mr-2 text-diva-primary" /> Previsão de Demanda (Hoje)
-                                </h4>
-                                <div className="h-64 w-full">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <AreaChart data={demandData}>
-                                            <defs>
-                                                <linearGradient id="colorDemand" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#BF784E" stopOpacity={0.8} />
-                                                    <stop offset="95%" stopColor="#BF784E" stopOpacity={0} />
-                                                </linearGradient>
-                                            </defs>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                                            <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
-                                            <YAxis hide />
-                                            <Tooltip
-                                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                                formatter={(val: number) => [`${val}%`, 'Ocupação Prevista']}
-                                            />
-                                            <Area type="monotone" dataKey="demand" stroke="#BF784E" fillOpacity={1} fill="url(#colorDemand)" />
-                                        </AreaChart>
-                                    </ResponsiveContainer>
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                {/* Rules List */}
+                                <div className="lg:col-span-1 space-y-4">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h4 className="font-bold text-diva-dark text-sm">Regras Ativas</h4>
+                                        <button className="text-xs text-diva-primary font-bold hover:underline" onClick={addNewYieldRule}>+ Nova Regra</button>
+                                    </div>
+                                    {yieldRules.map(rule => (
+                                        <div key={rule.id} className="bg-white p-4 rounded-xl border border-diva-light/30 shadow-sm hover:border-diva-primary transition-colors cursor-pointer">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <Zap size={16} className="text-yellow-500 fill-current" />
+                                                    <h5 className="font-bold text-diva-dark text-sm">{rule.name}</h5>
+                                                </div>
+                                                <label className="relative inline-flex items-center cursor-pointer">
+                                                    <input type="checkbox" checked={rule.active} onChange={() => updateYieldRule(rule.id, { active: !rule.active })} className="sr-only peer" />
+                                                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-diva-primary"></div>
+                                                </label>
+                                            </div>
+                                            <p className="text-xs text-gray-500 mb-3">{rule.description}</p>
+                                            <div className="flex gap-2 text-[10px] font-bold uppercase text-gray-400">
+                                                <span className="bg-gray-100 px-2 py-1 rounded">{rule.condition}</span>
+                                                <span className="bg-green-50 text-green-600 px-2 py-1 rounded">+{rule.adjustmentPercentage}% Valor</span>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
-                                <div className="mt-4 p-4 bg-white rounded-lg border border-diva-light/20 flex items-start gap-3">
-                                    <AlertCircle size={20} className="text-diva-primary shrink-0 mt-0.5" />
-                                    <div>
-                                        <p className="text-sm font-bold text-diva-dark">Sugestão do Algoritmo</p>
-                                        <p className="text-xs text-gray-500 mt-1">
-                                            Alta procura prevista entre 18:00 e 20:00. A regra <strong>Horário Nobre</strong> será ativada automaticamente, aplicando +15% nos valores de agendamento para este período.
-                                        </p>
+
+                                {/* Analytics Preview */}
+                                <div className="lg:col-span-2 bg-gray-50 rounded-xl border border-gray-200 p-6">
+                                    <h4 className="font-bold text-diva-dark mb-6 flex items-center">
+                                        <TrendingUp size={18} className="mr-2 text-diva-primary" /> Previsão de Demanda (Hoje)
+                                    </h4>
+                                    <div className="h-64 w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={demandData}>
+                                                <defs>
+                                                    <linearGradient id="colorDemand" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#BF784E" stopOpacity={0.8} />
+                                                        <stop offset="95%" stopColor="#BF784E" stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                                <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
+                                                <YAxis hide />
+                                                <Tooltip
+                                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                                    formatter={(val: number) => [`${val}%`, 'Ocupação Prevista']}
+                                                />
+                                                <Area type="monotone" dataKey="demand" stroke="#BF784E" fillOpacity={1} fill="url(#colorDemand)" />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                    <div className="mt-4 p-4 bg-white rounded-lg border border-diva-light/20 flex items-start gap-3">
+                                        <AlertCircle size={20} className="text-diva-primary shrink-0 mt-0.5" />
+                                        <div>
+                                            <p className="text-sm font-bold text-diva-dark">Sugestão do Algoritmo</p>
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                Alta procura prevista entre 18:00 e 20:00. A regra <strong>Horário Nobre</strong> será ativada automaticamente, aplicando +15% nos valores de agendamento para este período.
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )
+                }
 
             </div>
 
             <NewServiceModal
                 isOpen={isNewServiceModalOpen}
-                onClose={() => setIsNewServiceModalOpen(false)}
-                onSave={addService}
+                onClose={() => {
+                    setIsNewServiceModalOpen(false);
+                    setServiceToEdit(null);
+                }}
+                onSave={(service) => {
+                    if (serviceToEdit) {
+                        updateService(service.id, service);
+                    } else {
+                        addService(service);
+                    }
+                    setIsNewServiceModalOpen(false);
+                    setServiceToEdit(null);
+                }}
+                serviceToEdit={serviceToEdit}
             />
-        </div>
+            <NewProductModal
+                isOpen={isProductModalOpen}
+                onClose={() => {
+                    setIsProductModalOpen(false);
+                    setProductToEdit(null);
+                }}
+                productToEdit={productToEdit}
+                defaultCategory={defaultProductCategory}
+            />
+            <StockEntryModal
+                isOpen={isStockEntryModalOpen}
+                onClose={() => setIsStockEntryModalOpen(false)}
+            />
+            <InvoiceImportModal
+                isOpen={isInvoiceImportModalOpen}
+                onClose={() => setIsInvoiceImportModalOpen(false)}
+            />
+
+            <FiscalAccountModal
+                isOpen={isFiscalAccountModalOpen}
+                onClose={() => setIsFiscalAccountModalOpen(false)}
+                accountToEdit={fiscalAccountToEdit}
+                onSave={(acc) => {
+                    if (fiscalAccountToEdit) {
+                        updateFiscalAccount(acc.id, acc);
+                    } else {
+                        addFiscalAccount(acc);
+                    }
+                }}
+            />
+        </div >
     );
 };
 

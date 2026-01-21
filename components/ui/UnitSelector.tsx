@@ -1,14 +1,20 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { Building, ChevronDown, Check, Globe } from 'lucide-react';
 
 const UnitSelector: React.FC = () => {
-    const { units, selectedUnitId, setSelectedUnitId } = useData();
+    const { units, selectedUnitId, setSelectedUnitId, currentUser } = useData();
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    const selectedUnit = units.find(u => u.id === selectedUnitId);
+    // Filter units by current user's organization
+    const filteredUnits = useMemo(() => {
+        if (!currentUser?.organizationId) return units;
+        return units.filter(u => u.organizationId === currentUser.organizationId);
+    }, [units, currentUser]);
+
+    const selectedUnit = filteredUnits.find(u => u.id === selectedUnitId);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -73,7 +79,7 @@ const UnitSelector: React.FC = () => {
 
                         <div className="h-px bg-gray-100 my-1 mx-2"></div>
 
-                        {units.map(unit => (
+                        {filteredUnits.map(unit => (
                             <button
                                 key={unit.id}
                                 onClick={() => handleSelect(unit.id)}

@@ -10,25 +10,24 @@ interface NewAppointmentModalProps {
   isOpen: boolean;
   onClose: () => void;
   appointmentToEdit?: ServiceAppointment | null;
+  initialData?: Partial<ServiceAppointment>;
 }
 
 // Mock Service Options (In real app, fetch from Settings/Services)
-const services = [
-  { name: 'Depilação a Laser - Perna', price: 250, duration: 30 },
-  { name: 'Limpeza de Pele', price: 150, duration: 60 },
-  { name: 'Botox (3 Regiões)', price: 1200, duration: 45 },
-  { name: 'Drenagem Linfática', price: 180, duration: 60 },
-];
+// Mock Service Options Removed - Now using real data from Context
 
-const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClose, appointmentToEdit }) => {
-  const { addAppointment, updateAppointment, appointments, clients, staff, rooms, selectedUnitId } = useUnitData();
+
+const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClose, appointmentToEdit, initialData }) => {
+  const { addAppointment, updateAppointment, appointments, clients, staff, rooms, selectedUnitId, services } = useUnitData();
   const { addToast } = useToast();
   const [isNewClientModalOpen, setIsNewClientModalOpen] = useState(false);
   const [conflictWarning, setConflictWarning] = useState<string | null>(null);
+  const [clientSearch, setClientSearch] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const initialFormState = {
     clientId: '',
-    serviceName: services[0].name,
+    serviceName: services.length > 0 ? services[0].name : '',
     date: new Date().toISOString().split('T')[0],
     time: '09:00',
     staffName: '', // Will use staff[0] ID if available
@@ -54,15 +53,28 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClo
           status: appointmentToEdit.status,
           referralSource: appointmentToEdit.referralSource || 'instagram'
         });
+        setClientSearch(appointmentToEdit.clientName || '');
+      } else if (initialData) {
+        setFormData({
+          ...initialFormState,
+          clientId: initialData.clientId || '',
+          serviceName: initialData.serviceName || (services.length > 0 ? services[0].name : ''),
+          staffName: initialData.staffName || '',
+          status: AppointmentStatus.SCHEDULED,
+          referralSource: 'instagram',
+          ...initialData
+        });
+        setClientSearch(initialData.clientName || '');
       } else {
         setFormData(prev => ({
           ...initialFormState,
           date: new Date().toISOString().split('T')[0]
         }));
+        setClientSearch('');
       }
       setConflictWarning(null);
     }
-  }, [isOpen, appointmentToEdit]);
+  }, [isOpen, appointmentToEdit, initialData]);
 
   // Check for conflicts whenever relevant fields change
   useEffect(() => {
@@ -117,7 +129,7 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClo
     const selectedRoom = rooms.find(r => r.name === formData.roomId) || rooms[0];
 
     if (!client || !service) {
-      addToast('Selecione um cliente e um serviço válidos.', 'error');
+      addToast('Selecione um paciente e um serviço válidos.', 'error');
       return;
     }
 
@@ -126,6 +138,7 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClo
     const endDate = new Date(startDate.getTime() + service.duration * 60000);
 
     const appointmentData: ServiceAppointment = {
+      organizationId: 'org_demo',
       appointmentId: appointmentToEdit ? appointmentToEdit.appointmentId : `apt_${Date.now()}`,
       clientId: client.clientId,
       clientName: client.name,
@@ -151,57 +164,87 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClo
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
-        <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-diva-primary text-white">
-          <h3 className="font-bold text-lg flex items-center">
-            <Calendar size={20} className="mr-2" /> {appointmentToEdit ? 'Editar Agendamento' : 'Novo Agendamento'}
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-0 md:p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-none md:rounded-xl shadow-2xl w-full h-full md:h-auto md:max-w-lg overflow-hidden flex flex-col">
+        <div className="p-4 md:p-5 border-b border-gray-100 flex justify-between items-center bg-diva-primary text-white shrink-0">
+          <h3 className="font-bold text-base md:text-lg flex items-center">
+            <Calendar size={18} className="mr-2" /> {appointmentToEdit ? 'Editar Agendamento' : 'Novo Agendamento'}
           </h3>
-          <button onClick={onClose} className="text-white/70 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-white/70 hover:text-white transition-colors active:scale-95">
             <X size={20} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-4 md:p-6 space-y-4 md:space-y-5 overflow-y-auto flex-1">
 
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Cliente *</label>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Paciente *</label>
             <div className="flex gap-2 items-center">
               <div className="relative flex-1">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-                <select
-                  required
-                  className="w-full pl-9 pr-3 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all bg-white text-gray-900 text-sm"
-                  value={formData.clientId}
-                  onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
-                >
-                  <option value="" className="text-gray-400">Selecione um cliente...</option>
-                  {clients.map(client => (
-                    <option key={client.clientId} value={client.clientId} className="text-gray-900">
-                      {client.name}
-                    </option>
-                  ))}
-                </select>
+                <input
+                  type="text"
+                  className="w-full pl-9 pr-3 py-2.5 md:py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all bg-white text-gray-900 text-sm"
+                  placeholder="Buscar paciente (Nome, CPF, Telefone)..."
+                  value={clientSearch}
+                  onChange={(e) => {
+                    setClientSearch(e.target.value);
+                    setShowSuggestions(true);
+                    if (e.target.value === '') setFormData({ ...formData, clientId: '' });
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                />
+                {showSuggestions && clientSearch.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                    {clients.filter(c =>
+                      c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+                      c.phone?.includes(clientSearch) ||
+                      c.cpf?.includes(clientSearch)
+                    ).length > 0 ? (
+                      clients.filter(c =>
+                        c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+                        c.phone?.includes(clientSearch) ||
+                        c.cpf?.includes(clientSearch)
+                      ).map(client => (
+                        <div
+                          key={client.clientId}
+                          className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0"
+                          onClick={() => {
+                            setClientSearch(client.name);
+                            setFormData({ ...formData, clientId: client.clientId });
+                            setShowSuggestions(false);
+                          }}
+                        >
+                          <p className="font-bold text-gray-800 text-sm">{client.name}</p>
+                          <p className="text-xs text-gray-500">{client.email} • {client.phone}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-3 text-sm text-gray-500">Nenhum paciente encontrado.</div>
+                    )}
+                  </div>
+                )}
               </div>
               <button
                 type="button"
                 onClick={() => setIsNewClientModalOpen(true)}
-                className="bg-diva-light/20 text-diva-primary p-3 rounded-lg hover:bg-diva-primary hover:text-white transition-colors border border-diva-light/50"
-                title="Novo Cliente"
+                className="bg-diva-light/20 text-diva-primary p-2.5 md:p-3 rounded-lg hover:bg-diva-primary hover:text-white transition-colors border border-diva-light/50 active:scale-95 shrink-0"
+                title="Novo Paciente"
               >
                 <Plus size={20} />
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Procedimento *</label>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Procedimento *</label>
               <div className="relative">
                 <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                 <select
                   required
-                  className="w-full pl-9 pr-3 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all bg-white text-gray-900 text-sm"
+                  className="w-full pl-9 pr-3 py-2.5 md:py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all bg-white text-gray-900 text-sm"
                   value={formData.serviceName}
                   onChange={(e) => setFormData({ ...formData, serviceName: e.target.value })}
                 >
@@ -212,11 +255,11 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClo
               </div>
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Origem</label>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Origem</label>
               <div className="relative">
                 <Megaphone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                 <select
-                  className="w-full pl-9 pr-3 py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all bg-white text-gray-900 text-sm"
+                  className="w-full pl-9 pr-3 py-2.5 md:py-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-diva-primary/20 focus:border-diva-primary transition-all bg-white text-gray-900 text-sm"
                   value={formData.referralSource}
                   onChange={(e) => setFormData({ ...formData, referralSource: e.target.value })}
                 >
@@ -313,17 +356,17 @@ const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({ isOpen, onClo
             </div>
           )}
 
-          <div className="pt-4 flex justify-end gap-3">
+          <div className="pt-4 flex flex-col sm:flex-row justify-end gap-2 md:gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-bold text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+              className="px-4 py-2.5 text-sm font-bold text-gray-500 hover:bg-gray-100 rounded-lg transition-colors active:scale-95 order-2 sm:order-1"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="px-6 py-2 bg-diva-primary text-white rounded-lg text-sm font-bold shadow-md hover:bg-diva-dark transition-all flex items-center"
+              className="px-6 py-2.5 bg-diva-primary text-white rounded-lg text-sm font-bold shadow-md hover:bg-diva-dark transition-all flex items-center justify-center active:scale-95 order-1 sm:order-2"
             >
               <Save size={16} className="mr-2" /> Confirmar Agendamento
             </button>

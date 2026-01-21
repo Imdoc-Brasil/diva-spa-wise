@@ -93,6 +93,7 @@ const FunnelModule: React.FC = () => {
         } else {
             const newLead: SalesLead = {
                 leadId: `l_${Date.now()}`,
+                organizationId: 'org_demo',
                 name: leadData.name || '',
                 contact: leadData.contact || '',
                 channelSource: leadData.channelSource || 'instagram',

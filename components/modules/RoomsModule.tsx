@@ -110,6 +110,7 @@ const RoomsModule: React.FC = () => {
         if (!newRoomName) return;
         const newRoom: ServiceRoom = {
             id: `r_${Date.now()}`,
+            organizationId: 'org_demo',
             name: newRoomName,
             type: newRoomType,
             status: 'available',

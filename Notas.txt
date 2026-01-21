@@ -1,0 +1,119 @@
+[x] 1. Persistência de Dados (Supabase): Implementado via SQL e AutomationService.
+[x] 2. Área do Cliente (Subscriber Portal): Criado módulo "Minha Assinatura" dentro de Configurações da Organização.
+[x] 3. Review de Deploy: Build verificado pelo usuário. Pronto para subir!
+Eu pensei em fazer algumas alterações ao formulário de cadastro de novo produto:
+
+A ideia é termos um catálogo de produtos, com o Nome Comercial, Princípios Ativos, Apresentação, Unidade
+
+Exemplo: um catálogo onde poderemos cadastrar o produto com sua: Apresentação - Ampola, Frasco...Contendo - 5,00 ml; 1 Litro..., Unidade: ui, ml.... Isso significa que você poderá cadastrar a saída do produto tanto como Ampola como em Mililitro ou Unidades.
+
+No formulário de "Novo Produto" não precisamos das informações de:
+- Lote 
+- Validade
+- Apresentação (Opção para confirmar o que já está cadastrado ou atualizar)
+- Preço Venda (R$)
+- Custo Unitário (R$)
+- Estoque Inicial
+- Estoque Minimo
+- Validade (Opcional)
+- Aviso de validade
+
+E criarmos um formulário de entrada de estoque de produto, neste formulário iremos incluir as outras informações, como
+
+- Nota fiscal
+- Lote 
+- Validade
+- Apresentação (Opção para confirmar o que já está cadastrado ou atualizar)
+- Preço Venda (R$)
+- Custo Unitário (R$)
+- Estoque Inicial
+- Estoque Minimo
+- Validade (Opcional)
+- Aviso de validade
+- Forma de pagamento
+- Vicular serviços e quantidade usada no serviço para baixa automática do estoque
+
+Criar contas a pagar. 
+
+No futuro inclusive poderemos ter um agente de IA, onde nós poderemos adicionar a nota fiscal e o próprio agente poderá fazer a atualização de forma automática
+
+
+#CONTAS FISCAIS:
+
+Excelente, agora vamos dar continuidade com nosso ambiente financeiro. 
+
+A ideia é que o cliente assinante possa personalizar a contabilidade do seu negócio de acordo com cada uma das atividade econômica, exemplo:
+
+Uma clíncia de estética deve poder vincular determinada atividade a um CNPJ ou CPF específico. 
+
+Uma clínica pode ter um CNPJ ÚNICO no qual ela realiza compras de insumos, materiais, produtos... Realiza vendas e emite, notas ou recibos da prestação de serviços, produtos do marketplace...
+
+Ou um segundo, terceiro... CNPJ ou CPF, ao qual ela poderá vincular compras de produtos, insumos, materiais, vendas de serviços para o CNPJ A, e vendas do marketplace para o CNPJ B ou CPF. 
+
+Que possibilite também evitar a bitributação de serviços, por exemplo:
+
+Ao vender um pacote de Laser por 1.000,00 - normalmente a clínica teria que emitir uma nota fiscal de serviços para o paciente no valor de 1.000,00. Desses 1.000,00 recebidos ela precisa repassar 300,00 para o Profissional que realizou o procedimento, em forma de comissão, e este profissional por sua vez precisa emitir uma nota de 300,00 para a clínica. Então a ideia é possibilitar que a recepção direcione o valor de 1000,00 pagos pelo paciente para a emissão de 2 notas, uma do CNPJ da clínica no valor de 700,00 referente ao valor que é direcionado a clínica e outra do CNPJ ou recibo do CPF do profissional que realizou o serviço no valor de 300,00. 
+
+Pensei em chamar essa funcionalidade de Contas Fiscais: 
+
+Conta Fiscal CNPJ A
+Conta Fiscal CNPJ B
+Conta Fiscal CPF A
+Conta Fiscal CPF B
+
+No formulário do cadastro dessas contas iremos informar a quem essa conta pertende, se a uma conta de serviços da clínica, se ao marketplace da clínica, se a um profissional específico... 
+
+Dentro de cada conta iremos cadastrar o certificato digital e senha de cada CNPJ ou Configurar o recibo em caso de CPF. Para que a nota fiscal ou recibo seja emitido direcionado a conta fiscal que está recebendo o valor. 
+
+Até desenvolvermos a integração para emissão automática da nota fiscal, iremos enviar a informação da nota a ser emitida para uma página de controle de emissão de notas. Onde o usuário poderá verificar os dados para emissão da nota, como Nome do Paciente, CPF, endereço, e-mail, telefone e valores da nota pendente de emissão, então ele irá entrar no site da prefeitura, emitir a nota, enviar ao paciente e alterar o status de pendente para emitido. 
+
+Ou ele poderá baixar uma planilha e enviar para contabilidade emitir. 
+
+Para o marketplace, vendas de produtos, por enquanto vamos desenvolver um modelo de cupom fiscal padrão, para enviar por e-mail, posteriormente podemos verificar como poderemos integrar nosso sistema ao sistema de emissão de notas referente a vendas de produtos. 
+
+Na forma de recebimento, alem de apontar o CNPJ ou CPF, precisamos também cirar a possibilidade e estrutura para cadastrar as formas de recebimento vinculadas a cada Conta Fiscal, por exemplo, cada CNPJ ou CPF terÃO sua própria chave PIX e maquininha ou link de recebimento... 
+
+Outro exemplo:
+Um paciente FULANO compareceu a clínica e realizou uma sessão de limpeza de pele e comprou 2 cremes, então a recepcionista irá cobrar a limpeza de pele na conta fiscal de serviços e os cremes na conta fiscal de marketplace. Então o paciente FULANO irá realizar o pagamento dos serviços via cartão de crédito na maquinha vinculada ao CNPJ dos Serviços e receberá a nota de prestação deste serviço. E realizará o pagamento dos produtos na maquinha do marketplace vinculada ao CNPJ do marketplace e receberá um cupom com os detalhes dos ítens comprados. 
+
+Uma rede de franquias por exemplo, poderá ter um CNPJ específico para cada franquiado ou unidade, e um CNPJ único para o marketplace das unidades físicas e loja online. 
+
+Ou CNPJ específicos para os marketplace das unidades físicas e um únido para as vendas online. 
+
+Agora analise todo este conteúdo acima, faça uma analise minuciosa do nosso módulo financeiro, pois já começamos a implementar algumas funcionalidades neste sentido. Se tiver alguma dúvida, ou uma sugestão melhor para alguma estruturação considerando o objetivo dessa estruturação, fique a vontade para sugerir outras abordagens. 
+
+
+Lembre-se também que além das notas de vendas, precisaremos integrar nosso ambiente de contas a pagar as contas fiscais, possibilitar adcionar uma nova conta a pagar para a conta fiscal específica, cadastrar contas de consumo, custos fixos e variávéis, importar notas fiscais dos prestadores de serviços, e notas fiscais de insumos para a conta fiscal específica, seria interessante que ao importar uma nota fiscal de compra de produtos já pudessemos atualizar o estoque (caso seja pertinente) e no futuro termos um agente de IA que irá ler o arquivo importado e atualizar os dados do sistema. 
+
+Pense também em termos um DRE para a Conta Fiscal referente ao CNPJ de serviços (Clínica) e um DRE para a conta fiscal do Marketplace (Vendas de Produtos), não teremos DRE para as contas fiscais dos prestadore, visto que sua contabilidade não está vinculada a Clíncia. 
+
+Resumo do Progresso - Módulo Financeiro e Fiscal
+
+Até o momento, foquei na estruturação da Multitributação e Contas Fiscais, preparando o sistema para lidar com múltiplos CNPJs e CPFs.
+
+O que já foi feito:
+
+Definição da Estrutura (Backend): Atualizei o núcleo do sistema (
+types.ts
+ e 
+DataContext
+) para entender o conceito de "Conta Fiscal". Agora o sistema sabe diferenciar se uma transação pertence ao "CNPJ Serviços", "CNPJ Marketplace" ou "CPF Profissional".
+Criação do Formulário de Cadastro: Desenvolvi o componente visual (
+FiscalAccountModal
+) onde você poderá cadastrar essas contas, informando:
+Apelido da conta (ex: "Clínica Principal").
+Tipo (Serviço, Venda de Produto ou Profissional Parceiro).
+Documento (CNPJ ou CPF).
+Dados do Certificado Digital (preparação para emissão de nota A1).
+Próximos Passos Imediatos:
+
+Adicionar a Aba nas Configurações: Vou inserir a nova aba "Contas Fiscais" no módulo de Ajustes (
+SettingsModule
+), permitindo que você acesse esse formulário que criei e comece a cadastrar seus CNPJs.
+Vincular ao Financeiro: Atualizar a tela de "Contas a Pagar/Receber" para que, ao lançar uma conta, você possa selecionar a qual CNPJ ela pertence.
+Posso prosseguir com a inserção dessa aba de configuração?
+Vínculo de Métodos de Pagamento às Contas Fiscais.
+Automação do Split de Pagamentos.
+Ajustar Cadastro de Produto vs Entrada de Estoque. Qual prefere priorizar?"
+
+Painel de Gestão de Notas Fiscais: Criar a tela de "Controle de Emissão", onde as parcelas do Split (que criamos antes) aparecerão como "Pendentes de Nota" para a equipe administrativa processar.

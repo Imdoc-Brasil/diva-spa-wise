@@ -56,7 +56,7 @@ const PayModule: React.FC = () => {
             status: 'active',
             createdAt: new Date().toISOString(),
             url: `https://diva.pay/l/${Math.random().toString(36).substring(7)}`,
-            clientName: newLinkData.clientName || 'Cliente Avulso'
+            clientName: newLinkData.clientName || 'Paciente Avulso'
         };
 
         setLinks([newLink, ...links]);
@@ -253,7 +253,7 @@ const PayModule: React.FC = () => {
                                             </div>
                                             <div>
                                                 <h4 className="font-bold text-diva-dark">{link.description}</h4>
-                                                <p className="text-xs text-gray-500">Criado em: {new Date(link.createdAt).toLocaleDateString()} • Cliente: {link.clientName || 'N/A'}</p>
+                                                <p className="text-xs text-gray-500">Criado em: {new Date(link.createdAt).toLocaleDateString()} • Paciente: {link.clientName || 'N/A'}</p>
                                             </div>
                                         </div>
 
@@ -402,7 +402,7 @@ const PayModule: React.FC = () => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome do Cliente (Opcional)</label>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome do Paciente (Opcional)</label>
                                 <input
                                     type="text"
                                     value={newLinkData.clientName}

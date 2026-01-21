@@ -4,12 +4,12 @@ import { ShoppingBag, Search, Tag, Heart, Plus, Minus, CreditCard, Sparkles, Pac
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Legend, LineChart, Line, Cell } from 'recharts';
 import { useData } from '../context/DataContext';
 import { useUnitData } from '../hooks/useUnitData';
+import { useToast } from '../ui/ToastContext';
+import SuppliersModal from '../modals/SuppliersModal';
+import CheckoutModal from '../modals/CheckoutModal';
+import NewProductModal from '../modals/NewProductModal';
 
-const mockSuppliers: Supplier[] = [
-    { id: 'sup1', name: 'DermoTech Labs', contact: '(11) 4444-5555', email: 'pedidos@dermotech.com', rating: 4.8, categories: ['Dermocosméticos'] },
-    { id: 'sup2', name: 'MedHospitalar', contact: '(11) 3333-2222', email: 'vendas@med.com.br', rating: 4.2, categories: ['Descartáveis', 'Profissional'] },
-    { id: 'sup3', name: 'VitaSkin Pro', contact: '(21) 9999-8888', email: 'comercial@vitaskin.com', rating: 5.0, categories: ['Home Care', 'Luxo'] },
-];
+
 
 const mockOrders: PurchaseOrder[] = [
     {
@@ -47,17 +47,50 @@ interface MarketplaceModuleProps {
 }
 
 const MarketplaceModule: React.FC<MarketplaceModuleProps> = ({ user }) => {
-    const { products, updateProductStock, selectedUnitId } = useUnitData(); // Use real products from context
+    const { products, updateProductStock, selectedUnitId, suppliers, addTransaction } = useUnitData();
+    const { addToast } = useToast();
     const [viewMode, setViewMode] = useState<'storefront' | 'inventory' | 'purchasing' | 'audit' | 'analytics'>('storefront');
     const [activeCategory, setActiveCategory] = useState<ProductCategory | 'all'>('all');
     const [cart, setCart] = useState<{ product: Product, qty: number }[]>([]);
     const [orders, setOrders] = useState(mockOrders);
+
+    // Checkout State
+    const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+    const [isNewProductModalOpen, setIsNewProductModalOpen] = useState(false);
 
     // Audit State
     const [activeAudit, setActiveAudit] = useState<StockAudit | null>(null);
 
     const formatCurrency = (val: number) =>
         new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+
+    // Auto-Replenishment Alert System
+    React.useEffect(() => {
+        if (!products.length) return;
+        const lowStockCount = products.filter(p => {
+            const stock = getProductStock(p);
+            const min = p.minStockLevel || 5;
+            return stock <= min;
+        }).length;
+
+        if (lowStockCount > 0) {
+            addToast(`⚠️ Atenção: ${lowStockCount} produtos com estoque crítico. Acesse "Compras" para reabastecer.`, 'warning');
+        }
+    }, []); // Run once on mount (or depend on products/viewMode if needed, but simplistic is better for UX to avoid span)
+
+    // Suppliers Logic
+    const [isSuppliersModalOpen, setIsSuppliersModalOpen] = useState(false);
+    const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+
+    const handleAddSupplier = () => {
+        setSelectedSupplier(null);
+        setIsSuppliersModalOpen(true);
+    };
+
+    const handleEditSupplier = (supplier: Supplier) => {
+        setSelectedSupplier(supplier);
+        setIsSuppliersModalOpen(true);
+    };
 
     const getProductStock = (product: Product): number => {
         if (selectedUnitId === 'all') {
@@ -114,26 +147,60 @@ const MarketplaceModule: React.FC<MarketplaceModuleProps> = ({ user }) => {
     };
 
     // Purchasing Logic
+    // Purchasing Logic (Smart Replenishment)
     const handleGenerateReplenishment = () => {
         const lowStockItems = products.filter(p => getStockStatus(p) === 'low' || getStockStatus(p) === 'critical');
+
         if (lowStockItems.length === 0) {
-            alert("Estoque saudável! Nenhum item precisa de reposição urgente.");
+            addToast("Estoque saudável! Nenhum item precisa de reposição urgente.", 'success');
             return;
         }
 
-        const newOrder: PurchaseOrder = {
-            id: `po_${Date.now()}`,
-            supplierId: 'sup1', // Mock default
-            supplierName: 'Mix Fornecedores (Auto)',
-            status: 'draft',
-            date: new Date().toISOString().split('T')[0],
-            itemsCount: lowStockItems.length * 10, // Mock qty
-            totalCost: lowStockItems.reduce((acc, p) => acc + ((p.costPrice || 0) * 10), 0),
-            items: lowStockItems.map(p => ({ productId: p.id, productName: p.name, quantity: 10, unitCost: p.costPrice || 0 }))
-        };
+        // 1. Agrupar por fornecedor
+        const itemsBySupplier: { [key: string]: typeof lowStockItems } = {};
 
-        setOrders([newOrder, ...orders]);
-        alert(`${lowStockItems.length} itens adicionados a um novo pedido de reposição!`);
+        lowStockItems.forEach(item => {
+            const supplierName = item.supplier || 'Fornecedor Geral';
+            if (!itemsBySupplier[supplierName]) {
+                itemsBySupplier[supplierName] = [];
+            }
+            itemsBySupplier[supplierName].push(item);
+        });
+
+        // 2. Gerar Pedidos separados
+        const newOrders: PurchaseOrder[] = [];
+
+        Object.entries(itemsBySupplier).forEach(([supName, items]) => {
+            // Smart Quantity: (Min * 3) - Current
+            const poItems = items.map(p => {
+                const current = getProductStock(p);
+                const target = (p.minStockLevel || 5) * 3;
+                const qtyToOrder = Math.max(target - current, 10); // Minimum order of 10
+
+                return {
+                    productId: p.id,
+                    productName: p.name,
+                    quantity: qtyToOrder,
+                    unitCost: p.costPrice || 0
+                };
+            });
+
+            const supplierObj = suppliers.find(s => s.name === supName);
+
+            newOrders.push({
+                id: `po_auto_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+                supplierId: supplierObj?.id || 'sup_unknown',
+                supplierName: supName,
+                status: 'draft',
+                date: new Date().toISOString().split('T')[0],
+                itemsCount: poItems.length,
+                totalCost: poItems.reduce((acc, i) => acc + (i.unitCost * i.quantity), 0),
+                items: poItems
+            });
+        });
+
+        setOrders(prev => [...newOrders, ...prev]);
+        addToast(`${newOrders.length} pedido(s) gerado(s) automaticamente para ${lowStockItems.length} itens críticos!`, 'success');
     };
 
     const handleReceiveOrder = (id: string) => {
@@ -143,19 +210,34 @@ const MarketplaceModule: React.FC<MarketplaceModuleProps> = ({ user }) => {
                 updateProductStock(item.productId, item.quantity, 'add', selectedUnitId);
             });
             setOrders(orders.map(o => o.id === id ? { ...o, status: 'received' } : o));
-            alert("Estoque atualizado e despesa lançada no Financeiro.");
+
+            // Add Expense Transaction
+            addTransaction({
+                id: `txn_${Date.now()}`,
+                description: `Compra de Estoque - Pedido #${id.split('_')[1] || id}`,
+                category: 'Estoque',
+                amount: order.totalCost,
+                type: 'expense',
+                status: 'paid',
+                date: new Date().toISOString().split('T')[0],
+                unitId: selectedUnitId === 'all' ? undefined : selectedUnitId,
+                supplierId: order.supplierId,
+                revenueType: 'product'
+            });
+
+            addToast("Estoque atualizado e despesa lançada no Financeiro.", 'success');
         }
     };
 
     const handleCheckout = () => {
         if (cart.length === 0) return;
+        setIsCheckoutOpen(true);
+    };
 
-        cart.forEach(item => {
-            updateProductStock(item.product.id, item.qty, 'remove', selectedUnitId);
-        });
-
-        alert(`Compra de ${formatCurrency(cartTotal)} realizada com sucesso!`);
+    const handlePaymentComplete = () => {
         setCart([]);
+        setIsCheckoutOpen(false);
+        addToast("Compra realizada com sucesso! Obrigado.", 'success');
     };
 
     // Audit Logic
@@ -377,8 +459,14 @@ const MarketplaceModule: React.FC<MarketplaceModuleProps> = ({ user }) => {
                             </p>
                         </div>
                         <div className="flex items-center justify-end">
+                            <button
+                                onClick={() => setIsNewProductModalOpen(true)}
+                                className="bg-diva-primary text-white px-4 py-2.5 rounded-lg flex items-center text-sm font-bold shadow-md hover:bg-diva-dark transition-colors mr-2"
+                            >
+                                <Plus size={18} className="mr-2" /> Novo Produto
+                            </button>
                             <button className="bg-diva-dark text-white px-4 py-2.5 rounded-lg flex items-center text-sm font-bold shadow-md hover:bg-diva-primary transition-colors">
-                                <Plus size={18} className="mr-2" /> Entrada de Nota
+                                <ArrowDownRight size={18} className="mr-2" /> Entrada de Nota
                             </button>
                         </div>
                     </div>
@@ -457,11 +545,11 @@ const MarketplaceModule: React.FC<MarketplaceModuleProps> = ({ user }) => {
                     <div className="w-80 bg-white rounded-xl shadow-sm border border-diva-light/30 flex flex-col">
                         <div className="p-4 border-b border-gray-100 bg-gray-50 rounded-t-xl flex justify-between items-center">
                             <h3 className="font-bold text-diva-dark">Fornecedores</h3>
-                            <button className="p-1 hover:bg-gray-200 rounded text-diva-primary"><Plus size={16} /></button>
+                            <button onClick={handleAddSupplier} className="p-1 hover:bg-gray-200 rounded text-diva-primary"><Plus size={16} /></button>
                         </div>
                         <div className="flex-1 overflow-y-auto p-3 space-y-3">
-                            {mockSuppliers.map(sup => (
-                                <div key={sup.id} className="p-3 border border-gray-100 rounded-lg hover:border-diva-primary transition-colors cursor-pointer bg-white group shadow-sm">
+                            {suppliers.map(sup => (
+                                <div key={sup.id} onClick={() => handleEditSupplier(sup)} className="p-3 border border-gray-100 rounded-lg hover:border-diva-primary transition-colors cursor-pointer bg-white group shadow-sm">
                                     <div className="flex justify-between items-start mb-1">
                                         <h4 className="font-bold text-diva-dark text-sm">{sup.name}</h4>
                                         <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded flex items-center font-bold">
@@ -739,6 +827,26 @@ const MarketplaceModule: React.FC<MarketplaceModuleProps> = ({ user }) => {
                     </div>
                 </div>
             )}
+            <SuppliersModal
+                isOpen={isSuppliersModalOpen}
+                onClose={() => setIsSuppliersModalOpen(false)}
+                supplierToEdit={selectedSupplier}
+            />
+            {/* MODALS */}
+            <CheckoutModal
+                isOpen={isCheckoutOpen}
+                onClose={() => setIsCheckoutOpen(false)}
+                cartItems={cart}
+                clientData={user.role === UserRole.CLIENT ? { id: user.uid, name: user.displayName } : { id: 'walk_in', name: 'Cliente Balcão' }}
+                onPaymentComplete={handlePaymentComplete}
+            />
+
+
+
+            <NewProductModal
+                isOpen={isNewProductModalOpen}
+                onClose={() => setIsNewProductModalOpen(false)}
+            />
         </div>
     );
 };

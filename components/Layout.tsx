@@ -13,7 +13,10 @@ import CommandPalette from './CommandPalette';
 import DivaAI from './DivaAI';
 import NotificationCenter from './NotificationCenter';
 import UnitSelector from './ui/UnitSelector';
+import OrganizationSwitcher from './ui/OrganizationSwitcher';
 import { useData } from './context/DataContext';
+import { useOrganization } from './context/OrganizationContext';
+import { useCurrentOrganization } from './context/CurrentOrganizationContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -34,12 +37,15 @@ interface NavSection {
   items: NavItem[];
 }
 
+
 const roleTranslations: Record<UserRole, string> = {
   [UserRole.ADMIN]: 'Administrador',
   [UserRole.MANAGER]: 'Gerente',
   [UserRole.STAFF]: 'Profissional',
   [UserRole.FINANCE]: 'Financeiro',
-  [UserRole.CLIENT]: 'Cliente'
+  [UserRole.CLIENT]: 'Paciente',
+  [UserRole.MASTER]: 'Master',
+  [UserRole.SAAS_STAFF]: 'SaaS Staff'
 };
 
 const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch }) => {
@@ -52,7 +58,17 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
   const location = useLocation();
   const navigate = useNavigate();
   const { notifications } = useData();
+  const { organization } = useOrganization();
+  const { currentOrganization, isMultiTenant } = useCurrentOrganization();
   const unreadCount = notifications ? notifications.filter(n => !n.read).length : 0;
+
+  // Log organization info
+  useEffect(() => {
+    if (currentOrganization) {
+      console.log('🏢 [Layout] Current Organization:', currentOrganization.name);
+      console.log('🔒 [Layout] Multi-tenant mode:', isMultiTenant);
+    }
+  }, [currentOrganization, isMultiTenant]);
 
   // Handle Resize & Initial Mobile Check
   useEffect(() => {
@@ -95,7 +111,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
       title: 'Principal',
       items: [
         { label: 'Dashboard', path: '/', icon: <PieChart size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER] },
-        { label: 'Portal Cliente', path: '/portal', icon: <Home size={20} />, allowedRoles: [UserRole.CLIENT] },
+        { label: 'Portal do Paciente', path: '/portal', icon: <Home size={20} />, allowedRoles: [UserRole.CLIENT] },
         { label: 'Inbox & Chat', path: '/inbox', icon: <MessageSquare size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF] },
         { label: 'Agenda', path: '/schedule', icon: <Calendar size={20} />, allowedRoles: [UserRole.STAFF, UserRole.ADMIN, UserRole.CLIENT] },
         { label: 'Tarefas & Ops', path: '/tasks', icon: <ClipboardList size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF] },
@@ -107,7 +123,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
         { label: 'Concierge', path: '/concierge', icon: <Move size={20} />, allowedRoles: [UserRole.STAFF, UserRole.ADMIN, UserRole.MANAGER] },
         { label: 'Mapa de Salas', path: '/rooms', icon: <Map size={20} />, allowedRoles: [UserRole.STAFF, UserRole.ADMIN] },
         { label: 'Farmácia', path: '/pharmacy', icon: <Beaker size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF] },
-        { label: 'Boutique Diva', path: '/marketplace', icon: <ShoppingBag size={20} />, allowedRoles: [UserRole.CLIENT, UserRole.ADMIN, UserRole.STAFF] },
+        ...(organization?.settings.enableMarketplace ? [{ label: organization?.settings.marketplaceName || 'Boutique Diva', path: '/marketplace', icon: <ShoppingBag size={20} />, allowedRoles: [UserRole.CLIENT, UserRole.ADMIN, UserRole.STAFF] }] : []),
         { label: 'Enxoval', path: '/laundry', icon: <Shirt size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF] },
         { label: 'Ativos & Manut.', path: '/assets', icon: <Wrench size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER] },
       ]
@@ -116,6 +132,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
       title: 'Crescimento & CRM',
       items: [
         { label: 'CRM Pacientes', path: '/crm', icon: <Users size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF] },
+        { label: 'Planos de Tratamento', path: '/plans', icon: <ClipboardList size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF] },
         { label: 'Funil de Vendas', path: '/funnel', icon: <FileBarChart size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER] },
         { label: 'Marketing', path: '/marketing', icon: <Megaphone size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER] },
         { label: 'Promoções (Smart)', path: '/promotions', icon: <Tag size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER] },
@@ -131,12 +148,12 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
       items: [
         { label: 'Fluxo de Caixa', path: '/finance', icon: <DollarSign size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.FINANCE] },
         { label: 'Diva Pay', path: '/pay', icon: <CreditCard size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.FINANCE] },
-        { label: 'Relatórios DRE', path: '/reports', icon: <FileBarChart size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.FINANCE] },
       ]
     },
     {
       title: 'Gestão & Admin',
       items: [
+        { label: 'Analytics & Relatórios', path: '/reports', icon: <FileBarChart size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.FINANCE] },
         { label: 'Franquia', path: '/franchise', icon: <Building size={20} />, allowedRoles: [UserRole.ADMIN] },
         { label: 'Equipe (Staff)', path: '/staff', icon: <UserCheck size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF] },
         { label: 'Recrutamento', path: '/talent', icon: <Briefcase size={20} />, allowedRoles: [UserRole.ADMIN, UserRole.MANAGER] },
@@ -168,15 +185,16 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
         className={`
             fixed lg:relative inset-y-0 left-0 z-50
             ${isSidebarOpen ? 'w-72 translate-x-0' : isMobile ? '-translate-x-full w-72' : 'w-20 translate-x-0'} 
-            ${isSidebarOpen ? 'w-72 translate-x-0' : isMobile ? '-translate-x-full w-72' : 'w-20 translate-x-0'} 
             bg-gradient-to-b from-diva-dark to-slate-900 text-white transition-transform duration-300 ease-in-out flex flex-col shadow-2xl lg:shadow-xl border-r border-white/5
         `}
       >
         <div className="h-16 flex items-center justify-between px-4 border-b border-white/5 shrink-0 bg-transparent">
           {isSidebarOpen || isMobile ? (
             <div className="flex items-center gap-2">
-              <Sparkles size={22} className="text-diva-accent" />
-              <h1 className="text-lg font-bold tracking-widest text-white font-serif">DIVA SPA</h1>
+              <div className="w-8 h-8 bg-gradient-to-br from-diva-accent to-yellow-200 rounded-lg flex items-center justify-center shadow-lg shadow-diva-accent/20">
+                <span className="text-diva-primary font-bold text-xl">I</span>
+              </div>
+              <h1 className="text-lg font-bold tracking-widest text-white font-serif">I'mDoc</h1>
             </div>
           ) : (
             <span className="font-bold text-xl mx-auto font-serif">DS</span>
@@ -195,7 +213,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
 
         <div className="flex-1 overflow-y-auto py-4 custom-scrollbar">
           {navSections.map((section, idx) => {
-            const filteredItems = section.items.filter(item => item.allowedRoles.includes(user.role));
+            const filteredItems = section.items.filter(item => item && item.allowedRoles.includes(user.role));
 
             if (filteredItems.length === 0) return null;
 
@@ -328,13 +346,15 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
               </button>
             )}
             <h2 className="text-lg md:text-xl font-serif text-diva-dark font-bold truncate max-w-[150px] md:max-w-none">
-              {location.pathname === '/profile' ? 'Meu Perfil' : (navSections.flatMap(s => s.items).find(i => i.path === location.pathname)?.label || 'Diva Spa')}
+              {location.pathname === '/profile' ? 'Meu Perfil' : (navSections.flatMap(s => s.items).find(i => i.path === location.pathname)?.label || organization?.displayName || "I'mDoc")}
             </h2>
           </div>
 
           <div className="flex items-center space-x-3 md:space-x-4">
-            {/* Unit Selector */}
-            <div className="hidden md:block">
+            {/* Organization & Unit Selectors */}
+            <div className="hidden md:flex items-center gap-2">
+              <OrganizationSwitcher />
+              <div className="h-6 w-px bg-gray-200 mx-1"></div>
               <UnitSelector />
             </div>
 
@@ -378,8 +398,14 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
           </div>
         </div>
 
-        <div className="p-4 md:p-8 max-w-7xl mx-auto w-full min-h-[calc(100vh-64px)] animate-in fade-in duration-300" onClick={() => setIsNotificationsOpen(false)}>
+        <div className="p-3 sm:p-4 md:p-8 max-w-7xl mx-auto w-full min-h-[calc(100vh-64px)] pb-20 md:pb-8 animate-in fade-in duration-300" onClick={() => setIsNotificationsOpen(false)}>
           {children}
+
+          <div className="mt-12 pt-6 border-t border-diva-light/20 text-center">
+            <p className="text-xs text-gray-400 font-medium">
+              © {new Date().getFullYear()} I'mDoc Technology® <span className="mx-1">•</span> Desenvolvimento Contínuo
+            </p>
+          </div>
         </div>
       </main>
 
@@ -387,10 +413,10 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
       {user.role !== UserRole.CLIENT && (
         <button
           onClick={() => setIsAIOpen(!isAIOpen)}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-diva-accent to-yellow-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-105 transition-all z-40 border-2 border-white/20 shadow-diva-accent/30"
+          className="fixed bottom-4 right-4 md:bottom-6 md:right-6 w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-diva-accent to-yellow-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-40 border-2 border-white/20 shadow-diva-accent/30"
           title="Diva AI Assistant"
         >
-          {isAIOpen ? <X size={24} /> : <Sparkles size={24} />}
+          {isAIOpen ? <X size={20} className="md:w-6 md:h-6" /> : <Sparkles size={20} className="md:w-6 md:h-6" />}
         </button>
       )}
 

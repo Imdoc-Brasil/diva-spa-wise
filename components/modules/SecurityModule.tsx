@@ -39,7 +39,7 @@ const SecurityModule: React.FC = () => {
         return [
             { id: 'dashboard', name: 'Dashboard & Analytics', staff: false, manager: true, admin: true, finance: true, client: false },
             { id: 'schedule', name: 'Agenda & Concierge', staff: true, manager: true, admin: true, finance: false, client: true },
-            { id: 'crm', name: 'CRM & Dados de Clientes', staff: true, manager: true, admin: true, finance: false, client: true },
+            { id: 'crm', name: 'CRM & Dados de Pacientes', staff: true, manager: true, admin: true, finance: false, client: true },
             { id: 'inbox', name: 'Inbox & Diva AI', staff: true, manager: true, admin: true, finance: false, client: true },
             { id: 'finance', name: 'Financeiro & Diva Pay', staff: false, manager: true, admin: true, finance: true, client: false },
             { id: 'boutique', name: 'Boutique Diva', staff: true, manager: true, admin: true, finance: true, client: true },
@@ -221,7 +221,7 @@ const SecurityModule: React.FC = () => {
                                 <div>
                                     <h4 className="font-bold text-yellow-800 text-sm">Matriz de Controle de Acesso (RBAC)</h4>
                                     <p className="text-xs text-yellow-700 mt-1">
-                                        Defina o que cada perfil pode visualizar ou editar. O perfil "Cliente" refere-se ao acesso via Portal do Cliente.
+                                        Defina o que cada perfil pode visualizar ou editar. O perfil "Paciente" refere-se ao acesso via Portal do Paciente.
                                     </p>
                                 </div>
                             </div>
@@ -231,7 +231,7 @@ const SecurityModule: React.FC = () => {
                                     <thead className="bg-gray-100 text-xs font-bold text-gray-600 uppercase border-b border-gray-200">
                                         <tr>
                                             <th className="px-6 py-4 text-left">Recurso / Módulo</th>
-                                            <th className="px-4 py-4 bg-orange-50 text-orange-800">Cliente</th>
+                                            <th className="px-4 py-4 bg-orange-50 text-orange-800">Paciente</th>
                                             <th className="px-4 py-4 bg-blue-50 text-blue-800">Staff</th>
                                             <th className="px-4 py-4 bg-purple-50 text-purple-800">Gerente</th>
                                             <th className="px-4 py-4 bg-gray-800 text-white">Admin</th>
@@ -311,7 +311,7 @@ const SecurityModule: React.FC = () => {
                                         Gere um arquivo JSON/XML contendo todos os dados pessoais de um cliente específico conforme Art. 19 da LGPD.
                                     </p>
                                     <div className="flex gap-2">
-                                        <input type="text" placeholder="Email ou CPF do Cliente" className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+                                        <input type="text" placeholder="Email ou CPF do Paciente" className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm" />
                                         <button className="bg-diva-dark text-white px-4 py-2 rounded-lg text-sm font-bold">Gerar</button>
                                     </div>
                                 </div>

@@ -8,7 +8,8 @@ import {
     AlertCircle,
     MapPin,
     Clock,
-    Sun
+    Sun,
+    Sparkles
 } from 'lucide-react';
 import {
     BarChart,
@@ -29,15 +30,19 @@ import { useNavigate } from 'react-router-dom';
 import DailyBriefingModal from './modals/DailyBriefingModal';
 import { User, UserRole, AppointmentStatus, LeadStage } from '../types';
 import { useUnitData } from './hooks/useUnitData';
+import { useOrganization } from './context/OrganizationContext';
 
 const Dashboard: React.FC = () => {
     const navigate = useNavigate();
-    const { transactions, appointments, leads, clients, selectedUnitId, units } = useUnitData();
+    const { transactions, appointments, leads, selectedUnitId, units } = useUnitData();
+    const { organization } = useOrganization();
+
     const [isBriefingOpen, setIsBriefingOpen] = useState(false);
 
     // Mock User for Briefing (In real app, this comes from Auth Context)
     const mockUser: User = {
         uid: 'admin',
+        organizationId: 'org_demo',
         email: 'admin@diva.com',
         displayName: 'Ana Gerente',
         role: UserRole.MANAGER
@@ -138,23 +143,73 @@ const Dashboard: React.FC = () => {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header & Welcome */}
-            <div className="flex flex-col md:flex-row justify-between items-end gap-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-3 md:gap-4">
                 <div>
-                    <h1 className="text-2xl font-serif font-bold text-diva-dark">Cockpit Executivo</h1>
-                    <p className="text-gray-500 text-sm">Visão geral em tempo real da operação Diva Spa.</p>
+                    <h1 className="text-xl md:text-2xl font-serif font-bold text-diva-dark">Cockpit Executivo</h1>
+                    <p className="text-gray-500 text-xs md:text-sm">Visão geral em tempo real da operação Diva Spa.</p>
                 </div>
-                <div className="flex space-x-3">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+                    <button
+                        onClick={() => navigate('/master')}
+                        className="bg-black text-yellow-400 border border-yellow-500/50 px-4 py-2 rounded-full text-xs font-bold flex items-center justify-center shadow-lg hover:shadow-yellow-500/20 transition-all hover:scale-105 animate-pulse-slow"
+                    >
+                        <TrendingUp size={14} className="mr-2" /> SaaS Master
+                    </button>
                     <button
                         onClick={() => setIsBriefingOpen(true)}
-                        className="bg-gradient-to-r from-diva-accent to-yellow-600 text-white px-4 py-2 rounded-full text-xs font-bold flex items-center shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5"
+                        className="bg-gradient-to-r from-diva-accent to-yellow-600 text-white px-4 py-2 rounded-full text-xs font-bold flex items-center justify-center shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 active:scale-95"
                     >
                         <Sun size={14} className="mr-2" /> Briefing Matinal
                     </button>
-                    <span className="bg-white border border-diva-light/30 text-gray-500 px-3 py-2 rounded-full text-xs font-medium flex items-center">
+                    <span className="bg-white border border-diva-light/30 text-gray-500 px-3 py-2 rounded-full text-xs font-medium flex items-center justify-center">
                         <Clock size={12} className="mr-1" /> Atualizado: {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                 </div>
             </div>
+
+            {/* SaaS Subscription Status Banner - TRIAL */}
+            {organization?.subscriptionStatus === 'trial' && (
+                <div className="bg-gradient-to-r from-purple-900 to-indigo-900 rounded-xl p-4 shadow-lg border border-purple-500/30 flex flex-col md:flex-row items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4">
+                    <div className="flex items-center gap-4">
+                        <div className="bg-white/10 p-2 rounded-lg">
+                            <Sparkles className="text-yellow-400 animate-pulse" size={24} />
+                        </div>
+                        <div>
+                            <h3 className="text-white font-bold text-lg">Modo Trial Ativo</h3>
+                            <p className="text-purple-200 text-sm">
+                                Você tem <span className="text-white font-bold">{Math.max(0, Math.ceil((new Date(organization.trialEndsAt || '').getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} dias</span> restantes de degustação premium.
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => navigate('/settings/organization')}
+                        className="bg-white text-purple-900 px-6 py-2 rounded-full font-bold hover:bg-purple-50 transition-colors shadow-lg whitespace-nowrap"
+                    >
+                        Assinar Agora
+                    </button>
+                </div>
+            )}
+
+            {/* SaaS Subscription Status Banner - PAST DUE */}
+            {organization?.subscriptionStatus === 'past_due' && (
+                <div className="bg-red-50 rounded-xl p-4 border border-red-200 flex flex-col md:flex-row items-center justify-between gap-4 animate-pulse">
+                    <div className="flex items-center gap-4">
+                        <AlertCircle className="text-red-600" size={24} />
+                        <div>
+                            <h3 className="text-red-800 font-bold text-lg">Assinatura Pendente</h3>
+                            <p className="text-red-600 text-sm">
+                                Detectamos um problema no pagamento. Regularize para evitar bloqueio.
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => navigate('/finance')} // Ou settings/billing
+                        className="bg-red-600 text-white px-6 py-2 rounded-full font-bold hover:bg-red-700 transition-colors shadow-lg whitespace-nowrap"
+                    >
+                        Regularizar
+                    </button>
+                </div>
+            )}
 
             {/* TOP ROW: Vital Signs (Live Metrics) */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -261,7 +316,7 @@ const Dashboard: React.FC = () => {
                             <p className="text-xs text-gray-500">Comparativo de Faturamento e Volume de Agendamentos</p>
                         </div>
                     </div>
-                    <div className="h-72">
+                    <div className="h-56 md:h-72">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={comparativeData} barGap={8}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -295,7 +350,7 @@ const Dashboard: React.FC = () => {
                             Total Semana: {formatCurrency(revenueChartData.reduce((a, b) => a + b.real, 0))}
                         </div>
                     </div>
-                    <div className="h-64">
+                    <div className="h-48 md:h-64">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={revenueChartData} barGap={0}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />

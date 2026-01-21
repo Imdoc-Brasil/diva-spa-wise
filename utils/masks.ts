@@ -22,6 +22,15 @@ export const maskCNPJ = (value: string) => {
         .substring(0, 18);
 };
 
+export const maskCpfCnpj = (value: string) => {
+    const digits = value.replace(/\D/g, '');
+    if (digits.length <= 11) {
+        return maskCPF(value);
+    } else {
+        return maskCNPJ(value);
+    }
+};
+
 export const maskPhone = (value: string) => {
     let r = value.replace(/\D/g, "");
     r = r.replace(/^0/, "");
