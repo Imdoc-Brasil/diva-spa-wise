@@ -18,9 +18,9 @@ const PortalRoute = () => {
 /**
  * Auth Routes - Login, signup, and onboarding
  */
-export const AuthRoutes = () => (
+export const AuthRoutes = (onLogin: any) => (
     <>
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/login" element={<LoginPage onLogin={onLogin} />} />
         <Route path="/onboarding" element={<NewOrganizationWizard />} />
         <Route path="/setup/:slug" element={<OrganizationSetup />} />
         <Route path="/portal/:token" element={<PortalRoute />} />

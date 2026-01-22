@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect, lazy } from 'react';
-import { HashRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { DataProvider, useData } from './components/context/DataContext';
 import { ToastProvider } from './components/ui/ToastContext';
 import { OrganizationProvider } from './components/context/OrganizationContext';
@@ -14,6 +14,7 @@ import { PublicRoutes, AuthRoutes, DashboardRoutes, SaaSRoutes } from './routes'
 // Lazy load additional components
 const LoginPage = lazy(() => import('./components/auth/LoginPage'));
 const SalesPage = lazy(() => import('./components/public/SalesPage'));
+const PublicPage = lazy(() => import('./components/public/PublicPage'));
 
 // Loading fallback
 const LoadingFallback = () => (
@@ -78,15 +79,14 @@ const AppContent = () => {
                     ) : (
                         <>
                             {/* Public Routes */}
+                            <Route path="/" element={<SalesPage />} />
                             {PublicRoutes()}
 
                             {/* Auth Routes */}
-                            {AuthRoutes()}
+                            {AuthRoutes(login)}
 
-                            {/* Default routes for unauthenticated users */}
-                            <Route path="/" element={<SalesPage />} />
-                            <Route path="/login" element={<LoginPage onLogin={login} />} />
-                            <Route path="/:orgSlug" element={<LoginPage onLogin={login} />} />
+                            {/* Organization Slug Route */}
+                            <Route path="/:orgSlug" element={<PublicPage />} />
                         </>
                     )}
 

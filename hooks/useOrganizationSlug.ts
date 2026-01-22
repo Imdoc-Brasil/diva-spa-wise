@@ -38,14 +38,17 @@ export function useOrganizationSlug() {
                 // URL: https://www.imdoc.com.br/teste-2412#/login
                 // pathname: /teste-2412
                 const pathname = window.location.pathname;
-                const detectedSlug = pathname.split('/').filter(Boolean)[0]; // Get first segment
+                const detectedSlug = pathname.split('/').filter(Boolean)[0];
+
+                // List of reserved system paths that should NEVER be treated as slugs
+                const reservedPaths = ['login', 'signup', 'dashboard', 'sales', 'calculator', 'tools', 'setup', 'portal', 'onboarding', 'blog'];
 
                 console.log('🔍 [OrganizationSlug] Pathname:', pathname);
                 console.log('🔍 [OrganizationSlug] Detected slug:', detectedSlug);
 
-                // If no slug, this is master/main app
-                if (!detectedSlug || detectedSlug === '') {
-                    console.log('ℹ️ [OrganizationSlug] No slug detected - master mode');
+                // If no slug or is a reserved path, this is master/main app
+                if (!detectedSlug || detectedSlug === '' || reservedPaths.includes(detectedSlug.toLowerCase())) {
+                    console.log(`ℹ️ [OrganizationSlug] ${detectedSlug ? 'Reserved path' : 'No slug'} detected - master mode`);
                     setSlug(null);
                     setOrganization(null);
                     setLoading(false);

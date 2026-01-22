@@ -14,7 +14,6 @@ const CalculatorPage = lazy(() => import('../components/public/tools/RevenueCalc
  */
 export const PublicRoutes = () => (
     <>
-        <Route path="/" element={<PublicPage />} />
         <Route path="/sales" element={<SalesPage />} />
         <Route path="/signup" element={<SignupPage />} />
         {/* <Route path="/checkout" element={<CheckoutPage />} /> */}

@@ -4,7 +4,7 @@ import { supabase } from '../../services/supabase';
 import { Building2, ArrowRight, CheckCircle, Sparkles, Loader2 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 
-export const OrganizationSetup: React.FC = () => {
+const OrganizationSetup: React.FC = () => {
     const navigate = useNavigate();
     const { addToast } = useData();
 
@@ -168,3 +168,5 @@ export const OrganizationSetup: React.FC = () => {
         </div>
     );
 };
+
+export default OrganizationSetup;
