@@ -2,6 +2,7 @@ import React, { Suspense, useEffect, lazy } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { DataProvider, useData } from './components/context/DataContext';
 import { ToastProvider } from './components/ui/ToastContext';
+import { OrganizationProvider } from './components/context/OrganizationContext';
 import { CurrentOrganizationProvider } from './components/context/CurrentOrganizationContext';
 import { useOrganizationSlug } from './hooks/useOrganizationSlug';
 import AnalyticsManager from './components/ui/AnalyticsManager';
@@ -105,9 +106,11 @@ const App = () => {
     return (
         <Router>
             <ToastProvider>
-                <DataProvider>
-                    <AppContent />
-                </DataProvider>
+                <OrganizationProvider>
+                    <DataProvider>
+                        <AppContent />
+                    </DataProvider>
+                </OrganizationProvider>
             </ToastProvider>
         </Router>
     );
