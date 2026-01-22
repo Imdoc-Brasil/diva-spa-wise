@@ -11,7 +11,7 @@ import { UserRole } from './types';
 import { PublicRoutes, AuthRoutes, DashboardRoutes, SaaSRoutes } from './routes';
 
 // Lazy load additional components
-const LoginPage = lazy(() => import('./components/LoginPage'));
+const LoginPage = lazy(() => import('./components/auth/LoginPage'));
 const SalesPage = lazy(() => import('./components/public/SalesPage'));
 
 // Loading fallback

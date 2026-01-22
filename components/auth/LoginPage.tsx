@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { UserRole } from '../types';
+import { UserRole } from '../../types';
 import { Lock, Mail, ArrowRight, User, Shield, Stethoscope, Sparkles, CheckCircle, ChevronRight, Headphones } from 'lucide-react';
 
-import { supabase } from '../services/supabase';
-import { useOrganizationSlug } from '../hooks/useOrganizationSlug';
+import { supabase } from '../../services/supabase';
+import { useOrganizationSlug } from '../../hooks/useOrganizationSlug';
 
 interface LoginPageProps {
     onLogin: (role: UserRole, realUser?: any) => void;

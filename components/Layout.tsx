@@ -20,9 +20,6 @@ import { useCurrentOrganization } from './context/CurrentOrganizationContext';
 
 interface LayoutProps {
   children: React.ReactNode;
-  user: User;
-  onLogout: () => void;
-  onRoleSwitch: (role: UserRole) => void; // Dev helper
 }
 
 interface NavItem {
@@ -48,7 +45,17 @@ const roleTranslations: Record<UserRole, string> = {
   [UserRole.SAAS_STAFF]: 'SaaS Staff'
 };
 
-const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch }) => {
+const Layout: React.FC<LayoutProps> = ({ children }) => {
+  const { currentUser: user, logout, updateUser } = useData();
+
+  // Helper for dev role switching
+  const handleRoleSwitch = (role: UserRole) => {
+    if (user && updateUser) {
+      updateUser({ ...user, role });
+    }
+  };
+
+  if (!user) return null; // Or some fallback
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const [isCommandOpen, setIsCommandOpen] = useState(false);
@@ -309,7 +316,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
                   value={user.role}
                   onChange={(e) => {
                     const newRole = e.target.value as UserRole;
-                    onRoleSwitch(newRole);
+                    handleRoleSwitch(newRole);
                     navigate('/');
                   }}
                 >
@@ -322,7 +329,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onRoleSwitch 
           )}
 
           <button
-            onClick={onLogout}
+            onClick={logout}
             className={`mt-3 flex items-center w-full px-2 py-2 text-xs text-red-400 hover:bg-red-500/10 rounded-lg transition-colors ${!isSidebarOpen && !isMobile ? 'justify-center' : ''}`}
             title="Sair"
           >
