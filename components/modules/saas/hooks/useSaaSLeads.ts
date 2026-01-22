@@ -1,9 +1,9 @@
 import { useCallback } from 'react';
-import { useData } from '../../../../context/DataContext';
-import { useToast } from '../../../../ui/ToastContext';
+import { useData } from '../../../context/DataContext';
+import { useToast } from '../../../ui/ToastContext';
 import { SaaSLead, SaaSLeadStage } from '@/types';
-import { supabase } from '../../../../../services/supabase';
-import { automationService } from '../../../../../services/saas/AutomationService';
+import { supabase } from '../../../../services/supabase';
+import { automationService } from '../../../../services/saas/AutomationService';
 
 /**
  * Custom hook for managing SaaS leads
