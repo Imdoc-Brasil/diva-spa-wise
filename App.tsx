@@ -61,8 +61,8 @@ const AppContent = () => {
                     {user ? (
                         <>
                             {/* Authenticated Routes */}
-                            <DashboardRoutes />
-                            <SaaSRoutes />
+                            {DashboardRoutes()}
+                            {SaaSRoutes()}
 
                             {/* Default redirect based on role */}
                             <Route path="/" element={
@@ -78,10 +78,10 @@ const AppContent = () => {
                     ) : (
                         <>
                             {/* Public Routes */}
-                            <PublicRoutes />
+                            {PublicRoutes()}
 
                             {/* Auth Routes */}
-                            <AuthRoutes />
+                            {AuthRoutes()}
 
                             {/* Default routes for unauthenticated users */}
                             <Route path="/" element={<SalesPage />} />
