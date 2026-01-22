@@ -13,3 +13,7 @@ export { useDataIsolation } from './useDataIsolation';
 // UI hooks
 export { useDebounce } from './ui/useDebounce';
 export { useLocalStorage } from './ui/useLocalStorage';
+export { useMediaQuery, useBreakpoints } from './ui/useMediaQuery';
+
+// Utils hooks
+export { useAsync } from './utils/useAsync';

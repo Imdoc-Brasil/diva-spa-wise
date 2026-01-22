@@ -195,15 +195,84 @@ Sempre adicione JSDoc com exemplos de uso.
 
 ---
 
+### useMediaQuery
+
+Media queries para design responsivo.
+
+```typescript
+import { useMediaQuery, useBreakpoints } from '../hooks';
+
+const ResponsiveComponent = () => {
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  
+  // Ou use breakpoints predefinidos
+  const { isMobile, isTablet, isDesktop } = useBreakpoints();
+
+  return (
+    <div>
+      {isMobile && <MobileView />}
+      {isTablet && <TabletView />}
+      {isDesktop && <DesktopView />}
+    </div>
+  );
+};
+```
+
+**Features:**
+- ✅ SSR safe
+- ✅ Auto-update on resize
+- ✅ Breakpoints helper
+- ✅ TypeScript support
+
+---
+
+## 🔧 Utils Hooks
+
+### useAsync
+
+Gerencia operações assíncronas com estados de loading, success e error.
+
+```typescript
+import { useAsync } from '../hooks';
+
+const DataComponent = () => {
+  const fetchData = async () => {
+    const response = await fetch('/api/data');
+    return response.json();
+  };
+
+  const { execute, status, data, error, isLoading, isSuccess, isError } = useAsync(fetchData);
+
+  useEffect(() => {
+    execute();
+  }, []);
+
+  if (isLoading) return <Loading />;
+  if (isError) return <Error message={error?.message} />;
+  if (isSuccess) return <DataDisplay data={data} />;
+};
+```
+
+**Retorna:**
+- `execute()` - Função para executar a operação
+- `status` - Status atual ('idle' | 'pending' | 'success' | 'error')
+- `data` - Dados retornados
+- `error` - Erro se houver
+- `isLoading` - Boolean se está carregando
+- `isSuccess` - Boolean se teve sucesso
+- `isError` - Boolean se teve erro
+
+---
+
 ## 🚀 Próximos Hooks
 
 Hooks planejados para futuras implementações:
 
-- `useAsync` - Gerenciar operações assíncronas
 - `useForm` - Gestão de formulários
-- `useMediaQuery` - Responsive design
 - `usePermissions` - Permissões granulares
 - `useToast` - Notificações (migrar do ToastContext)
+- `useClickOutside` - Detectar cliques fora de elemento
+- `useKeyPress` - Detectar teclas pressionadas
 
 ---
 
@@ -220,5 +289,5 @@ Ao criar um novo hook:
 ---
 
 **Última atualização:** 22/01/2026  
-**Hooks disponíveis:** 5  
-**Status:** ✅ Ativo
+**Hooks disponíveis:** 7  
+**Status:** ✅ Completo
