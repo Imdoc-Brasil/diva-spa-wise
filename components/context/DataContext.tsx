@@ -1942,6 +1942,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setAccounts(prev => prev.map(a => a.id === id ? { ...a, ...data } : a));
   };
 
+  // Loading States
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaaSLoading, setIsSaaSLoading] = useState(true);
+
   // SaaS Master Backoffice Logic
   const [saasLeads, setSaaSLeads] = useState<SaaSLead[]>(initialSaaSLeads);
   const [saasSubscribers, setSaaSSubscribers] = useState<SaaSSubscriber[]>(initialSaaSSubscribers);
@@ -2083,6 +2087,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const fetchSaaSPipelines = async () => {
     if (!supabase) return;
+    setIsSaaSLoading(true);
     try {
       // 1. Implementation Projects
       const { data: impData } = await supabase.from('saas_implementation_projects').select('*');
@@ -2139,6 +2144,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     } catch (err) {
       console.error('Error fetching pipelines:', err);
+    } finally {
+      setIsSaaSLoading(false);
     }
   };
 
@@ -2339,6 +2346,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [currentOrgId]);
 
   const fetchSaaSLeads = async () => {
+    setIsSaaSLoading(true);
     try {
       const data = await SaaSLeadsService.getAllLeads();
       if (data) {
@@ -2346,6 +2354,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     } catch (error) {
       console.error('Error fetching SaaS Leads:', error);
+    } finally {
+      setIsSaaSLoading(false);
     }
   };
 
@@ -2457,6 +2467,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   return (
     <DataContext.Provider value={{
+      isLoading,
+      isSaaSLoading,
       clients: filteredClients,
       leads: filteredLeads,
       appointments: filteredAppointments,

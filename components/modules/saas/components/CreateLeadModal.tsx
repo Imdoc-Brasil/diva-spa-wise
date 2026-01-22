@@ -1,8 +1,56 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { SaaSLead, SaaSLeadStage, SaaSPlan, BRAZIL_STATES } from '@/types';
-import { XCircle } from 'lucide-react';
+import { X, Building2, User, Mail, Phone, MapPin, CreditCard, ChevronRight, DollarSign } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { maskPhone, maskCEP, maskCpfCnpj } from '../../../../utils/masks';
 import { SAAS_PLANS_CONFIG } from '../saasPlans';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from "@/components/ui/dialog";
+import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+
+const leadSchema = z.object({
+    name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres"),
+    clinicName: z.string().min(2, "Nome da clínica é obrigatório"),
+    legalName: z.string().optional(),
+    email: z.string().email("Email inválido"),
+    phone: z.string().min(14, "Telefone inválido"),
+    cnpj: z.string().optional(),
+    zipCode: z.string().optional(),
+    address: z.string().optional(),
+    number: z.string().optional(),
+    complement: z.string().optional(),
+    neighborhood: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    planInterest: z.nativeEnum(SaaSPlan),
+    estimatedValue: z.number().min(0),
+});
+
+type LeadFormValues = z.infer<typeof leadSchema>;
 
 interface CreateLeadModalProps {
     isOpen: boolean;
@@ -11,113 +59,50 @@ interface CreateLeadModalProps {
 }
 
 export function CreateLeadModal({ isOpen, onClose, onCreate }: CreateLeadModalProps) {
-    const [formData, setFormData] = useState<Partial<SaaSLead>>({
-        name: '',
-        clinicName: '',
-        email: '',
-        phone: '',
-        planInterest: SaaSPlan.GROWTH,
-        stage: SaaSLeadStage.NEW,
-        estimatedValue: 0,
-        address: '',
-        number: '',
-        complement: '',
-        neighborhood: '',
-        city: '',
-        state: ''
+    const form = useForm<LeadFormValues>({
+        resolver: zodResolver(leadSchema),
+        defaultValues: {
+            name: '',
+            clinicName: '',
+            legalName: '',
+            email: '',
+            phone: '',
+            cnpj: '',
+            zipCode: '',
+            address: '',
+            number: '',
+            complement: '',
+            neighborhood: '',
+            city: '',
+            state: '',
+            planInterest: SaaSPlan.GROWTH,
+            estimatedValue: 0,
+        },
     });
 
-    // Initialize estimated value when modal opens or plan changes
-    useEffect(() => {
-        if (isOpen) {
-            const config = SAAS_PLANS_CONFIG[formData.planInterest || SaaSPlan.GROWTH];
-            if (formData.estimatedValue === 0 && config) {
-                setFormData(prev => ({ ...prev, estimatedValue: config.monthlyPrice }));
-            }
+    const watchPlan = form.watch('planInterest');
+
+    // Update estimated value when plan changes
+    React.useEffect(() => {
+        const config = SAAS_PLANS_CONFIG[watchPlan];
+        if (config) {
+            form.setValue('estimatedValue', config.monthlyPrice);
         }
-    }, [isOpen, formData.planInterest, formData.estimatedValue]);
-
-    const handleSubmit = async () => {
-        // Specific field validation
-        const missingFields: string[] = [];
-
-        if (!formData.name?.trim()) missingFields.push('Nome');
-        if (!formData.clinicName?.trim()) missingFields.push('Clínica');
-        if (!formData.email?.trim()) missingFields.push('Email');
-        if (!formData.phone?.trim()) missingFields.push('Telefone');
-
-        if (missingFields.length > 0) {
-            const fieldList = missingFields.join(', ');
-            alert(`⚠️ Campos obrigatórios não preenchidos:\n\n${fieldList}\n\nPor favor, preencha todos os campos obrigatórios.`);
-            return;
-        }
-
-        // Email validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(formData.email!)) {
-            alert('⚠️ Email inválido!\n\nPor favor, insira um email válido.\nExemplo: contato@clinica.com.br');
-            return;
-        }
-
-        // Phone validation (must have at least 10 digits)
-        const phoneDigits = formData.phone!.replace(/\D/g, '');
-        if (phoneDigits.length < 10) {
-            alert('⚠️ Telefone inválido!\n\nPor favor, insira um telefone válido com DDD.\nExemplo: (11) 99999-9999');
-            return;
-        }
-
-        const newLead: SaaSLead = {
-            id: crypto.randomUUID(),
-            name: formData.name!,
-            clinicName: formData.clinicName!,
-            legalName: formData.legalName,
-            email: formData.email!,
-            phone: formData.phone!,
-            planInterest: formData.planInterest as SaaSPlan,
-            stage: SaaSLeadStage.NEW,
-            source: 'outbound',
-            status: 'active',
-            notes: '',
-            cnpj: formData.cnpj,
-            zipCode: formData.zipCode,
-            address: formData.address,
-            number: formData.number,
-            complement: formData.complement,
-            neighborhood: formData.neighborhood,
-            city: formData.city,
-            state: formData.state,
-            estimatedValue: formData.estimatedValue || 0,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        };
-
-        await onCreate(newLead);
-
-        // Reset form
-        setFormData({
-            name: '', clinicName: '', legalName: '', email: '', phone: '',
-            planInterest: SaaSPlan.GROWTH, estimatedValue: 0, cnpj: '',
-            address: '', number: '', complement: '', neighborhood: '', city: '', state: ''
-        });
-    };
+    }, [watchPlan, form]);
 
     const handleCEPChange = async (value: string) => {
         const cep = maskCEP(value);
-        setFormData(prev => ({ ...prev, zipCode: cep }));
+        form.setValue('zipCode', cep);
 
         if (cep.length === 9) {
             try {
                 const res = await fetch(`https://viacep.com.br/ws/${cep.replace('-', '')}/json/`);
                 const data = await res.json();
                 if (!data.erro) {
-                    setFormData(prev => ({
-                        ...prev,
-                        zipCode: cep,
-                        address: data.logradouro,
-                        neighborhood: data.bairro,
-                        city: data.localidade,
-                        state: data.uf
-                    }));
+                    form.setValue('address', data.logradouro);
+                    form.setValue('neighborhood', data.bairro);
+                    form.setValue('city', data.localidade);
+                    form.setValue('state', data.uf);
                 }
             } catch (error) {
                 console.error(error);
@@ -125,214 +110,341 @@ export function CreateLeadModal({ isOpen, onClose, onCreate }: CreateLeadModalPr
         }
     };
 
-    if (!isOpen) return null;
+    const onSubmit = async (values: LeadFormValues) => {
+        const newLead: SaaSLead = {
+            id: crypto.randomUUID(),
+            ...values,
+            stage: SaaSLeadStage.NEW,
+            source: 'outbound',
+            status: 'active',
+            notes: '',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+
+        await onCreate(newLead);
+        form.reset();
+    };
 
     return (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-3xl p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto custom-scrollbar">
-                <button
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-slate-950 border-white/10 text-white custom-scrollbar p-0">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-diva-accent via-white to-diva-accent z-50"></div>
+
+                <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={onClose}
-                    className="absolute top-6 right-6 text-slate-400 hover:text-white transition-colors"
+                    className="absolute right-4 top-4 text-slate-400 hover:text-white hover:bg-white/10 z-50 rounded-full"
                 >
-                    <XCircle size={28} />
-                </button>
+                    <X size={20} />
+                </Button>
 
-                <h3 className="text-2xl font-bold text-white mb-2">Adicionar cliente</h3>
-                <p className="text-slate-400 text-sm mb-8">Preencha os campos abaixo para adicionar o seu cliente.</p>
-
-                <div className="space-y-8">
-                    {/* DADOS DO CLIENTE */}
-                    <div>
-                        <h4 className="text-lg font-bold text-white mb-4 border-b border-white/5 pb-2">Dados do cliente</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="md:col-span-1">
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Nome</label>
-                                <input
-                                    className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
-                                    value={formData.name}
-                                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                    placeholder="Informe o nome do cliente"
-                                />
-                            </div>
-                            <div className="md:col-span-1">
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">CPF ou CNPJ (Opcional)</label>
-                                <input
-                                    className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
-                                    value={formData.cnpj || ''}
-                                    onChange={e => setFormData({ ...formData, cnpj: maskCpfCnpj(e.target.value) })}
-                                    maxLength={18}
-                                    placeholder="Informe o CPF ou CNPJ do cliente"
-                                />
-                            </div>
-                            <div className="md:col-span-1">
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Email</label>
-                                <input
-                                    className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
-                                    value={formData.email}
-                                    onChange={e => setFormData({ ...formData, email: e.target.value })}
-                                    placeholder="Informe o email do cliente"
-                                />
-                            </div>
-                            <div className="md:col-span-1">
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Celular</label>
-                                <input
-                                    className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
-                                    value={formData.phone}
-                                    onChange={e => setFormData({ ...formData, phone: maskPhone(e.target.value) })}
-                                    maxLength={15}
-                                    placeholder="(00) 00000-0000"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                            <div className="md:col-span-1">
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Nome da Clínica (Interno)</label>
-                                <input
-                                    className="w-full bg-slate-800/50 border border-white/5 rounded-lg px-4 py-2 text-sm text-slate-300 focus:border-blue-500 outline-none transition-colors"
-                                    value={formData.clinicName}
-                                    onChange={e => setFormData({ ...formData, clinicName: e.target.value })}
-                                    placeholder="Ex: Clínica Real"
-                                />
-                            </div>
-                            <div className="md:col-span-1">
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Razão Social (Interno)</label>
-                                <input
-                                    className="w-full bg-slate-800/50 border border-white/5 rounded-lg px-4 py-2 text-sm text-slate-300 focus:border-blue-500 outline-none transition-colors"
-                                    value={formData.legalName || ''}
-                                    onChange={e => setFormData({ ...formData, legalName: e.target.value })}
-                                    placeholder="Ex: Razão Social LTDA"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* ENDEREÇO */}
-                    <div>
-                        <h4 className="text-lg font-bold text-white mb-4 border-b border-white/5 pb-2">Endereço</h4>
-                        <div className="grid grid-cols-4 gap-6">
-                            <div className="col-span-4 md:col-span-1">
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">CEP (Opcional)</label>
-                                <input
-                                    className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
-                                    value={formData.zipCode || ''}
-                                    onChange={e => handleCEPChange(e.target.value)}
-                                    placeholder="00000-000"
-                                    maxLength={9}
-                                />
-                            </div>
-                            <div className="col-span-4 md:col-span-3 hidden md:block"></div>
-
-                            <div className="col-span-4 md:col-span-3">
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Rua (Opcional)</label>
-                                <input
-                                    className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
-                                    value={formData.address || ''}
-                                    onChange={e => setFormData({ ...formData, address: e.target.value })}
-                                />
-                            </div>
-                            <div className="col-span-4 md:col-span-1">
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Número (Opcional)</label>
-                                <input
-                                    className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
-                                    value={formData.number || ''}
-                                    onChange={e => setFormData({ ...formData, number: e.target.value })}
-                                />
-                            </div>
-
-                            <div className="col-span-4 md:col-span-2">
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Complemento (Opcional)</label>
-                                <input
-                                    className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
-                                    value={formData.complement || ''}
-                                    onChange={e => setFormData({ ...formData, complement: e.target.value })}
-                                />
-                            </div>
-                            <div className="col-span-4 md:col-span-2">
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Bairro (Opcional)</label>
-                                <input
-                                    className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
-                                    value={formData.neighborhood || ''}
-                                    onChange={e => setFormData({ ...formData, neighborhood: e.target.value })}
-                                />
-                            </div>
-
-                            <div className="col-span-4 md:col-span-3">
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Cidade (Opcional)</label>
-                                <input
-                                    className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
-                                    value={formData.city || ''}
-                                    onChange={e => setFormData({ ...formData, city: e.target.value })}
-                                />
-                            </div>
-                            <div className="col-span-4 md:col-span-1">
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Estado</label>
-                                <select
-                                    className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none transition-colors"
-                                    value={formData.state || ''}
-                                    onChange={e => setFormData({ ...formData, state: e.target.value })}
-                                >
-                                    <option value="">UF</option>
-                                    {BRAZIL_STATES.map(uf => (
-                                        <option key={uf} value={uf}>{uf}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* DADOS COMERCIAIS */}
-                    <div>
-                        <h4 className="text-lg font-bold text-white mb-4 border-b border-white/5 pb-2">Dados Comerciais (Interno)</h4>
-                        <div className="grid grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Plano de Interesse</label>
-                                <select
-                                    className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none"
-                                    value={formData.planInterest}
-                                    onChange={e => {
-                                        const newPlan = e.target.value as SaaSPlan;
-                                        const config = SAAS_PLANS_CONFIG[newPlan];
-                                        setFormData({
-                                            ...formData,
-                                            planInterest: newPlan,
-                                            estimatedValue: config ? config.monthlyPrice : 0
-                                        });
-                                    }}
-                                >
-                                    <option value={SaaSPlan.START}>Start</option>
-                                    <option value={SaaSPlan.GROWTH}>Growth</option>
-                                    <option value={SaaSPlan.EMPIRE}>Empire</option>
-                                </select>
+                <div className="p-8">
+                    <DialogHeader className="mb-8">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 rounded-xl bg-diva-accent/10 border border-diva-accent/20">
+                                <User className="text-diva-accent w-6 h-6" />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Valor Estimado (R$)</label>
-                                <input
-                                    type="number"
-                                    className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-blue-500 outline-none"
-                                    value={formData.estimatedValue}
-                                    onChange={e => setFormData({ ...formData, estimatedValue: Number(e.target.value) })}
-                                />
+                                <DialogTitle className="text-2xl font-bold tracking-tight text-white">Novo Lead de Vendas</DialogTitle>
+                                <DialogDescription className="text-slate-400">
+                                    Cadastre uma nova oportunidade no funil estratégico da Diva Express.
+                                </DialogDescription>
                             </div>
                         </div>
-                    </div>
-                </div>
+                    </DialogHeader>
 
-                <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-white/5">
-                    <button
-                        onClick={onClose}
-                        className="px-6 py-3 rounded-full border border-white/10 text-white font-medium hover:bg-white/5 transition-colors"
-                    >
-                        Cancelar
-                    </button>
-                    <button
-                        onClick={handleSubmit}
-                        className="px-6 py-3 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-bold transition-colors shadow-lg shadow-blue-500/20"
-                    >
-                        Adicionar cliente
-                    </button>
+                    <Form {...(form as any)}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                            {/* DADOS PRINCIPAIS */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.4 }}
+                                className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6"
+                            >
+                                <motion.section
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: 0.1 }}
+                                    className="space-y-6"
+                                >
+                                    <div className="flex items-center gap-2 mb-2 text-diva-accent/80">
+                                        <User size={16} />
+                                        <h4 className="text-xs font-bold uppercase tracking-widest">Informações de Contato</h4>
+                                    </div>
+
+                                    <FormField
+                                        control={form.control}
+                                        name="name"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-xs text-slate-500 uppercase font-bold tracking-wider">Nome Completo</FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} placeholder="Ex: Dra. Mariana Silva" className="bg-white/5 border-white/10 h-12 focus:border-diva-accent/50 transition-all text-base" />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <FormField
+                                            control={form.control}
+                                            name="email"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-xs text-slate-500 uppercase font-bold tracking-wider">Email Executivo</FormLabel>
+                                                    <FormControl>
+                                                        <Input {...field} type="email" placeholder="contato@exemplo.com" className="bg-white/5 border-white/10 h-11 focus:border-diva-accent/50 transition-all" />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="phone"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-xs text-slate-500 uppercase font-bold tracking-wider">WhatsApp / Celular</FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            {...field}
+                                                            placeholder="(00) 00000-0000"
+                                                            className="bg-white/5 border-white/10 h-11 focus:border-diva-accent/50 transition-all"
+                                                            onChange={(e) => field.onChange(maskPhone(e.target.value))}
+                                                            maxLength={15}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                </motion.section>
+
+                                <motion.section
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: 0.2 }}
+                                    className="space-y-6"
+                                >
+                                    <div className="flex items-center gap-2 mb-2 text-diva-accent/80">
+                                        <Building2 size={16} />
+                                        <h4 className="text-xs font-bold uppercase tracking-widest">Dados da Clínica</h4>
+                                    </div>
+
+                                    <FormField
+                                        control={form.control}
+                                        name="clinicName"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-xs text-slate-500 uppercase font-bold tracking-wider">Nome da Clínica / Unidade</FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} placeholder="Ex: Clínica Diva Matriz" className="bg-white/5 border-white/10 h-12 focus:border-diva-accent/50 transition-all text-base" />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={form.control}
+                                        name="cnpj"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-xs text-slate-500 uppercase font-bold tracking-wider">CPF / CNPJ (Empresarial)</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        {...field}
+                                                        placeholder="00.000.000/0000-00"
+                                                        className="bg-white/5 border-white/10 h-11 focus:border-diva-accent/50 transition-all"
+                                                        onChange={(e) => field.onChange(maskCpfCnpj(e.target.value))}
+                                                        maxLength={18}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </motion.section>
+                            </motion.div>
+
+                            {/* ENDEREÇO */}
+                            <motion.section
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.3 }}
+                                className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 space-y-6"
+                            >
+                                <div className="flex items-center gap-2 mb-2 text-slate-500">
+                                    <MapPin size={16} />
+                                    <h4 className="text-xs font-bold uppercase tracking-widest italic">Localização Estratégica</h4>
+                                </div>
+
+                                <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="zipCode"
+                                        render={({ field }) => (
+                                            <FormItem className="col-span-2">
+                                                <FormLabel className="text-[10px] text-slate-500 uppercase font-bold">CEP</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        {...field}
+                                                        placeholder="00000-000"
+                                                        className="bg-slate-900/50 border-white/5 h-10"
+                                                        onChange={(e) => {
+                                                            field.onChange(e);
+                                                            handleCEPChange(e.target.value);
+                                                        }}
+                                                        maxLength={9}
+                                                    />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="address"
+                                        render={({ field }) => (
+                                            <FormItem className="col-span-2 md:col-span-3">
+                                                <FormLabel className="text-[10px] text-slate-500 uppercase font-bold">Logradouro / Rua</FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} className="bg-slate-900/50 border-white/5 h-10" />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="number"
+                                        render={({ field }) => (
+                                            <FormItem className="col-span-2 md:col-span-1">
+                                                <FormLabel className="text-[10px] text-slate-500 uppercase font-bold">Nº</FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} className="bg-slate-900/50 border-white/5 h-10" />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="neighborhood"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-[10px] text-slate-500 uppercase font-bold">Bairro</FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} className="bg-slate-900/50 border-white/5 h-10" />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="city"
+                                        render={({ field }) => (
+                                            <FormItem className="md:col-span-2">
+                                                <FormLabel className="text-[10px] text-slate-500 uppercase font-bold">Cidade</FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} className="bg-slate-900/50 border-white/5 h-10" />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="state"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-[10px] text-slate-500 uppercase font-bold">UF</FormLabel>
+                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                    <FormControl>
+                                                        <SelectTrigger className="bg-slate-900/50 border-white/5 h-10">
+                                                            <SelectValue placeholder="Selecione" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent className="bg-slate-900 border-white/10 text-white">
+                                                        {BRAZIL_STATES.map(uf => (
+                                                            <SelectItem key={uf} value={uf}>{uf}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                            </motion.section>
+
+                            {/* DADOS COMERCIAIS */}
+                            <motion.section
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.4 }}
+                                className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end"
+                            >
+                                <FormField
+                                    control={form.control}
+                                    name="planInterest"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <div className="flex items-center gap-2 mb-2 text-diva-accent">
+                                                <CreditCard size={16} />
+                                                <FormLabel className="text-xs font-bold uppercase tracking-widest">Plano de Interesse</FormLabel>
+                                            </div>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger className="bg-white/5 border-white/10 h-12 text-base">
+                                                        <SelectValue placeholder="Selecione o plano" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent className="bg-slate-900 border-white/10 text-white">
+                                                    <SelectItem value={SaaSPlan.START}>Plano Start (Essencial)</SelectItem>
+                                                    <SelectItem value={SaaSPlan.GROWTH}>Plano Growth (Crescimento)</SelectItem>
+                                                    <SelectItem value={SaaSPlan.EMPIRE}>Plano Empire (Escala)</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <div className="p-4 rounded-2xl bg-gradient-to-r from-diva-accent/10 to-transparent border border-diva-accent/20 flex justify-between items-center">
+                                    <div>
+                                        <p className="text-[10px] font-bold text-diva-accent uppercase tracking-widest opacity-80 mb-1">Previsão de Receita (MRR)</p>
+                                        <p className="text-2xl font-bold font-mono">R$ {form.watch('estimatedValue').toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                    </div>
+                                    <div className="text-diva-accent/30">
+                                        <DollarSign size={32} />
+                                    </div>
+                                </div>
+                            </motion.section>
+
+                            <div className="flex justify-end gap-3 pt-6 border-t border-white/5">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={onClose}
+                                    className="px-8 rounded-full text-slate-400 hover:text-white hover:bg-white/5"
+                                >
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    className="px-10 rounded-full bg-white text-slate-950 hover:bg-diva-accent hover:text-diva-dark font-bold shadow-xl shadow-white/5 group transition-all"
+                                >
+                                    Confirmar Oportunidade
+                                    <ChevronRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                                </Button>
+                            </div>
+                        </form>
+                    </Form>
                 </div>
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 }

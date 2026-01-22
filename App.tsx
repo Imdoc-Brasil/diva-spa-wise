@@ -16,13 +16,22 @@ const LoginPage = lazy(() => import('./components/auth/LoginPage'));
 const SalesPage = lazy(() => import('./components/public/SalesPage'));
 const PublicPage = lazy(() => import('./components/public/PublicPage'));
 
+import { PremiumToaster } from './components/ui/PremiumToaster';
+import { CommandMenu } from './components/ui/CommandMenu';
+
+
 // Loading fallback
 const LoadingFallback = () => (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
-        <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mb-4"></div>
-            <p className="text-gray-600 font-medium">Carregando...</p>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950">
+        <div className="relative">
+            <div className="w-24 h-24 rounded-full border-t-2 border-diva-accent animate-spin"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-2xl animate-pulse">✨</span>
+            </div>
         </div>
+        <p className="mt-8 text-slate-400 font-serif italic tracking-widest animate-pulse">
+            Diva Spa Wise
+        </p>
     </div>
 );
 
@@ -56,6 +65,7 @@ const AppContent = () => {
         <CurrentOrganizationProvider>
             <AnalyticsManager />
             <ScrollToTop />
+            <CommandMenu />
 
             <Suspense fallback={<LoadingFallback />}>
                 <Routes>
@@ -106,6 +116,7 @@ const App = () => {
     return (
         <Router>
             <ToastProvider>
+                <PremiumToaster />
                 <OrganizationProvider>
                     <DataProvider>
                         <AppContent />

@@ -56,6 +56,10 @@ import type {
 } from './index';
 
 export interface DataContextType {
+    // Loading States
+    isLoading: boolean;
+    isSaaSLoading: boolean;
+
     // Clients & Leads
     clients: Client[];
     leads: SalesLead[];

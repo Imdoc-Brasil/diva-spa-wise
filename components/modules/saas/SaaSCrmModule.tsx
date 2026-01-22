@@ -27,16 +27,18 @@ import { maskPhone, maskCEP, maskCNPJ, maskCpfCnpj } from '../../../utils/masks'
 import { SAAS_PLANS_CONFIG } from './saasPlans';
 import { SaaSLeadsService } from '../../../services/saas/SaaSLeadsService';
 import { supabase } from '../../../services/supabase';
-import { LeadCard, CreateLeadModal, ClosingLeadModal } from './components';
+import { LeadCard, CreateLeadModal, ClosingLeadModal, KanbanColumnSkeleton, CRMStats, LeadDetailsDrawer } from './components';
 import { PlanBadge } from './components/shared';
 import { onboardingService } from '../../../services/saas/OnboardingService';
+import { MotionPage } from '../../ui/MotionPage';
 
 
 const SaaSCrmModule: React.FC = () => {
     const {
         saasLeads, updateSaaSLead, addSaaSLead, addSaaSTask, toggleSaaSTask, deleteSaaSTask,
         implementationProjects, updateImplementationProject, addImplementationProject,
-        supportTickets, featureRequests, updateFeatureRequest, saasSubscribers, updateSaaSSubscriber
+        supportTickets, featureRequests, updateFeatureRequest, saasSubscribers, updateSaaSSubscriber,
+        isSaaSLoading
     } = useData();
     const { addToast } = useToast();
     const [viewProject, setViewProject] = useState<ImplementationProject | null>(null);
@@ -739,81 +741,84 @@ const SaaSCrmModule: React.FC = () => {
             {/* CONTENT AREA */}
             {
                 activePipeline === 'sales' && (
-                    <div className="flex-1 overflow-x-auto overflow-y-hidden pb-4">
-                        <div className="flex gap-6 h-full min-w-max">
-                            {columns.map(col => (
-                                <div key={col.id} className="w-80 flex flex-col shrink-0">
-                                    <div
-                                        className={`flex justify-between items-center mb-4 px-1 py-2 border-b-2 ${col.color}`}
-                                        onDragOver={(e) => e.preventDefault()}
-                                        onDrop={(e) => {
-                                            e.preventDefault();
-                                            if (draggedLeadId) {
-                                                handleMove(draggedLeadId, col.id);
-                                                setDraggedLeadId(null);
-                                            }
-                                        }}
-                                    >
-                                        <h3 className="font-bold text-slate-200 uppercase tracking-wide text-sm">{col.title}</h3>
-                                        <span className="text-xs text-slate-500 font-mono bg-slate-800 px-2 py-1 rounded">
-                                            {filteredLeads.filter(l => l.stage === col.id).length}
-                                        </span>
-                                    </div>
+                    <div className="flex-1 flex flex-col overflow-hidden">
+                        {/* CRM Stats Panel */}
+                        <CRMStats leads={saasLeads} />
 
-                                    <div
-                                        className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-hide"
-                                        onDragOver={(e) => e.preventDefault()}
-                                        onDrop={(e) => {
-                                            e.preventDefault();
-                                            if (draggedLeadId) {
-                                                handleMove(draggedLeadId, col.id);
-                                                setDraggedLeadId(null);
-                                            }
-                                        }}
-                                    >
-                                        {filteredLeads.filter(l => l.stage === col.id).map(lead => (
-                                            <LeadCard
-                                                key={lead.id}
-                                                lead={lead}
-                                                isActionMenuOpen={openActionMenuId === lead.id}
-                                                onDragStart={() => setDraggedLeadId(lead.id)}
-                                                onClick={() => setViewLead(lead)}
-                                                onToggleActionMenu={(e) => {
-                                                    e.stopPropagation();
-                                                    setOpenActionMenuId(openActionMenuId === lead.id ? null : lead.id);
-                                                }}
-                                                onViewDetails={(e) => {
-                                                    e.stopPropagation();
-                                                    setViewLead(lead);
-                                                    setOpenActionMenuId(null);
-                                                }}
-                                                onConvert={(e) => {
-                                                    e.stopPropagation();
-                                                    handleConvertToSubscriber(lead);
-                                                    setOpenActionMenuId(null);
-                                                }}
-                                                onArchive={(e) => {
-                                                    e.stopPropagation();
-                                                    setOpenActionMenuId(null);
-                                                }}
-                                                onClose={(e) => {
-                                                    e.stopPropagation();
-                                                    handleMove(lead.id, SaaSLeadStage.CLOSED_WON);
-                                                }}
-                                            />
-                                        ))}
-                                        {filteredLeads.filter(l => l.stage === col.id).length === 0 && (
-                                            <div className="h-32 border-2 border-dashed border-slate-800 rounded-xl flex items-center justify-center text-slate-700 text-sm italic">
-                                                Vazio
-                                            </div>
-                                        )}
+                        <div className="flex-1 overflow-x-auto overflow-y-hidden pb-4">
+                            <div className="flex gap-6 h-full min-w-max">
+                                {columns.map(col => (
+                                    <div key={col.id} className="w-80 flex flex-col shrink-0">
+                                        <div
+                                            className={`flex justify-between items-center mb-4 px-1 py-2 border-b-2 ${col.color}`}
+                                            onDragOver={(e) => e.preventDefault()}
+                                            onDrop={(e) => {
+                                                e.preventDefault();
+                                                if (draggedLeadId) {
+                                                    handleMove(draggedLeadId, col.id);
+                                                    setDraggedLeadId(null);
+                                                }
+                                            }}
+                                        >
+                                            <h3 className="font-bold text-slate-200 uppercase tracking-wide text-sm">{col.title}</h3>
+                                            <span className="text-xs text-slate-500 font-mono bg-slate-800 px-2 py-1 rounded">
+                                                {filteredLeads.filter(l => l.stage === col.id).length}
+                                            </span>
+                                        </div>
+
+                                        <div
+                                            className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-hide"
+                                            onDragOver={(e) => e.preventDefault()}
+                                            onDrop={(e) => {
+                                                e.preventDefault();
+                                                if (draggedLeadId) {
+                                                    handleMove(draggedLeadId, col.id);
+                                                    setDraggedLeadId(null);
+                                                }
+                                            }}
+                                        >
+                                            {filteredLeads.filter(l => l.stage === col.id).map(lead => (
+                                                <LeadCard
+                                                    key={lead.id}
+                                                    lead={lead}
+                                                    isActionMenuOpen={openActionMenuId === lead.id}
+                                                    onDragStart={() => setDraggedLeadId(lead.id)}
+                                                    onClick={() => setViewLead(lead)}
+                                                    onToggleActionMenu={(e) => {
+                                                        e.stopPropagation();
+                                                        setOpenActionMenuId(openActionMenuId === lead.id ? null : lead.id);
+                                                    }}
+                                                    onViewDetails={(e) => {
+                                                        e.stopPropagation();
+                                                        setViewLead(lead);
+                                                        setOpenActionMenuId(null);
+                                                    }}
+                                                    onConvert={(e) => {
+                                                        e.stopPropagation();
+                                                        handleConvertToSubscriber(lead);
+                                                        setOpenActionMenuId(null);
+                                                    }}
+                                                    onArchive={(e) => {
+                                                        e.stopPropagation();
+                                                        setOpenActionMenuId(null);
+                                                    }}
+                                                    onClose={(e) => {
+                                                        e.stopPropagation();
+                                                        handleMove(lead.id, SaaSLeadStage.CLOSED_WON);
+                                                    }}
+                                                />
+                                            ))}
+                                            {filteredLeads.filter(l => l.stage === col.id).length === 0 && (
+                                                <div className="h-32 border-2 border-dashed border-slate-800 rounded-xl flex items-center justify-center text-slate-700 text-sm italic">
+                                                    Vazio
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
                     </div>
-
-
                 )
             }
 
@@ -1455,403 +1460,45 @@ const SaaSCrmModule: React.FC = () => {
                 )
             }
 
-            {/* VIEW / EDIT LEAD MODAL */}
-            {
-                viewLead && (
-                    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                        <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-5xl h-[85vh] flex shadow-2xl relative overflow-hidden">
-                            <button
-                                onClick={() => setViewLead(null)}
-                                className="absolute top-4 right-4 text-slate-400 hover:text-white z-10"
-                            >
-                                <XCircle size={24} />
-                            </button>
-
-                            {/* LEFT COLUMN: Lead Profile & Details */}
-                            <div className="w-1/3 border-r border-white/10 p-6 overflow-y-auto bg-slate-900/50">
-                                <div className="text-center mb-6">
-                                    <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center text-3xl font-bold mb-3 ${viewLead.stage === SaaSLeadStage.CLOSED_WON ? 'bg-green-500/20 text-green-500' : 'bg-yellow-500/20 text-yellow-500'}`}>
-                                        {viewLead.clinicName.charAt(0)}
-                                    </div>
-                                    <h3 className="text-xl font-bold text-white leading-tight">{viewLead.clinicName}</h3>
-                                    <p className="text-slate-400 text-sm">{viewLead.name}</p>
-
-                                    <div className="mt-3 flex justify-center">
-                                        <PlanBadge plan={viewLead.planInterest} />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-6">
-                                    {/* Contact Info */}
-                                    <div>
-                                        <h4 className="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center gap-2">
-                                            <Phone size={12} /> Contato
-                                        </h4>
-                                        <div className="space-y-3">
-                                            <div className="bg-slate-800/50 p-2 rounded-lg border border-white/5">
-                                                <label className="text-[10px] text-slate-500 block">Email</label>
-                                                <input
-                                                    className="bg-transparent text-slate-300 w-full text-sm outline-none border-b border-transparent focus:border-yellow-500/50 transition-colors"
-                                                    value={viewLead.email}
-                                                    onChange={(e) => {
-                                                        const val = e.target.value;
-                                                        setViewLead(prev => prev ? ({ ...prev, email: val }) : null);
-                                                    }}
-                                                />
-                                            </div>
-                                            <div className="bg-slate-800/50 p-2 rounded-lg border border-white/5">
-                                                <label className="text-[10px] text-slate-500 block">Telefone</label>
-                                                <input
-                                                    className="bg-transparent text-slate-300 w-full text-sm outline-none border-b border-transparent focus:border-yellow-500/50 transition-colors"
-                                                    value={viewLead.phone}
-                                                    onChange={(e) => {
-                                                        const val = maskPhone(e.target.value);
-                                                        setViewLead(prev => prev ? ({ ...prev, phone: val }) : null);
-                                                    }}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Address Info */}
-                                    <div>
-                                        <h4 className="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center gap-2">
-                                            <DollarSign size={12} /> Endereço
-                                        </h4>
-                                        <div className="space-y-2">
-                                            <input
-                                                placeholder="CEP"
-                                                className="bg-slate-800/50 text-slate-300 w-full text-sm p-2 rounded border border-white/5 outline-none focus:border-yellow-500/50"
-                                                value={viewLead.zipCode || ''}
-                                                onChange={(e) => {
-                                                    const val = maskCEP(e.target.value);
-                                                    setViewLead(prev => prev ? ({ ...prev, zipCode: val }) : null);
-                                                }}
-                                            />
-                                            <input
-                                                placeholder="Logradouro"
-                                                className="bg-slate-800/50 text-slate-300 w-full text-sm p-2 rounded border border-white/5 outline-none focus:border-yellow-500/50"
-                                                value={viewLead.address || ''}
-                                                onChange={(e) => {
-                                                    const val = e.target.value;
-                                                    setViewLead(prev => prev ? ({ ...prev, address: val }) : null);
-                                                }}
-                                            />
-                                            <div className="flex gap-2">
-                                                <input
-                                                    placeholder="Número"
-                                                    className="bg-slate-800/50 text-slate-300 w-1/3 text-sm p-2 rounded border border-white/5 outline-none focus:border-yellow-500/50"
-                                                    value={viewLead.number || ''}
-                                                    onChange={(e) => {
-                                                        const val = e.target.value;
-                                                        setViewLead(prev => prev ? ({ ...prev, number: val }) : null);
-                                                    }}
-                                                />
-                                                <input
-                                                    placeholder="Comp."
-                                                    className="bg-slate-800/50 text-slate-300 w-2/3 text-sm p-2 rounded border border-white/5 outline-none focus:border-yellow-500/50"
-                                                    value={viewLead.complement || ''}
-                                                    onChange={(e) => {
-                                                        const val = e.target.value;
-                                                        setViewLead(prev => prev ? ({ ...prev, complement: val }) : null);
-                                                    }}
-                                                />
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <input
-                                                    placeholder="Cidade"
-                                                    className="bg-slate-800/50 text-slate-300 w-2/3 text-sm p-2 rounded border border-white/5 outline-none focus:border-yellow-500/50"
-                                                    value={viewLead.city || ''}
-                                                    onChange={(e) => {
-                                                        const val = e.target.value;
-                                                        setViewLead(prev => prev ? ({ ...prev, city: val }) : null);
-                                                    }}
-                                                />
-                                                <input
-                                                    placeholder="UF"
-                                                    className="bg-slate-800/50 text-slate-300 w-1/3 text-sm p-2 rounded border border-white/5 outline-none focus:border-yellow-500/50"
-                                                    value={viewLead.state || ''}
-                                                    onChange={(e) => {
-                                                        // Uppercase & Max 2 chars
-                                                        const val = e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2);
-                                                        setViewLead(prev => prev ? ({ ...prev, state: val }) : null);
-                                                    }}
-                                                    maxLength={2}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Save Changes Button (New) */}
-                                    <div className="pt-4 mt-4 border-t border-white/10">
-                                        <button
-                                            onClick={() => {
-                                                if (viewLead) {
-                                                    updateSaaSLead(viewLead.id, {
-                                                        email: viewLead.email,
-                                                        phone: viewLead.phone,
-                                                        zipCode: viewLead.zipCode,
-                                                        address: viewLead.address,
-                                                        number: viewLead.number,
-                                                        complement: viewLead.complement,
-                                                        city: viewLead.city,
-                                                        state: viewLead.state
-                                                    });
-                                                    addToast('Dados salvos com sucesso!', 'success');
-                                                }
-                                            }}
-                                            className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg font-bold transition-colors mb-2 flex items-center justify-center gap-2"
-                                        >
-                                            <CheckCircle size={16} /> Salvar Alterações
-                                        </button>
-                                    </div>
-
-                                    {/* Close Deal Button */}
-                                    <div className="">
-                                        {viewLead.stage !== SaaSLeadStage.CLOSED_WON ? (
-                                            <button
-                                                onClick={() => {
-                                                    setClosingData({
-                                                        plan: viewLead.planInterest,
-                                                        paymentMethod: 'credit_card',
-                                                        recurrence: 'monthly'
-                                                    });
-                                                    setClosingLead(viewLead);
-                                                    setViewLead(null);
-                                                }}
-                                                className="w-full bg-green-600 hover:bg-green-500 text-white py-3 rounded-lg font-bold transition-colors shadow-lg shadow-green-900/20 flex items-center justify-center gap-2"
-                                            >
-                                                <CheckCircle size={18} /> Fechar Venda
-                                            </button>
-                                        ) : (
-                                            <div className="bg-green-900/20 border border-green-500/30 p-3 rounded-lg text-center">
-                                                <span className="text-green-400 font-bold flex items-center justify-center gap-2">
-                                                    <CheckCircle size={16} /> Venda Realizada
-                                                </span>
-                                                <p className="text-xs text-green-300 mt-1">Cliente já é assinante.</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* RIGHT COLUMN: Follow Up & Tasks */}
-                            <div className="w-2/3 flex flex-col bg-slate-900">
-                                {/* Tabs Header */}
-                                <div className="flex border-b border-white/10">
-                                    <button
-                                        onClick={() => setActiveTab('tasks')}
-                                        className={`px-6 py-4 text-sm font-bold transition-colors border-b-2 ${activeTab === 'tasks' ? 'text-yellow-500 border-yellow-500 bg-white/5' : 'text-slate-400 border-transparent hover:text-white'}`}
-                                    >
-                                        Follow Up & Tarefas
-                                    </button>
-                                    <button
-                                        onClick={() => setActiveTab('history')}
-                                        className={`px-6 py-4 text-sm font-bold transition-colors border-b-2 ${activeTab === 'history' ? 'text-yellow-500 border-yellow-500 bg-white/5' : 'text-slate-400 border-transparent hover:text-white'}`}
-                                    >
-                                        Histórico
-                                    </button>
-                                </div>
-
-                                <div className="flex-1 p-6 overflow-y-auto space-y-8">
-                                    {activeTab === 'tasks' ? (
-                                        <>
-                                            {/* NOTES SECTION */}
-                                            <div>
-                                                <h4 className="font-bold text-white mb-3 flex items-center gap-2">
-                                                    <span className="w-1 h-4 bg-yellow-500 rounded-full"></span>
-                                                    Observações
-                                                </h4>
-                                                <textarea
-                                                    className="w-full h-32 bg-slate-800 border border-white/10 rounded-xl p-4 text-slate-300 focus:border-yellow-500 outline-none resize-none transition-colors"
-                                                    placeholder="Escreva notas sobre a negociação..."
-                                                    value={viewLead.notes || ''}
-                                                    onChange={(e) => {
-                                                        const val = e.target.value;
-                                                        setViewLead(prev => prev ? ({ ...prev, notes: val }) : null);
-                                                    }}
-                                                />
-                                                <div className="flex justify-between items-center mt-2">
-                                                    <p className="text-xs text-slate-500">Salve para registrar as alterações.</p>
-                                                    <button
-                                                        onClick={() => {
-                                                            if (viewLead) {
-                                                                updateSaaSLead(viewLead.id, { notes: viewLead.notes });
-                                                                addToast('Observação salva!', 'success');
-                                                            }
-                                                        }}
-                                                        className="text-xs bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 px-3 py-1 rounded border border-yellow-500/30 transition-colors"
-                                                    >
-                                                        Salvar Nota
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            {/* TASKS SECTION */}
-                                            <div>
-                                                {/* ... Task Header ... */}
-                                                <div className="flex justify-between items-center mb-4">
-                                                    <h4 className="font-bold text-white flex items-center gap-2">
-                                                        <span className="w-1 h-4 bg-purple-500 rounded-full"></span>
-                                                        Próximas Tarefas
-                                                    </h4>
-                                                    <button
-                                                        onClick={() => setIsAddingTask(true)}
-                                                        className="text-xs bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg transition-colors border border-white/10"
-                                                    >
-                                                        + Nova Tarefa
-                                                    </button>
-                                                </div>
-
-                                                {/* ... New Task Form ... */}
-                                                {isAddingTask && (
-                                                    <div className="bg-slate-800/50 border border-white/10 rounded-xl p-4 mb-4 animate-in fade-in slide-in-from-top-2">
-                                                        <div className="space-y-4">
-                                                            <input
-                                                                autoFocus
-                                                                placeholder="Título da tarefa ex: Ligar para confirmar..."
-                                                                className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-purple-500"
-                                                                value={newTask.title}
-                                                                onChange={e => setNewTask({ ...newTask, title: e.target.value })}
-                                                            />
-                                                            <div className="flex gap-2">
-                                                                <select
-                                                                    className="bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none w-1/3"
-                                                                    value={newTask.type}
-                                                                    onChange={e => setNewTask({ ...newTask, type: e.target.value as any })}
-                                                                >
-                                                                    <option value="call">📞 Ligação</option>
-                                                                    <option value="meeting">👥 Reunião</option>
-                                                                    <option value="email">📧 Email</option>
-                                                                    <option value="reminder">⏰ Lembrete</option>
-                                                                    <option value="demo">💻 Demo</option>
-                                                                </select>
-                                                                <input
-                                                                    type="date"
-                                                                    className="bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none w-1/3"
-                                                                    value={newTask.date}
-                                                                    onChange={e => setNewTask({ ...newTask, date: e.target.value })}
-                                                                />
-                                                                <input
-                                                                    type="time"
-                                                                    className="bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none w-1/3"
-                                                                    value={newTask.time}
-                                                                    onChange={e => setNewTask({ ...newTask, time: e.target.value })}
-                                                                />
-                                                            </div>
-                                                            <div className="flex justify-end gap-2 pt-2">
-                                                                <button
-                                                                    onClick={() => setIsAddingTask(false)}
-                                                                    className="text-xs text-slate-400 hover:text-white px-3 py-2"
-                                                                >
-                                                                    Cancelar
-                                                                </button>
-                                                                <button
-                                                                    disabled={!newTask.title}
-                                                                    onClick={() => {
-                                                                        if (newTask.title) {
-                                                                            const dueDateTime = new Date(`${newTask.date}T${newTask.time}:00`).toISOString();
-                                                                            addSaaSTask({
-                                                                                title: newTask.title,
-                                                                                leadId: viewLead.id,
-                                                                                type: newTask.type,
-                                                                                dueDate: dueDateTime,
-                                                                                isCompleted: false
-                                                                            });
-                                                                            setIsAddingTask(false);
-                                                                            setNewTask({
-                                                                                title: '',
-                                                                                type: 'reminder',
-                                                                                date: new Date().toISOString().split('T')[0],
-                                                                                time: '09:00'
-                                                                            });
-                                                                            addToast('Tarefa adicionada!', 'success');
-                                                                        }
-                                                                    }}
-                                                                    className="text-xs bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-bold"
-                                                                >
-                                                                    Salvar Tarefa
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {/* ... Task List ... */}
-                                                <div className="space-y-2">
-                                                    {(viewLead.tasks || []).length === 0 && (
-                                                        <p className="text-sm text-slate-500 italic py-4">Nenhuma tarefa agendada.</p>
-                                                    )}
-                                                    {viewLead.tasks && [...viewLead.tasks].sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()).map(task => (
-                                                        <div key={task.id} className={`group flex items-center gap-3 p-3 rounded-lg border transition-all ${task.isCompleted ? 'bg-slate-900 border-white/5 opacity-50' : 'bg-slate-800 border-white/10 hover:border-purple-500/50'}`}>
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={task.isCompleted}
-                                                                onChange={() => toggleSaaSTask(task.id, viewLead.id, task.isCompleted)}
-                                                                className="w-4 h-4 rounded border-slate-600 text-purple-600 focus:ring-purple-500 bg-slate-700 cursor-pointer"
-                                                            />
-                                                            <div className="flex-1">
-                                                                <p className={`text-sm font-medium ${task.isCompleted ? 'text-slate-500 line-through' : 'text-white'}`}>
-                                                                    {task.title}
-                                                                </p>
-                                                                <p className="text-xs text-slate-500">
-                                                                    {new Date(task.dueDate).toLocaleDateString()} at {new Date(task.dueDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • <span className="capitalize">{task.type}</span>
-                                                                </p>
-                                                            </div>
-                                                            <button
-                                                                onClick={() => {
-                                                                    if (confirm('Excluir esta tarefa?')) {
-                                                                        deleteSaaSTask(task.id, viewLead.id);
-                                                                    }
-                                                                }}
-                                                                className="text-slate-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
-                                                            >
-                                                                <XCircle size={14} />
-                                                            </button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div className="space-y-6">
-                                            {/* HISTORY TAB CONTENT */}
-                                            <div className="relative border-l border-slate-700 ml-3 space-y-6 pl-6 pb-2">
-                                                {/* Creation Event */}
-                                                <div className="relative">
-                                                    <span className="absolute -left-[29px] top-1 w-3 h-3 rounded-full bg-blue-500 ring-4 ring-slate-900"></span>
-                                                    <p className="text-sm text-white font-medium">Lead Criado</p>
-                                                    <p className="text-xs text-slate-500">{new Date(viewLead.createdAt).toLocaleDateString()} às {new Date(viewLead.createdAt).toLocaleTimeString()}</p>
-                                                </div>
-
-                                                {/* Completed Tasks History */}
-                                                {viewLead.tasks?.filter(t => t.isCompleted).map(task => (
-                                                    <div key={`hist_${task.id}`} className="relative">
-                                                        <span className="absolute -left-[29px] top-1 w-3 h-3 rounded-full bg-green-500 ring-4 ring-slate-900"></span>
-                                                        <p className="text-sm text-white font-medium">Tarefa Concluída: {task.title}</p>
-                                                        <p className="text-xs text-slate-500">
-                                                            {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'Sem data'} • <span className="capitalize">{task.type}</span>
-                                                        </p>
-                                                    </div>
-                                                ))}
-
-                                                {/* Notes Update (Synthetic) */}
-                                                {viewLead.notes && (
-                                                    <div className="relative">
-                                                        <span className="absolute -left-[29px] top-1 w-3 h-3 rounded-full bg-yellow-500 ring-4 ring-slate-900"></span>
-                                                        <p className="text-sm text-white font-medium">Observação Registrada</p>
-                                                        <p className="text-xs text-slate-500 italic line-clamp-2">"{viewLead.notes}"</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
+            {/* LEAD DETAILS DRAWER */}
+            <LeadDetailsDrawer
+                lead={viewLead}
+                onClose={() => setViewLead(null)}
+                onUpdate={(id, data) => {
+                    updateSaaSLead(id, data);
+                    if (viewLead && viewLead.id === id) {
+                        setViewLead(prev => prev ? { ...prev, ...data } : null);
+                    }
+                    addToast('Dados atualizados!', 'success');
+                }}
+                onAddTask={(task) => {
+                    addSaaSTask(task);
+                    addToast('Tarefa adicionada!', 'success');
+                }}
+                onToggleTask={(taskId) => {
+                    if (viewLead) {
+                        const task = viewLead.tasks?.find(t => t.id === taskId);
+                        if (task) {
+                            toggleSaaSTask(taskId, viewLead.id, task.isCompleted);
+                        }
+                    }
+                }}
+                onDeleteTask={(taskId) => {
+                    if (viewLead) {
+                        deleteSaaSTask(taskId, viewLead.id);
+                        addToast('Tarefa removida!', 'success');
+                    }
+                }}
+                onStartClosing={(lead) => {
+                    setClosingData({
+                        plan: lead.planInterest,
+                        paymentMethod: 'credit_card',
+                        recurrence: 'monthly'
+                    });
+                    setClosingLead(lead);
+                    setViewLead(null);
+                }}
+            />
 
             {
                 activePipeline === 'subscribers' && (

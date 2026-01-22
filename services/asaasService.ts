@@ -188,6 +188,7 @@ export const asaasService = {
      * Criar Checkout (Link de Pagamento)
      */
     createCheckout: async (data: {
+        customer?: string; // Optinal customer ID
         value: number;
         description: string;
         billingTypes: string[]; // ['PIX', 'CREDIT_CARD', 'BOLETO']
@@ -198,6 +199,7 @@ export const asaasService = {
             endDate?: string
         };
         name?: string; // Nome do produto/serviço no checkout
+        externalReference?: string;
     }) => {
         try {
             // Ajuste no payload conforme doc: "subscription" object for RECURRENT
@@ -206,6 +208,7 @@ export const asaasService = {
                 chargeTypes: [data.chargeType],
                 name: data.name || "Assinatura I'mdoc",
                 description: data.description,
+                externalReference: data.externalReference,
                 // Ao usar items, o valor total é a soma. Mas vamos mandar ambos se possível ou focar nos items.
                 // O erro diz 'items' é obrigatório.
                 value: data.value,
