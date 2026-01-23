@@ -178,11 +178,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   ];
 
   return (
-    <div className="flex h-screen bg-diva-light/20 overflow-hidden">
+    <div className="flex h-screen bg-background overflow-hidden">
       {/* Mobile Backdrop with Blur */}
       {isMobile && isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity duration-300"
           onClick={() => setIsSidebarOpen(false)}
         ></div>
       )}
@@ -192,14 +192,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         className={`
             fixed lg:relative inset-y-0 left-0 z-50
             ${isSidebarOpen ? 'w-72 translate-x-0' : isMobile ? '-translate-x-full w-72' : 'w-20 translate-x-0'} 
-            bg-gradient-to-b from-diva-dark to-slate-900 text-white transition-transform duration-300 ease-in-out flex flex-col shadow-2xl lg:shadow-xl border-r border-white/5
+            bg-slate-900 text-white transition-transform duration-300 ease-in-out flex flex-col shadow-xl border-r border-slate-800
         `}
       >
-        <div className="h-16 flex items-center justify-between px-4 border-b border-white/5 shrink-0 bg-transparent">
+        <div className="h-16 flex items-center justify-between px-4 border-b border-slate-800 shrink-0">
           {isSidebarOpen || isMobile ? (
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-diva-accent to-yellow-200 rounded-lg flex items-center justify-center shadow-lg shadow-diva-accent/20">
-                <span className="text-diva-primary font-bold text-xl">I</span>
+              <div className="w-8 h-8 bg-gradient-to-br from-teal-400 to-emerald-500 rounded-lg flex items-center justify-center shadow-lg">
+                <span className="text-white font-bold text-xl">I</span>
               </div>
               <h1 className="text-lg font-bold tracking-widest text-white font-serif">I'mDoc</h1>
             </div>
@@ -207,18 +207,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <span className="font-bold text-xl mx-auto font-serif">DS</span>
           )}
           {!isMobile && (
-            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="text-diva-light hover:text-white transition-colors">
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="text-slate-400 hover:text-white transition-colors">
               {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
           )}
           {isMobile && (
-            <button onClick={() => setIsSidebarOpen(false)} className="text-white hover:text-diva-accent transition-colors">
+            <button onClick={() => setIsSidebarOpen(false)} className="text-white hover:text-teal-400 transition-colors">
               <X size={24} />
             </button>
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto py-4 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto py-4">
           {navSections.map((section, idx) => {
             const filteredItems = section.items.filter(item => item && item.allowedRoles.includes(user.role));
 
@@ -227,7 +227,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             return (
               <div key={idx} className="mb-6">
                 {(isSidebarOpen || isMobile) && (
-                  <h3 className="px-5 mb-2 text-[10px] font-bold text-diva-light/50 uppercase tracking-wider">
+                  <h3 className="px-5 mb-2 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
                     {section.title}
                   </h3>
                 )}
@@ -238,13 +238,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       <Link
                         key={item.path}
                         to={item.path}
-                        className={`flex items-center px-3 py-2.5 rounded-lg transition-all duration-200 group relative ${isActive
-                          ? 'bg-diva-accent text-diva-dark font-bold shadow-lg shadow-diva-accent/20'
-                          : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                        className={`flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${isActive
+                          ? 'bg-teal-500 text-white font-semibold shadow-lg shadow-teal-500/20'
+                          : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                           }`}
                         title={!isSidebarOpen && !isMobile ? item.label : undefined}
                       >
-                        <span className={`shrink-0 ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-white transition-colors'}`}>
+                        <span className={`shrink-0 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'}`}>
                           {item.icon}
                         </span>
                         {(isSidebarOpen || isMobile) && (
@@ -345,15 +345,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         className="flex-1 overflow-auto relative flex flex-col w-full transition-all duration-300 scroll-smooth"
       >
         {/* Top Header */}
-        <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-diva-light/30 h-16 flex items-center px-4 md:px-8 justify-between shrink-0 shadow-sm">
+        <div className="sticky top-0 z-20 bg-card/95 backdrop-blur-md border-b border-border h-16 flex items-center px-4 md:px-8 justify-between shrink-0 shadow-sm">
           <div className="flex items-center gap-4">
             {isMobile && (
-              <button onClick={() => setIsSidebarOpen(true)} className="text-diva-dark p-1 hover:bg-gray-100 rounded-lg">
+              <button onClick={() => setIsSidebarOpen(true)} className="text-foreground p-1 hover:bg-muted rounded-lg">
                 <Menu size={24} />
               </button>
             )}
-            <h2 className="text-lg md:text-xl font-serif text-diva-dark font-bold truncate max-w-[150px] md:max-w-none">
-              {location.pathname === '/profile' ? 'Meu Perfil' : (navSections.flatMap(s => s.items).find(i => i.path === location.pathname)?.label || organization?.displayName || "I'mDoc")}
+            <h2 className="text-lg md:text-xl font-serif text-foreground font-bold truncate max-w-[150px] md:max-w-none">
+              {location.pathname === '/profile' ? 'Meu Perfil' : (navSections.flatMap(s => s.items).find(i => i.path === location.pathname)?.label || organization?.name || "I'mDoc")}
             </h2>
           </div>
 
@@ -368,18 +368,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {/* Command Palette Trigger (Adaptive) */}
             <button
               onClick={() => setIsCommandOpen(true)}
-              className="hidden md:flex items-center space-x-2 bg-gray-50 hover:bg-gray-100 text-gray-500 px-3 py-1.5 rounded-lg border border-gray-200 transition-colors text-sm"
+              className="hidden md:flex items-center space-x-2 bg-muted hover:bg-muted/80 text-muted-foreground px-3 py-1.5 rounded-xl border border-border transition-colors text-sm"
             >
               <Search size={14} />
               <span>Buscar...</span>
-              <div className="flex items-center gap-1 ml-2 text-gray-400">
+              <div className="flex items-center gap-1 ml-2 text-muted-foreground">
                 <Command size={10} />
-                <span className="text-xs font-bold">K</span>
+                <span className="text-xs font-semibold">K</span>
               </div>
             </button>
             <button
               onClick={() => setIsCommandOpen(true)}
-              className="md:hidden p-2 rounded-full hover:bg-gray-100 text-gray-500"
+              className="md:hidden p-2 rounded-full hover:bg-muted text-muted-foreground"
             >
               <Search size={20} />
             </button>
@@ -388,28 +388,28 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <div className="relative">
               <button
                 onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                className={`p-2 rounded-full hover:bg-gray-100 transition-colors relative ${isNotificationsOpen ? 'bg-gray-100 text-diva-primary' : 'text-gray-500'}`}
+                className={`p-2 rounded-full hover:bg-muted transition-colors relative ${isNotificationsOpen ? 'bg-muted text-primary' : 'text-muted-foreground'}`}
               >
                 <Bell size={20} />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-diva-alert rounded-full border border-white"></span>
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full border border-card"></span>
                 )}
               </button>
               <NotificationCenter isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} />
             </div>
 
-            <div className="hidden md:flex items-center gap-2 text-xs text-diva-dark/60 bg-diva-light/20 px-3 py-1.5 rounded-full border border-diva-light/30">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground bg-muted px-3 py-1.5 rounded-full border border-border">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
               {new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' })}
             </div>
           </div>
         </div>
 
-        <div className="p-3 sm:p-4 md:p-8 max-w-7xl mx-auto w-full min-h-[calc(100vh-64px)] pb-20 md:pb-8 animate-in fade-in duration-300" onClick={() => setIsNotificationsOpen(false)}>
+        <div className="p-3 sm:p-4 md:p-8 max-w-7xl mx-auto w-full min-h-[calc(100vh-64px)] pb-20 md:pb-8" onClick={() => setIsNotificationsOpen(false)}>
           {children}
 
-          <div className="mt-12 pt-6 border-t border-diva-light/20 text-center">
-            <p className="text-xs text-gray-400 font-medium">
+          <div className="mt-12 pt-6 border-t border-border text-center">
+            <p className="text-xs text-muted-foreground font-medium">
               © {new Date().getFullYear()} I'mDoc Technology® <span className="mx-1">•</span> Desenvolvimento Contínuo
             </p>
           </div>
@@ -420,8 +420,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {user.role !== UserRole.CLIENT && (
         <button
           onClick={() => setIsAIOpen(!isAIOpen)}
-          className="fixed bottom-4 right-4 md:bottom-6 md:right-6 w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-diva-accent to-yellow-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-40 border-2 border-white/20 shadow-diva-accent/30"
-          title="Diva AI Assistant"
+          className="fixed bottom-4 right-4 md:bottom-6 md:right-6 w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-teal-500 to-emerald-600 text-white rounded-full shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-40 border-2 border-white/30"
+          title="I'mDoc AI Assistant"
         >
           {isAIOpen ? <X size={20} className="md:w-6 md:h-6" /> : <Sparkles size={20} className="md:w-6 md:h-6" />}
         </button>
