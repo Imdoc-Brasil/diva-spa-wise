@@ -626,7 +626,7 @@ const SaaSCrmModule: React.FC = () => {
         <div className="h-full flex flex-col relative" >
             {/* ... Navigation Tabs ... */}
             {/* Navigation Tabs */}
-            < div className="flex border-b border-white/10 mb-6" >
+            <div className="flex border-b border-border mb-6 overflow-x-auto">
                 {
                     [
                         { id: 'sales', label: 'CRM de Vendas' },
@@ -638,30 +638,30 @@ const SaaSCrmModule: React.FC = () => {
                         <button
                             key={tab.id}
                             onClick={() => setActivePipeline(tab.id as any)}
-                            className={`px-6 py-3 text-sm font-medium transition-colors relative ${activePipeline === tab.id
-                                ? 'text-white'
-                                : 'text-slate-400 hover:text-white'
+                            className={`px-6 py-3 text-sm font-medium transition-colors relative whitespace-nowrap ${activePipeline === tab.id
+                                ? 'text-foreground'
+                                : 'text-muted-foreground hover:text-foreground'
                                 }`}
                         >
                             {tab.label}
                             {activePipeline === tab.id && (
-                                <span className="absolute bottom-0 left-0 w-full h-0.5 bg-yellow-500 rounded-t-full"></span>
+                                <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full"></span>
                             )}
                         </button>
                     ))
                 }
-            </div >
+            </div>
 
             {/* Toolbar (Shared or Specific) */}
-            < div className="flex justify-between items-center mb-6" >
+            <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-white mb-1">
+                    <h2 className="text-2xl font-bold text-foreground mb-1">
                         {activePipeline === 'sales' && 'Pipeline de Vendas'}
                         {activePipeline === 'implementation' && 'Jornada de Implantação (30 Dias)'}
                         {activePipeline === 'support' && 'Tickets de Suporte'}
                         {activePipeline === 'product' && 'Sugestões & Roadmap'}
                     </h2>
-                    <p className="text-slate-400 text-sm">
+                    <p className="text-muted-foreground text-sm">
                         {activePipeline === 'sales' && 'Gerencie a aquisição de novas clínicas.'}
                         {activePipeline === 'implementation' && 'Acompanhe o setup e treinamento de novos assinantes.'}
                         {activePipeline === 'support' && 'Gestão de chamados e dúvidas técnicas.'}
@@ -674,34 +674,34 @@ const SaaSCrmModule: React.FC = () => {
                     activePipeline === 'sales' && (
                         <div className="flex gap-4">
                             <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
                                 <input
                                     type="text"
                                     placeholder="Buscar leads..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-10 pr-4 py-2 bg-slate-800 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:border-yellow-500 outline-none w-64 transition-colors"
+                                    className="pl-10 pr-4 py-2.5 bg-card border border-border rounded-xl text-foreground placeholder-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none w-64 transition-all shadow-sm"
                                 />
                             </div>
 
                             <div className="relative">
                                 <button
                                     onClick={() => setShowFilters(!showFilters)}
-                                    className={`flex items-center gap-2 px-4 py-2 border rounded-lg transition-colors ${showFilters || filterPlan !== 'all' || sortBy !== 'date' ? 'bg-slate-800 border-yellow-500 text-yellow-500' : 'bg-slate-800/50 border-white/10 text-slate-400 hover:text-white'}`}
+                                    className={`flex items-center gap-2 px-4 py-2.5 border rounded-xl transition-all shadow-sm ${showFilters || filterPlan !== 'all' || sortBy !== 'date' ? 'bg-primary/10 border-primary text-primary' : 'bg-card border-border text-muted-foreground hover:text-foreground hover:border-primary/50'}`}
                                 >
-                                    <Filter size={20} />
-                                    <span>Filtros</span>
+                                    <Filter size={18} />
+                                    <span className="text-sm font-medium">Filtros</span>
                                 </button>
 
                                 {showFilters && (
-                                    <div className="absolute right-0 top-full mt-2 w-64 bg-slate-900 border border-white/10 rounded-xl shadow-xl z-20 p-4 animate-in fade-in zoom-in-95">
+                                    <div className="absolute right-0 top-full mt-2 w-64 bg-popover border border-border rounded-xl shadow-spa-lg z-20 p-4 animate-in fade-in zoom-in-95">
                                         <div className="space-y-4">
                                             <div>
-                                                <label className="text-xs font-bold text-slate-500 uppercase block mb-2">Ordenar por</label>
+                                                <label className="text-xs font-medium text-muted-foreground uppercase block mb-2">Ordenar por</label>
                                                 <select
                                                     value={sortBy}
                                                     onChange={(e) => setSortBy(e.target.value as any)}
-                                                    className="w-full bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-yellow-500"
+                                                    className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                                                 >
                                                     <option value="date">📅 Recentes</option>
                                                     <option value="value">💰 Maior Valor</option>
@@ -715,7 +715,7 @@ const SaaSCrmModule: React.FC = () => {
                                                         <button
                                                             key={plan}
                                                             onClick={() => setFilterPlan(plan as any)}
-                                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${filterPlan === plan ? 'bg-yellow-500/20 text-yellow-500' : 'hover:bg-slate-800 text-slate-400'}`}
+                                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${filterPlan === plan ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted text-muted-foreground'}`}
                                                         >
                                                             {plan === 'all' ? 'Todos' : plan.toUpperCase()}
                                                         </button>
@@ -729,9 +729,9 @@ const SaaSCrmModule: React.FC = () => {
 
                             <button
                                 onClick={() => setShowNewLeadModal(true)}
-                                className="flex items-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold rounded-lg transition-colors"
+                                className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl transition-all shadow-lg shadow-primary/20"
                             >
-                                <Plus size={20} /> Novo Lead
+                                <Plus size={18} /> Novo Lead
                             </button>
                         </div>
                     )
@@ -750,7 +750,7 @@ const SaaSCrmModule: React.FC = () => {
                                 {columns.map(col => (
                                     <div key={col.id} className="w-80 flex flex-col shrink-0">
                                         <div
-                                            className={`flex justify-between items-center mb-4 px-1 py-2 border-b-2 ${col.color}`}
+                                            className={`flex justify-between items-center mb-4 px-2 py-3 border-b-2 bg-muted/30 rounded-t-xl ${col.color}`}
                                             onDragOver={(e) => e.preventDefault()}
                                             onDrop={(e) => {
                                                 e.preventDefault();
@@ -760,8 +760,8 @@ const SaaSCrmModule: React.FC = () => {
                                                 }
                                             }}
                                         >
-                                            <h3 className="font-bold text-slate-200 uppercase tracking-wide text-sm">{col.title}</h3>
-                                            <span className="text-xs text-slate-500 font-mono bg-slate-800 px-2 py-1 rounded">
+                                            <h3 className="font-semibold text-foreground uppercase tracking-wide text-sm">{col.title}</h3>
+                                            <span className="text-xs font-semibold text-muted-foreground bg-card border border-border px-2.5 py-1 rounded-full shadow-sm">
                                                 {filteredLeads.filter(l => l.stage === col.id).length}
                                             </span>
                                         </div>
