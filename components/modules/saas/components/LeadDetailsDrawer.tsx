@@ -89,10 +89,10 @@ export function LeadDetailsDrawer({
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className="fixed right-0 top-0 h-full w-full max-w-xl bg-slate-950 border-l border-white/10 shadow-2xl z-[101] overflow-hidden flex flex-col"
+                        className="fixed right-0 top-0 h-full w-full max-w-xl bg-card border-l border-border shadow-2xl z-[101] overflow-hidden flex flex-col"
                     >
                         {/* Header Overlay Gradient */}
-                        <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-diva-accent/10 to-transparent pointer-events-none"></div>
+                        <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none"></div>
 
                         {/* Top Navigation */}
                         <div className="p-6 flex justify-between items-center relative z-10">
@@ -100,7 +100,7 @@ export function LeadDetailsDrawer({
                                 variant="ghost"
                                 size="icon"
                                 onClick={onClose}
-                                className="rounded-full text-slate-400 hover:text-white hover:bg-white/10"
+                                className="rounded-full text-muted-foreground hover:text-foreground hover:bg-muted"
                             >
                                 <X size={20} />
                             </Button>
@@ -109,7 +109,7 @@ export function LeadDetailsDrawer({
                                     variant="outline"
                                     size="sm"
                                     onClick={() => isEditing ? handleSave() : setIsEditing(true)}
-                                    className="bg-white/5 border-white/10 hover:bg-white/10 text-white font-bold"
+                                    className="font-semibold"
                                 >
                                     {isEditing ? <><Save size={14} className="mr-2" /> Salvar</> : <><Edit3 size={14} className="mr-2" /> Editar</>}
                                 </Button>
@@ -131,17 +131,17 @@ export function LeadDetailsDrawer({
                                 initial={{ scale: 0.8, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
                                 transition={{ delay: 0.1 }}
-                                className="w-24 h-24 mx-auto rounded-3xl bg-gradient-to-br from-diva-accent/20 to-indigo-500/10 border border-diva-accent/30 flex items-center justify-center text-4xl font-black text-diva-accent mb-4 shadow-2xl shadow-diva-accent/20"
+                                className="w-24 h-24 mx-auto rounded-3xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30 flex items-center justify-center text-4xl font-black text-primary mb-4 shadow-xl"
                             >
                                 {lead.clinicName.charAt(0)}
                             </motion.div>
-                            <h2 className="text-3xl font-bold text-white tracking-tight">{lead.clinicName}</h2>
-                            <p className="text-slate-400 font-medium">{lead.name}</p>
+                            <h2 className="text-3xl font-bold text-foreground tracking-tight">{lead.clinicName}</h2>
+                            <p className="text-muted-foreground font-medium">{lead.name}</p>
                             <div className="mt-4 flex flex-wrap justify-center gap-2">
-                                <Badge className="bg-diva-accent/10 border-diva-accent/20 text-diva-accent py-1 px-3">
+                                <Badge className="bg-primary/10 border-primary/20 text-primary py-1 px-3">
                                     {lead.stage === SaaSLeadStage.NEW ? 'Novo Lead' : lead.stage}
                                 </Badge>
-                                <Badge variant="outline" className="border-white/10 text-slate-400 py-1 px-3">
+                                <Badge variant="outline" className="py-1 px-3">
                                     {lead.planInterest}
                                 </Badge>
                             </div>
@@ -149,31 +149,31 @@ export function LeadDetailsDrawer({
 
                         {/* Tabs */}
                         <Tabs defaultValue="overview" className="flex-1 flex flex-col min-h-0">
-                            <div className="px-8 border-b border-white/5">
+                            <div className="px-8 border-b border-border">
                                 <TabsList className="bg-transparent h-12 gap-6 w-full justify-start p-0">
-                                    <TabsTrigger value="overview" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-diva-accent rounded-none h-full border-b-2 border-transparent px-0 font-bold text-slate-500 data-[state=active]:text-white">
+                                    <TabsTrigger value="overview" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full border-b-2 border-transparent px-0 font-semibold text-muted-foreground data-[state=active]:text-foreground">
                                         Visão Geral
                                     </TabsTrigger>
-                                    <TabsTrigger value="tasks" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-diva-accent rounded-none h-full border-b-2 border-transparent px-0 font-bold text-slate-500 data-[state=active]:text-white flex gap-2">
-                                        Tarefas {leadTasks.length > 0 && <span className="bg-diva-accent/20 text-diva-accent text-[10px] px-1.5 py-0.5 rounded-full">{leadTasks.filter(t => !t.isCompleted).length}</span>}
+                                    <TabsTrigger value="tasks" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full border-b-2 border-transparent px-0 font-semibold text-muted-foreground data-[state=active]:text-foreground flex gap-2">
+                                        Tarefas {leadTasks.length > 0 && <span className="bg-primary/10 text-primary text-[10px] px-1.5 py-0.5 rounded-full font-bold">{leadTasks.filter(t => !t.isCompleted).length}</span>}
                                     </TabsTrigger>
-                                    <TabsTrigger value="history" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-diva-accent rounded-none h-full border-b-2 border-transparent px-0 font-bold text-slate-500 data-[state=active]:text-white">
+                                    <TabsTrigger value="history" className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full border-b-2 border-transparent px-0 font-semibold text-muted-foreground data-[state=active]:text-foreground">
                                         Histórico
                                     </TabsTrigger>
                                 </TabsList>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto custom-scrollbar">
+                            <div className="flex-1 overflow-y-auto">
                                 <TabsContent value="overview" className="p-8 m-0 space-y-10">
                                     {/* Contact Information */}
                                     <section>
-                                        <h4 className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-slate-500 mb-6 italic">
-                                            <Phone size={14} className="text-diva-accent" /> Canais de Contato
+                                        <h4 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-6">
+                                            <Phone size={14} className="text-primary" /> Canais de Contato
                                         </h4>
                                         <div className="grid grid-cols-1 gap-4">
-                                            <div className="bg-white/[0.02] border border-white/5 p-4 rounded-2xl flex items-center justify-between group transition-colors hover:bg-white/[0.04]">
+                                            <div className="bg-muted/50 border border-border p-4 rounded-xl flex items-center justify-between group transition-colors hover:bg-muted">
                                                 <div className="flex-1">
-                                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">E-mail Corporativo</p>
+                                                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">E-mail Corporativo</p>
                                                     {isEditing ? (
                                                         <Input
                                                             defaultValue={lead.email}
