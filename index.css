@@ -36,12 +36,23 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  --color-diva-light: #F5F5F4;
-  --color-diva-accent: #D4AF37;
-  --color-diva-primary: #0F4C5C;
-  --color-diva-dark: #0A2331;
-  --color-diva-alert: #9B2C2C;
-  --color-diva-gold: #C5A059;
+  /* Diva Spa Wise - Serene Jade Palette */
+  --color-diva-light: #FAFAF9;
+  /* Stone 50 - Crisp white background */
+  --color-diva-accent: #14B8A6;
+  /* Teal 500 - Calming primary accent */
+  --color-diva-primary: #0D9488;
+  /* Teal 600 - Deeper teal for buttons */
+  --color-diva-dark: #1E293B;
+  /* Slate 800 - Rich text color */
+  --color-diva-alert: #DC2626;
+  /* Red 600 - Clear alerts */
+  --color-diva-gold: #F59E0B;
+  /* Amber 500 - Warm accent */
+  --color-diva-jade: #10B981;
+  /* Emerald 500 - Success/Positive */
+  --color-diva-mist: #F1F5F9;
+  /* Slate 100 - Subtle backgrounds */
 
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
@@ -72,68 +83,101 @@
 }
 
 @layer base {
+
+  /* ================================
+     LIGHT THEME (Default) - Serene Spa
+     ================================ */
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Core Backgrounds */
+    --background: 60 9% 98%;
+    /* #FAFAF9 - Warm off-white */
+    --foreground: 215 25% 27%;
+    /* #334155 - Slate 700 - Readable dark */
 
+    /* Cards */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    /* Pure white cards */
+    --card-foreground: 215 25% 27%;
 
+    /* Popovers */
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 215 25% 27%;
 
-    --primary: 191 72% 21%;
-    /* #0F4C5C */
-    --primary-foreground: 210 40% 98%;
+    /* Primary Action - Teal */
+    --primary: 168 76% 36%;
+    /* #0D9488 - Teal 600 */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Secondary - Soft gray */
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 215 25% 27%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Muted - Subtle backgrounds */
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
 
-    --accent: 46 65% 52%;
-    /* #D4AF37 */
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Accent - Teal highlight */
+    --accent: 168 84% 39%;
+    /* Teal 500 */
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Destructive - Clear red */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Borders & Inputs */
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 168 76% 36%;
 
-    --radius: 0.75rem;
+    /* Radius - More rounded for spa feel */
+    --radius: 0.875rem;
   }
 
+  /* ================================
+     DARK THEME - Elegant Night Spa
+     ================================ */
   .dark {
-    --background: 222.2 84% 4.9%;
+    /* Core Backgrounds - Deep but not black */
+    --background: 222 47% 11%;
+    /* #1E293B - Slate 800 */
     --foreground: 210 40% 98%;
+    /* #F8FAFC - Clear white */
 
-    --card: 222.2 84% 4.9%;
+    /* Cards - Slightly lighter than bg */
+    --card: 217 33% 17%;
+    /* #273449 - Subtle elevation */
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    /* Popovers */
+    --popover: 217 33% 17%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    /* Primary - Teal stays vivid */
+    --primary: 168 84% 39%;
+    /* #14B8A6 - Teal 500 */
+    --primary-foreground: 222 47% 11%;
 
-    --secondary: 217.2 32.6% 17.5%;
+    /* Secondary */
+    --secondary: 217 19% 27%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    /* Muted - Better contrast */
+    --muted: 217 19% 27%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    /* Accent */
+    --accent: 168 84% 39%;
+    --accent-foreground: 222 47% 11%;
 
-    --destructive: 0 62.8% 30.6%;
+    /* Destructive */
+    --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    /* Borders & Inputs - Visible but subtle */
+    --border: 217 19% 27%;
+    --input: 217 19% 27%;
+    --ring: 168 84% 39%;
   }
 }
 
@@ -143,24 +187,59 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Improved focus states */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
 }
 
-/* Custom Utilities */
+/* ================================
+   GLASS UTILITIES - Improved
+   ================================ */
 @utility glass {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 @utility glass-dark {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(30, 41, 59, 0.8);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* Custom Scrollbar */
+/* ================================
+   SPA-SPECIFIC UTILITIES
+   ================================ */
+@utility spa-card {
+  background: hsl(var(--card));
+  border-radius: var(--radius);
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+}
+
+@utility spa-card-elevated {
+  background: hsl(var(--card));
+  border-radius: var(--radius);
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.08);
+}
+
+@utility spa-gradient {
+  background: linear-gradient(135deg, hsl(168 84% 39% / 0.1), hsl(168 76% 36% / 0.05));
+}
+
+@utility spa-gradient-dark {
+  background: linear-gradient(135deg, hsl(168 84% 39% / 0.15), hsl(168 76% 36% / 0.08));
+}
+
+/* ================================
+   CUSTOM SCROLLBAR - Refined
+   ================================ */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -176,4 +255,63 @@
 
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-muted-foreground/40;
+}
+
+/* ================================
+   TYPOGRAPHY ENHANCEMENTS
+   ================================ */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  @apply font-semibold tracking-tight text-foreground;
+}
+
+p {
+  @apply leading-relaxed;
+}
+
+/* Ensure good contrast for muted text */
+.text-muted-foreground {
+  color: hsl(var(--muted-foreground));
+}
+
+/* ================================
+   IMPROVED BADGES & STATUS
+   ================================ */
+@utility badge-success {
+  @apply bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400;
+}
+
+@utility badge-warning {
+  @apply bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400;
+}
+
+@utility badge-error {
+  @apply bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400;
+}
+
+@utility badge-info {
+  @apply bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400;
+}
+
+/* ================================
+   ANIMATION UTILITIES
+   ================================ */
+@utility animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
