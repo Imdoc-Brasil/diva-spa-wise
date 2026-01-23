@@ -114,6 +114,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   }, [location.pathname, isMobile]);
 
   const navSections: NavSection[] = [
+    // SaaS Admin Section (Only for MASTER and SAAS_STAFF)
+    {
+      title: 'Administração SaaS',
+      items: [
+        { label: 'CRM de Vendas', path: '/dashboard/saas/crm', icon: <Users size={20} />, allowedRoles: [UserRole.MASTER, UserRole.SAAS_STAFF] },
+        { label: 'Financeiro SaaS', path: '/dashboard/saas/finance', icon: <DollarSign size={20} />, allowedRoles: [UserRole.MASTER, UserRole.SAAS_STAFF] },
+        { label: 'Marketing SaaS', path: '/dashboard/saas/marketing', icon: <Megaphone size={20} />, allowedRoles: [UserRole.MASTER, UserRole.SAAS_STAFF] },
+        { label: 'Editor de LP', path: '/dashboard/saas/sales-page', icon: <Globe size={20} />, allowedRoles: [UserRole.MASTER, UserRole.SAAS_STAFF] },
+      ]
+    },
     {
       title: 'Principal',
       items: [

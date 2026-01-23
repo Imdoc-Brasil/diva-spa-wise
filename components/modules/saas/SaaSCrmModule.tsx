@@ -1503,10 +1503,10 @@ const SaaSCrmModule: React.FC = () => {
             {
                 activePipeline === 'subscribers' && (
                     <div className="flex-1 overflow-auto p-6">
-                        <div className="bg-slate-900/50 rounded-xl border border-white/10 overflow-hidden">
+                        <div className="bg-card rounded-xl border border-border overflow-hidden shadow-spa">
                             <table className="w-full text-left border-collapse">
                                 <thead>
-                                    <tr className="border-b border-white/10 bg-slate-800/50 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                    <tr className="border-b border-border bg-muted/50 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                                         <th className="p-4">Clínica</th>
                                         <th className="p-4">Link de Acesso</th>
                                         <th className="p-4">Admin</th>
@@ -1519,12 +1519,12 @@ const SaaSCrmModule: React.FC = () => {
                                         <th className="p-4 text-right">Ações</th>
                                     </tr>
                                 </thead>
-                                <tbody className="text-sm divide-y divide-white/5">
+                                <tbody className="text-sm divide-y divide-border">
                                     {(saasSubscribers || []).map(sub => (
-                                        <tr key={sub.id} className="hover:bg-slate-800/30 transition-colors group">
-                                            <td className="p-4 font-medium text-white">
+                                        <tr key={sub.id} className="hover:bg-muted/30 transition-colors group">
+                                            <td className="p-4 font-medium text-foreground">
                                                 {sub.clinicName}
-                                                <span className="block text-xs text-slate-500 mt-1">ID: {sub.id.substring(0, 8)}...</span>
+                                                <span className="block text-xs text-muted-foreground mt-1">ID: {sub.id.substring(0, 8)}...</span>
                                             </td>
                                             <td className="p-4">
                                                 {(() => {
@@ -1559,37 +1559,37 @@ const SaaSCrmModule: React.FC = () => {
                                             </td>
                                             <td className="p-4">
                                                 <div className="flex flex-col">
-                                                    <span className="text-slate-300">{sub.adminName}</span>
-                                                    <span className="text-xs text-slate-500">{sub.adminEmail}</span>
+                                                    <span className="text-foreground">{sub.adminName}</span>
+                                                    <span className="text-xs text-muted-foreground">{sub.adminEmail}</span>
                                                 </div>
                                             </td>
                                             <td className="p-4">
                                                 <PlanBadge plan={sub.plan} />
                                             </td>
-                                            <td className="p-4 text-slate-300 capitalize">
+                                            <td className="p-4 text-muted-foreground capitalize">
                                                 {sub.recurrence === 'monthly' ? 'Mensal' : 'Anual'}
                                             </td>
                                             <td className="p-4">
-                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${sub.status === 'active' ? 'bg-green-500/20 text-green-400' :
-                                                    sub.status === 'trial' ? 'bg-pink-500/20 text-pink-400' :
-                                                        sub.status === 'delinquent' ? 'bg-red-500/20 text-red-400' :
-                                                            'bg-slate-700 text-slate-400'
+                                                <span className={`px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase ${sub.status === 'active' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                                                    sub.status === 'trial' ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400' :
+                                                        sub.status === 'delinquent' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' :
+                                                            'bg-muted text-muted-foreground'
                                                     }`}>
                                                     {sub.status === 'delinquent' ? 'Inadimplente' : sub.status}
                                                 </span>
                                             </td>
                                             <td className="p-4">
-                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${sub.financialStatus === 'paid' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                                                    sub.financialStatus === 'overdue' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
-                                                        'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                                                <span className={`px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase ${sub.financialStatus === 'paid' ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' :
+                                                    sub.financialStatus === 'overdue' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' :
+                                                        'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
                                                     }`}>
                                                     {sub.financialStatus === 'paid' ? 'Pago' : sub.financialStatus === 'overdue' ? 'Atrasado' : 'Pendente'}
                                                 </span>
                                             </td>
-                                            <td className="p-4 font-mono text-slate-300">
+                                            <td className="p-4 font-mono text-foreground">
                                                 R$ {sub.mrr.toFixed(2)}
                                             </td>
-                                            <td className="p-4 text-slate-400 text-xs">
+                                            <td className="p-4 text-muted-foreground text-xs">
                                                 {new Date(sub.nextBillingDate).toLocaleDateString()}
                                             </td>
                                             <td className="p-4 text-right relative">
